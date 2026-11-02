@@ -23,6 +23,10 @@ python benchmark/bench.py run --prs benchmark/prs.json --out benchmark/results/<
 python benchmark/bench.py score benchmark/results/<name>
 ```
 
+To measure on GitHub's free runners (4 CPUs, no GPU), the machine the Action
+reviews on, start the **Benchmark** workflow from the Actions tab. Its results
+come back as an artifact.
+
 A hosted model can be compared the same way: pass its OpenAI-compatible
 endpoint, with the key in `STRATUM_MODEL_API_KEY`.
 
