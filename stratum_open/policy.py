@@ -22,6 +22,7 @@ DEFAULT_IGNORED = (
     "**/*.lock", "**/package-lock.json", "**/pnpm-lock.yaml", "**/go.sum",
     "**/*.min.js", "**/*.min.css", "**/*.map", "**/*.svg", "**/*.snap",
     "**/vendor/**", "**/node_modules/**", "**/dist/**",
+    ".github/**",  # the workflow check reads these; a small model mostly adds noise
 )
 
 
