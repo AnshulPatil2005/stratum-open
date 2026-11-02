@@ -35,7 +35,7 @@ repo. Nothing is sent to Stratum: no account, no telemetry, no license check.
 
 Copy [examples/stratum.yml](examples/stratum.yml) to `.github/workflows/stratum.yml`. That's all.
 
-That workflow runs `qwen2.5-coder:7b` with Ollama on GitHub's own runner, so you need no server. GitHub's free runners have no GPU, though, so a review takes a few minutes. If your project has a machine with a GPU, run Ollama (or any OpenAI-compatible server) there instead. Then point `review.endpoint` in your policy file at it, and drop `ollama-model` from the workflow.
+That workflow runs `qwen2.5-coder:7b` with Ollama on GitHub's own runner, so you need no server. Ollama and the model go into the Actions cache on the first scheduled (or manual) run; PR runs read it, since GitHub doesn't let them write caches. GitHub's free runners have no GPU, though, so a review takes a few minutes. If your project has a machine with a GPU, run Ollama (or any OpenAI-compatible server) there instead. Then point `review.endpoint` in your policy file at it, and drop `ollama-model` from the workflow.
 
 The workflow uses `pull_request_target` so it can comment on PRs from forks. It's safe here because the workflow checks out your default branch, never the PR, and Stratum reads the PR only through GitHub's API: no code from the PR ever runs. Keep it that way: don't add a step that checks out the PR.
 
