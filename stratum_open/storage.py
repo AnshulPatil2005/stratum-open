@@ -191,6 +191,21 @@ class NullStorage:
         return {table: [] for table in TABLES}
 
 
+# Plain SQL, one statement per table: nothing is ever built into a query string.
+_DELETE_REPO = (
+    "DELETE FROM reviews WHERE repo = ?",
+    "DELETE FROM jobs WHERE repo = ?",
+    "DELETE FROM votes WHERE repo = ?",
+    "DELETE FROM mutes WHERE repo = ?",
+)
+_EXPORT = {
+    "reviews": "SELECT * FROM reviews WHERE repo = ? ORDER BY rowid",
+    "jobs": "SELECT * FROM jobs WHERE repo = ? ORDER BY rowid",
+    "votes": "SELECT * FROM votes WHERE repo = ? ORDER BY rowid",
+    "mutes": "SELECT * FROM mutes WHERE repo = ? ORDER BY rowid",
+}
+
+
 class SQLiteStorage:
     """One connection shared by the server's threads behind a lock. WAL lets
     a second process, such as `stratum data delete`, work while it runs."""
@@ -225,7 +240,8 @@ class SQLiteStorage:
                 (_repo(repo), pr, head_sha, risk, _clean(summary), _stamp()),
             ).lastrowid
             db.executemany(
-                f"INSERT INTO findings (review_id, {', '.join(FINDING_FIELDS)}) VALUES ({', '.join('?' * (len(FINDING_FIELDS) + 1))})",
+                "INSERT INTO findings (review_id, fingerprint, rule, severity, category, path, line_start, line_end, title, detail)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 [
                     (review_id, f.fingerprint, f.rule, f.severity, f.category, f.path, f.line_start, f.line_end, _clean(f.title), _clean(f.detail))
                     for f in findings
@@ -278,8 +294,8 @@ class SQLiteStorage:
     def latest_findings(self, repo: str, pr: int) -> list[dict]:
         with self._tx() as db:
             rows = db.execute(
-                f"SELECT {', '.join(FINDING_FIELDS)} FROM findings WHERE review_id ="
-                " (SELECT id FROM reviews WHERE repo = ? AND pr = ? ORDER BY id DESC LIMIT 1) ORDER BY rowid",
+                "SELECT fingerprint, rule, severity, category, path, line_start, line_end, title, detail FROM findings"
+                " WHERE review_id = (SELECT id FROM reviews WHERE repo = ? AND pr = ? ORDER BY id DESC LIMIT 1) ORDER BY rowid",
                 (_repo(repo), pr),
             ).fetchall()
         return [dict(row) for row in rows]
@@ -288,12 +304,14 @@ class SQLiteStorage:
         now = now or datetime.now(timezone.utc)
         reviews_before = _stamp(now - timedelta(days=findings_days))
         jobs_before = _stamp(now - timedelta(days=jobs_days))
-        scope, scoped = ("AND repo = ?", (_repo(repo),)) if repo else ("", ())
-        old_reviews = f"SELECT id FROM reviews WHERE created_at < ? {scope}"
+        scope = _repo(repo) if repo else None  # None: every repo
         with self._tx() as db:
-            findings = db.execute(f"DELETE FROM findings WHERE review_id IN ({old_reviews})", (reviews_before, *scoped)).rowcount
-            reviews = db.execute(f"DELETE FROM reviews WHERE created_at < ? {scope}", (reviews_before, *scoped)).rowcount
-            jobs = db.execute(f"DELETE FROM jobs WHERE created_at < ? {scope}", (jobs_before, *scoped)).rowcount
+            findings = db.execute(
+                "DELETE FROM findings WHERE review_id IN"
+                " (SELECT id FROM reviews WHERE created_at < ? AND (? IS NULL OR repo = ?))", (reviews_before, scope, scope),
+            ).rowcount
+            reviews = db.execute("DELETE FROM reviews WHERE created_at < ? AND (? IS NULL OR repo = ?)", (reviews_before, scope, scope)).rowcount
+            jobs = db.execute("DELETE FROM jobs WHERE created_at < ? AND (? IS NULL OR repo = ?)", (jobs_before, scope, scope)).rowcount
         return {"reviews": reviews, "findings": findings, "jobs": jobs}
 
     def delete_pr(self, repo: str, pr: int) -> int:
@@ -306,26 +324,26 @@ class SQLiteStorage:
             )
 
     def delete_feedback(self, repo: str | None = None) -> int:
-        scope, scoped = (" WHERE repo = ?", (_repo(repo),)) if repo else ("", ())
+        scope = (_repo(repo) if repo else None,) * 2  # None: every repo
         with self._tx() as db:
-            return db.execute(f"DELETE FROM votes{scope}", scoped).rowcount + db.execute(f"DELETE FROM mutes{scope}", scoped).rowcount
+            return (
+                db.execute("DELETE FROM votes WHERE ? IS NULL OR repo = ?", scope).rowcount
+                + db.execute("DELETE FROM mutes WHERE ? IS NULL OR repo = ?", scope).rowcount
+            )
 
     def delete_repo(self, repo: str) -> int:
         key = (_repo(repo),)
         with self._tx() as db:
             deleted = db.execute("DELETE FROM findings WHERE review_id IN (SELECT id FROM reviews WHERE repo = ?)", key).rowcount
-            for table in ("reviews", "jobs", "votes", "mutes"):
-                deleted += db.execute(f"DELETE FROM {table} WHERE repo = ?", key).rowcount
+            for statement in _DELETE_REPO:
+                deleted += db.execute(statement, key).rowcount
         return deleted
 
     def export(self, repo: str) -> dict[str, list[dict]]:
         """`SELECT *`, so a column added later is exported without a change here."""
         key = (_repo(repo),)
         with self._tx() as db:
-            out = {
-                table: [dict(row) for row in db.execute(f"SELECT * FROM {table} WHERE repo = ? ORDER BY rowid", key)]
-                for table in TABLES if table != "findings"
-            }
+            out = {table: [dict(row) for row in db.execute(statement, key)] for table, statement in _EXPORT.items()}
             out["findings"] = [
                 dict(row) for row in db.execute(
                     "SELECT findings.* FROM findings JOIN reviews ON reviews.id = findings.review_id"

@@ -81,7 +81,8 @@ def fingerprint(finding: Finding, files: dict[str, FileDiff]) -> str:
         anchor = _WS.sub(" ", file.snippet(finding.line_start, finding.line_end)).strip()
     if not anchor:
         anchor = slug(finding.title)
-    return hashlib.sha1(f"{finding.source}|{what}|{finding.path}|{anchor}".encode("utf-8")).hexdigest()[:12]
+    key = f"{finding.source}|{what}|{finding.path}|{anchor}".encode("utf-8")
+    return hashlib.sha1(key, usedforsecurity=False).hexdigest()[:12]  # an id, not a secret
 
 
 def assign_fingerprints(findings: Iterable[Finding], files: list[FileDiff]) -> None:

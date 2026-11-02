@@ -114,7 +114,10 @@ def _review_local(args, base: str) -> int:
     from stratum_open.repo.boundaries import boundary_findings
     from stratum_open.review import review
 
-    text = _git(".", "diff", "--no-color", "--find-renames", f"{base}...HEAD")
+    try:
+        text = _git(".", "diff", "--no-color", "--find-renames", f"{base}...HEAD")
+    except subprocess.CalledProcessError as exc:
+        sys.exit(f"git couldn't compare {base} with HEAD: {(exc.stderr or '').strip() or 'is this a git repo, and does that branch exist?'}")
     files = parse_diff(text)
     if not files:
         print(f"No changes between {base} and HEAD.")

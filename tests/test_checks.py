@@ -508,3 +508,21 @@ def test_needs_human_on_new_dependencies_follows_the_policy():
     assert only(run(text), "deps/new").needs_human is True
     relaxed = replace(Policy(), always_human=AlwaysHuman(new_dependencies=False))
     assert only(run(text, relaxed), "deps/new").needs_human is False
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        '_JS_BARE_EXEC = re.compile(r"(?<![\w.$])exec(?:Sync)?\s*\(")',
+        '    hint = "Pass a list of arguments without `shell=True` in Python."',
+        '    """Whether the call this `shell=True` belongs to, found up to five lines',
+    ],
+)
+def test_code_named_inside_a_string_is_not_code(line):
+    diff = f"diff --git a/tool.py b/tool.py\n--- a/tool.py\n+++ b/tool.py\n@@ -1 +1,2 @@\n x = 1\n+{line}\n"
+    assert run_checks(parse_diff(diff), Policy()) == []
+
+
+def test_cors_in_tests_is_not_flagged():
+    diff = 'diff --git a/tests/test_api.py b/tests/test_api.py\n--- a/tests/test_api.py\n+++ b/tests/test_api.py\n@@ -1 +1,2 @@\n x = 1\n+app.add_middleware(CORSMiddleware, allow_origins=["*"])\n'
+    assert run_checks(parse_diff(diff), Policy()) == []

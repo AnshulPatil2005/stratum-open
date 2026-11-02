@@ -40,7 +40,7 @@ def check(files: list[FileDiff], contents: dict[str, str] | None = None) -> list
                 findings.extend(_shell(file.path, number, text, ext, lines, child_process))
                 if ext in SQL_HOSTS:
                     findings.extend(_sql(file.path, number, text, ext))
-            if ext not in DOCS:
+            if ext not in DOCS and not test:
                 findings.extend(_cors(file.path, number, text))
     return findings
 
@@ -165,6 +165,8 @@ def _eval(path: str, number: int, text: str, ext: str) -> list[Finding]:
     if pattern is None or _DEFINES.search(text):
         return []
     for match in pattern.finditer(text):
+        if _in_string(text, match.start()):
+            continue
         fixed = _ALL_LITERAL_ARGS if match.groupdict().get("ctor") else _LITERAL_ARG
         if fixed.match(text, match.end() - 1) or text[match.end():].lstrip().startswith(")"):
             continue
@@ -199,19 +201,19 @@ _JS_SHELL_OPTION = re.compile(r"\b(?:spawn|spawnSync|execFile|execFileSync)\s*\(
 def _shell(path: str, number: int, text: str, ext: str, lines: dict[int, str], child_process: bool) -> list[Finding]:
     risky = False
     if ext in PYTHON:
-        call = _PY_SHELL_CALL.search(text)
+        call = _code_search(_PY_SHELL_CALL, text)
         if call:
             risky = not _LITERAL_ARG.match(text, call.end() - 1)
-        elif _SHELL_TRUE.search(text):
+        elif _code_search(_SHELL_TRUE, text):
             risky = not _constant_command(lines, number)
     elif ext in JAVASCRIPT:
-        call = _JS_CP_EXEC.search(text)
+        call = _code_search(_JS_CP_EXEC, text)
         if call is None and child_process:  # a bare exec() is child_process's only if it's imported
-            call = _JS_BARE_EXEC.search(text)
+            call = _code_search(_JS_BARE_EXEC, text)
         if call:
             risky = not _LITERAL_ARG.match(text, call.end() - 1)
         else:
-            risky = bool(_JS_SHELL_OPTION.search(text))
+            risky = bool(_code_search(_JS_SHELL_OPTION, text))
     if not risky:
         return []
     return [_finding(
@@ -227,6 +229,32 @@ def _shell(path: str, number: int, text: str, ext: str, lines: dict[int, str], c
         ),
         confidence=0.7,
     )]
+
+
+def _code_search(pattern: re.Pattern, text: str) -> re.Match | None:
+    """The first match that's code, not text inside a string: a regex, a
+    message or a docstring that mentions `shell=True` runs nothing."""
+    return next((m for m in pattern.finditer(text) if not _in_string(text, m.start())), None)
+
+
+def _in_string(text: str, pos: int) -> bool:
+    """Whether `pos` falls inside a string literal opened earlier on the line."""
+    quote, i = None, 0
+    while i < pos:
+        if quote:
+            if text[i] == "\\":
+                i += 2
+            elif text.startswith(quote, i):
+                i, quote = i + len(quote), None
+            else:
+                i += 1
+            continue
+        opener = next((q for q in ('"""', "'''", '"', "'", "`") if text.startswith(q, i)), None)
+        if opener:
+            quote, i = opener, i + len(opener)
+        else:
+            i += 1
+    return quote is not None
 
 
 def _constant_command(lines: dict[int, str], number: int) -> bool:
