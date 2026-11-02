@@ -48,6 +48,7 @@ Every key, with its default, is in [policy.example.yml](policy.example.yml).
 - Things you'll likely want to set:
   - `triage.enabled: true` turns the labels on;
   - `review.rules` holds your project's own review rules, in plain words;
+  - `review.min_severity` sets how serious a model finding must be to be shown (default `medium`; the checks' findings always show);
   - `always_human.paths` lists paths that always need a maintainer;
   - `boundaries` holds module rules such as `api -> db`;
   - `track_record.affects_triage` lets an author's record move their PR's label.
@@ -93,9 +94,10 @@ The target is a 7–14B open coding model. Defaults:
 Small models make more mistakes than large ones, so Stratum checks their answers:
 - a finding goes on the line whose code the model quoted, not the line number it guessed;
 - a suggested fix is offered only where the model showed which lines it replaces;
-- anything outside the diff is dropped.
+- anything outside the diff is dropped;
+- a finding that only describes the change ("New function") is dropped, and one vague worry repeated down a file becomes one finding.
 
-The [benchmark](benchmark/) reviews real merged PRs with each model, and maintainers mark each finding right or wrong. [Results so far](benchmark/results/).
+The [benchmark](benchmark/) reviews real merged PRs with each model, and maintainers mark each finding right or wrong. Its results are published in `benchmark/results/` as each run finishes.
 
 ## Data
 
