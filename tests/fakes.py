@@ -52,6 +52,8 @@ class FakeGitHub:
         self.closed: list[int] = []
         self.issues: list[dict] = []
         self.reject_review = False
+        self.edited: list[tuple[int, str]] = []
+        self.refuse_resolve = False
 
     def move_head(self, number: int, sha: str, diff: str | None = None) -> None:
         self.pulls[number]["head"]["sha"] = sha
@@ -111,6 +113,15 @@ class FakeGitHub:
                                  "comments": [{"id": cid, "body": comment["body"], "author": "stratum[bot]"}]})
         return {"id": next(_ids)}
 
+    def edit_review_comment(self, comment_id, body):
+        for comment in self.review_comments_:
+            if comment["id"] == comment_id:
+                comment["body"] = body
+        for thread in self.threads:
+            if thread["comments"][0]["id"] == comment_id:
+                thread["comments"][0]["body"] = body
+        self.edited.append((comment_id, body))
+
     def reply(self, number, comment_id, body):
         self.replies.append((number, comment_id, body))
         for thread in self.threads:
@@ -128,6 +139,8 @@ class FakeGitHub:
         return [dict(t, comments=list(t["comments"])) for t in self.threads]
 
     def resolve_thread(self, thread_id):
+        if self.refuse_resolve:  # what GitHub does to an Actions token
+            raise GitHubError(403, "Resource not accessible by integration")
         self.resolved.append(thread_id)
         for thread in self.threads:
             if thread["id"] == thread_id:

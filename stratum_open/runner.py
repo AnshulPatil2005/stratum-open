@@ -160,8 +160,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         marker = publish.thread_marker(thread, ctx.bot)
         if marker and not marker[1].startswith("model:") and marker[0] not in current:
             gone.setdefault(marker[0], "Fixed: the check no longer finds this.")
-    publish.resolve_threads(gh, number, threads, gone, bot=ctx.bot)
-    on_lines = {publish.thread_fingerprint(t, ctx.bot) for t in threads if not t["resolved"]}
+    publish.resolve_threads(gh, number, threads, gone, bot=ctx.bot, log=ctx.log)
+    on_lines = {publish.thread_fingerprint(t, ctx.bot) for t in threads if publish.is_open(t, ctx.bot)}
     posted = publish.publish_inline(gh, number, head, findings, threads, bot=ctx.bot, limit=policy.review.max_inline_comments, feedback=ctx.feedback)
     summary.inline = (on_lines | set(posted)) & {f.fingerprint for f in findings}
     body = publish.render_summary(summary, new_state)
