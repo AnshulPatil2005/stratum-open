@@ -36,7 +36,8 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/ollama.tar.zst" "https://github.com/ollama/ollama/releases/download/v0.40.13/ollama-linux-amd64.tar.zst"
           echo "c9490e0f520be21271d969e6703f012268b1d39f8b70dd58854e5bfef7a75bb6  $RUNNER_TEMP/ollama.tar.zst" | sha256sum -c -
           tar --zstd -x -C "$root" -f "$RUNNER_TEMP/ollama.tar.zst"
-          nohup "$root/bin/ollama" serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+          # One model in memory at a time: 7B and 14B together don't fit in the runner's 16 GB.
+          OLLAMA_MAX_LOADED_MODELS=1 OLLAMA_NUM_PARALLEL=1 nohup "$root/bin/ollama" serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
           for _ in $(seq 1 60); do curl -sf http://localhost:11434/api/version > /dev/null && break; sleep 1; done
           for model in $MODELS; do "$root/bin/ollama" pull "$model"; done
       - name: Review the PRs with each model
@@ -49,7 +50,10 @@ jobs:
           for model in $MODELS; do args+=(--model "$model@http://localhost:11434/v1"); done
           python benchmark/bench.py run --prs benchmark/prs.json --out "benchmark/results/$NAME" "${args[@]}"
           cat "benchmark/results/$NAME/summary.md" >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      - if: always()
+        run: tail -n 50 "$RUNNER_TEMP/ollama.log" || true
+      - if: always()  # a stopped run's partial results are still worth keeping
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: benchmark-results
           path: benchmark/results/
