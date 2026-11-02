@@ -1,0 +1,55 @@
+# The small-model benchmark on GitHub's free runners (4 CPUs, no GPU): the
+# machine the Action itself reviews on. Start it by hand from the Actions tab;
+# the results come back as an artifact to commit under benchmark/results/.
+name: Benchmark
+
+on:
+  workflow_dispatch:
+    inputs:
+      models:
+        description: Ollama models to compare, separated by spaces
+        default: qwen2.5-coder:7b qwen2.5-coder:14b
+      name:
+        description: Folder name for the results
+        default: actions-cpu
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --quiet .
+      - name: Start Ollama and pull the models
+        env:
+          MODELS: ${{ inputs.models }}
+        run: |
+          set -euo pipefail
+          root="$HOME/ollama"
+          mkdir -p "$root"
+          curl -fsSL -o "$RUNNER_TEMP/ollama.tar.zst" "https://github.com/ollama/ollama/releases/download/v0.40.13/ollama-linux-amd64.tar.zst"
+          echo "c9490e0f520be21271d969e6703f012268b1d39f8b70dd58854e5bfef7a75bb6  $RUNNER_TEMP/ollama.tar.zst" | sha256sum -c -
+          tar --zstd -x -C "$root" -f "$RUNNER_TEMP/ollama.tar.zst"
+          nohup "$root/bin/ollama" serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+          for _ in $(seq 1 60); do curl -sf http://localhost:11434/api/version > /dev/null && break; sleep 1; done
+          for model in $MODELS; do "$root/bin/ollama" pull "$model"; done
+      - name: Review the PRs with each model
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MODELS: ${{ inputs.models }}
+          NAME: ${{ inputs.name }}
+        run: |
+          args=()
+          for model in $MODELS; do args+=(--model "$model@http://localhost:11434/v1"); done
+          python benchmark/bench.py run --prs benchmark/prs.json --out "benchmark/results/$NAME" "${args[@]}"
+          cat "benchmark/results/$NAME/summary.md" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: benchmark-results
+          path: benchmark/results/

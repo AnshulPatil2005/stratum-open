@@ -39,7 +39,7 @@ from stratum_open.review import review  # noqa: E402
 
 CACHE = Path(__file__).resolve().parent / ".cache"
 FINDING_COLUMNS = ["repo", "pr", "model", "severity", "category", "path", "line", "title", "detail", "verdict", "note"]
-CALL_COLUMNS = ["repo", "pr", "model", "seconds", "prompt_tokens", "output_tokens", "calls", "failed_calls", "files_read", "findings", "dropped"]
+CALL_COLUMNS = ["repo", "pr", "model", "seconds", "prompt_tokens", "output_tokens", "calls", "failed_calls", "files_read", "findings", "dropped", "error"]
 
 
 def main() -> int:
@@ -84,6 +84,7 @@ def _run(args) -> int:
                 "calls": len(result.calls), "failed_calls": result.failed_calls,
                 "files_read": len(result.packed.reviewed) + len(result.packed.clipped) if result.packed else 0,
                 "findings": len(findings), "dropped": result.dropped,
+                "error": "; ".join(sorted({c["error"] for c in result.calls if c.get("error")}))[:300],
             })
             for f in findings:
                 finding_rows.append({
@@ -92,7 +93,7 @@ def _run(args) -> int:
                     "verdict": "", "note": "",
                 })
             print(f"{item['repo']}#{item['pr']} {model.name}: {len(findings)} finding(s) in {seconds:.0f}s"
-                  + (f", {result.failed_calls} failed call(s)" if result.failed_calls else ""), flush=True)
+                  + (f", {result.failed_calls} failed call(s): {call_rows[-1]['error']}" if result.failed_calls else ""), flush=True)
 
     _write(out / "findings.csv", FINDING_COLUMNS, finding_rows)
     _write(out / "calls.csv", CALL_COLUMNS, call_rows)

@@ -12,7 +12,8 @@ review:
   rules: []                    # your own review rules in plain words, e.g. "Every SQL query is parameterized."
   ignore_paths: ["**/*.lock", "**/package-lock.json", "**/pnpm-lock.yaml", "**/go.sum",
                  "**/*.min.js", "**/*.min.css", "**/*.map", "**/*.svg", "**/*.snap",
-                 "**/vendor/**", "**/node_modules/**", "**/dist/**"]   # never sent to the model
+                 "**/vendor/**", "**/node_modules/**", "**/dist/**",
+                 ".github/**"]   # never sent to the model; the checks still read them
   log_prompts: false           # true keeps prompts and replies in the job log for 14 days
 
 always_human:                  # matching PRs are labelled for a person and never closed

@@ -213,15 +213,12 @@ class GitHub:
             data = self.graphql(
                 "query($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name)"
                 "{pullRequest(number:$number){reviewThreads(first:100,after:$cursor){pageInfo{hasNextPage endCursor}"
-                "nodes{id isResolved path comments(first:50){nodes{databaseId body author{login}}}}}}}}",
+                "nodes{id isResolved path comments(first:50){nodes{databaseId body author{login __typename}}}}}}}}",
                 owner=owner, name=name, number=number, cursor=cursor,
             )
             page = data["repository"]["pullRequest"]["reviewThreads"]
             for node in page["nodes"]:
-                comments = [
-                    {"id": c["databaseId"], "body": c.get("body") or "", "author": (c.get("author") or {}).get("login", "")}
-                    for c in node["comments"]["nodes"]
-                ]
+                comments = [{"id": c["databaseId"], "body": c.get("body") or "", "author": _login(c.get("author"))} for c in node["comments"]["nodes"]]
                 if comments:
                     threads.append({"id": node["id"], "resolved": node["isResolved"], "path": node.get("path"), "comments": comments})
             if not page["pageInfo"]["hasNextPage"]:
@@ -271,6 +268,16 @@ class GitHub:
 
     def edit_issue(self, number: int, body: str) -> dict:
         return self.request("PATCH", f"{self._r}/issues/{number}", json={"body": body})
+
+
+def _login(author: dict | None) -> str:
+    """GraphQL names a bot `github-actions`, REST `github-actions[bot]`. Use
+    the REST form, and only for real bots: a person can have the same login
+    as an App's name, and must never pass for it."""
+    if not author:
+        return ""
+    login = author.get("login", "")
+    return f"{login}[bot]" if author.get("__typename") == "Bot" and not login.endswith("[bot]") else login
 
 
 def _secondary_limit(response: requests.Response) -> bool:

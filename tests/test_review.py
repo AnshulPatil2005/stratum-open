@@ -111,3 +111,16 @@ def test_parse_json_copes_with_what_small_models_send():
     assert parse_json('```json\n{"a": 1}\n```') == {"a": 1}
     assert parse_json('Here you go: {"a": [1, 2,],} Hope that helps!') == {"a": [1, 2]}
     assert parse_json("no json here") is None
+
+
+def test_a_repeated_vague_finding_becomes_one():
+    lines = "".join(f"+    run_{n}()\n" for n in range(6))
+    diff = f"diff --git a/ci.py b/ci.py\n--- a/ci.py\n+++ b/ci.py\n@@ -1 +1,7 @@\n x = 1\n{lines}"
+    same = [{"file": "ci.py", "code": f"run_{n}()", "severity": "medium", "category": "security",
+             "title": "Potential for insecure execution", "detail": "Could be risky."} for n in range(5)]
+    other = [{"file": "ci.py", "code": f"run_5()", "severity": "high", "category": "bug", "title": f"Bug {n}", "detail": "d"} for n in range(4)]
+    result = review(title="t", description="d", files=parse_diff(diff), policy=parse_policy(None), model=FakeModel(answer(findings=same + other)))
+    titles = [f.title for f in result.findings]
+    assert len(titles) == 3 and titles.count("Potential for insecure execution") <= 1
+    vague = [f for f in result.findings if f.title.startswith("Potential")]
+    assert not vague or "The same applies to lines" in vague[0].detail

@@ -23,6 +23,7 @@ from stratum_open.policy import Policy
 
 OUTPUT_RESERVE_TOKENS = 2048
 MAX_FINDINGS_PER_CALL = 8
+MAX_FINDINGS_PER_FILE = 3
 MAX_DESCRIPTION_CHARS = 1500
 
 SYSTEM = """You review pull requests for an open-source project. Find concrete defects this PR introduces, on the exact lines they are on.
@@ -168,7 +169,31 @@ def review(
                 result.dropped += 1
             else:
                 result.findings.append(finding)
+    result.findings = _fewer(result.findings)
     return result
+
+
+def _fewer(findings: list[Finding]) -> list[Finding]:
+    """A small model repeats one vague worry down a file. One finding per
+    title per file (naming the other lines), and at most a few per file,
+    most severe first."""
+    from stratum_open.findings import severity_rank, slug
+
+    groups: dict[tuple[str, str], list[Finding]] = {}
+    for finding in findings:
+        groups.setdefault((finding.path, slug(finding.title)), []).append(finding)
+    merged = []
+    for group in groups.values():
+        group.sort(key=lambda f: f.line_start or 0)
+        first = group[0]
+        others = sorted({f.line_start for f in group[1:] if f.line_start and f.line_start != first.line_start})
+        if others:
+            first.detail += " The same applies to line" + ("s " if len(others) > 1 else " ") + ", ".join(map(str, others)) + "."
+        merged.append(first)
+    by_file: dict[str, list[Finding]] = {}
+    for finding in sorted(merged, key=lambda f: -severity_rank(f.severity)):
+        by_file.setdefault(finding.path, []).append(finding)
+    return [f for kept in by_file.values() for f in kept[:MAX_FINDINGS_PER_FILE]]
 
 
 def _worse(answer: str, current: str) -> bool:
