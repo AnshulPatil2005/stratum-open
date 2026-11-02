@@ -128,3 +128,11 @@ def test_only_newline_ends_a_line():
     [file] = parse_diff(crafted)
     assert file.added() == [(2, "b = 2")]
     assert file.new_side()[1] == "a = 1\u2028+fake = 2"
+
+
+def test_two_check_findings_on_one_line_stay_apart():
+    files = parse_diff(DIFF)
+    a = Finding("New dependency: `pyyaml`", "x", "low", "supply-chain", "app/users.py", 2, source="check", rule="deps/new")
+    b = Finding("New dependency: `requests`", "x", "low", "supply-chain", "app/users.py", 2, source="check", rule="deps/new")
+    assign_fingerprints([a, b], files)
+    assert a.fingerprint != b.fingerprint and dedupe([a, b]) == [a, b]

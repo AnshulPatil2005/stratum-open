@@ -29,10 +29,10 @@ This applies to the GitHub App. The Action and the CLI store none of it.
 
 | Data | Default retention | How it's deleted |
 | --- | --- | --- |
-| Review findings and summaries | 180 days; the PR comments stay on GitHub | Automatically, or `stratum data delete --pr <number>` |
-| 👍/👎 feedback and muted rules | Until a maintainer deletes them | `stratum data delete --feedback`; unmuting a rule also deletes its votes |
+| Review findings and summaries | 180 days; the PR comments stay on GitHub | Automatically, or `stratum data delete --repo owner/name --pr <number>` |
+| 👍/👎 feedback and muted rules | Until a maintainer deletes them | `stratum data delete --feedback [--repo owner/name]`; unmuting a rule also deletes its votes |
 | Track records | Not stored: rebuilt from git history on every run | Nothing to delete; `track_record.exclude` stops one being built |
-| Job log: PR, event, time, outcome, errors | 14 days | Automatically, or with the PR's findings by `stratum data delete --pr <number>` |
+| Job log: PR, event, time, outcome, errors | 14 days | Automatically, or with the PR's findings by `stratum data delete --repo owner/name --pr <number>` |
 | A clone of each repo's default branch, with the history in `track_record.window_days` | On the App's disk while the App is installed; updated on each run | Deleted at once when the App is uninstalled from the repo |
 | PR diffs, model prompts and replies | Never stored | Nothing to delete |
 | App private key, webhook secret, model API key | Environment variables on the server, never the database | Rotate them at GitHub or the model provider |

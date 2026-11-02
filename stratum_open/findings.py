@@ -74,7 +74,9 @@ def severity_rank(severity: str) -> int:
 def fingerprint(finding: Finding, files: dict[str, FileDiff]) -> str:
     """Model findings key on their category rather than their wording, which
     changes from run to run; checks key on their rule."""
-    what = finding.rule if finding.source == "check" else finding.category
+    # A check's title is fixed and names what it found (two new packages on one
+    # line are two findings); the model's wording isn't, so it keys on category.
+    what = f"{finding.rule}:{slug(finding.title)}" if finding.source == "check" else finding.category
     file = files.get(finding.path)
     anchor = ""
     if file is not None and finding.line_start is not None:
@@ -126,6 +128,8 @@ def dedupe(findings: list[Finding]) -> list[Finding]:
 def _same(a: Finding, b: Finding) -> bool:
     if a.fingerprint and a.fingerprint == b.fingerprint:
         return True
+    if a.source == b.source == "check" and a.rule == b.rule:
+        return False  # one rule, two things found on the same line
     return (
         a.anchored and b.anchored and a.path == b.path and a.category == b.category
         and a.line_start <= b.line_end and b.line_start <= a.line_end
