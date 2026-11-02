@@ -1,0 +1,21 @@
+repo,pr,model,seconds,prompt_tokens,output_tokens,calls,failed_calls,files_read,findings,dropped,error
+pallets/flask,6176,qwen2.5-coder:7b,293.7,3537,52,1,0,1,0,0,
+pallets/flask,6095,qwen2.5-coder:7b,119.5,2040,59,1,0,2,0,0,
+encode/httpx,3690,qwen2.5-coder:7b,142.4,2342,55,1,0,4,0,0,
+psf/black,5649,qwen2.5-coder:7b,104.7,1901,43,1,0,3,0,0,
+psf/black,5510,qwen2.5-coder:7b,154.3,2455,67,1,0,3,0,0,
+pallets/click,3899,qwen2.5-coder:7b,358.6,4890,45,1,0,1,0,0,
+pallets/click,3884,qwen2.5-coder:7b,153.3,2502,50,1,0,3,0,0,
+pydantic/pydantic,14176,qwen2.5-coder:7b,321.5,3988,203,1,0,3,1,0,
+pydantic/pydantic,14172,qwen2.5-coder:7b,381.0,5130,47,1,0,7,0,0,
+Textualize/rich,3180,qwen2.5-coder:7b,367.6,4975,43,1,0,6,0,0,
+pallets/flask,6176,qwen2.5-coder:14b,900.1,0,0,1,1,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+pallets/flask,6095,qwen2.5-coder:14b,250.0,2040,58,1,0,2,0,0,
+encode/httpx,3690,qwen2.5-coder:14b,594.8,2342,595,1,0,4,4,0,
+psf/black,5649,qwen2.5-coder:14b,236.0,1901,76,1,0,3,0,0,
+psf/black,5510,qwen2.5-coder:14b,487.1,2455,365,1,0,3,2,0,
+pallets/click,3899,qwen2.5-coder:14b,900.0,0,0,1,1,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+pallets/click,3884,qwen2.5-coder:14b,609.5,2502,530,1,0,3,2,0,
+pydantic/pydantic,14176,qwen2.5-coder:14b,725.2,3988,245,1,0,3,1,0,
+pydantic/pydantic,14172,qwen2.5-coder:14b,819.6,5130,44,1,0,7,0,0,
+Textualize/rich,3180,qwen2.5-coder:14b,792.0,4975,48,1,0,6,0,0,

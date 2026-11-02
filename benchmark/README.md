@@ -34,3 +34,7 @@ endpoint, with the key in `STRATUM_MODEL_API_KEY`.
 
 Each run is a folder in [results/](results/), holding its `summary.md`, every
 finding and every call. The machine each run used is noted in its summary.
+
+| Run | Machine | Models |
+| --- | --- | --- |
+| [2026-11-02-actions-cpu](results/2026-11-02-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | `qwen2.5-coder:7b`, `qwen2.5-coder:14b` |

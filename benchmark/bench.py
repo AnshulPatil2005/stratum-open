@@ -9,7 +9,8 @@ then let maintainers mark each finding right or wrong.
 `run` writes findings.csv (one row per finding, verdict blank), calls.csv (one
 row per PR and model: time, tokens, failures) and summary.md. `score` rebuilds
 summary.md once verdicts are in. Only the model's findings are compared: the
-checks are the same for every model.
+checks are the same for every model. Put the machine a run used, and anything
+worth saying about it, in the run's notes.md; the summary includes it.
 
 PR diffs are fetched with GITHUB_TOKEN (or `gh auth token`) and cached in
 benchmark/.cache, which isn't committed.
@@ -99,7 +100,7 @@ def _run(args) -> int:
                   + (f", {result.failed_calls} failed call(s): {call_rows[-1]['error']}" if result.failed_calls else ""), flush=True)
             _write(out / "findings.csv", FINDING_COLUMNS, finding_rows)
             _write(out / "calls.csv", CALL_COLUMNS, call_rows)
-            (out / "summary.md").write_text(_summary(call_rows, finding_rows, args), encoding="utf-8")
+            (out / "summary.md").write_text(_summary(call_rows, finding_rows, out), encoding="utf-8")
     print(f"Wrote {out}/summary.md")
     return 0
 
@@ -107,12 +108,14 @@ def _run(args) -> int:
 def _score(out: Path) -> int:
     calls = list(csv.DictReader((out / "calls.csv").open(encoding="utf-8")))
     findings = list(csv.DictReader((out / "findings.csv").open(encoding="utf-8")))
-    (out / "summary.md").write_text(_summary(calls, findings, None), encoding="utf-8")
+    (out / "summary.md").write_text(_summary(calls, findings, out), encoding="utf-8")
     print((out / "summary.md").read_text(encoding="utf-8"))
     return 0
 
 
-def _summary(calls: list[dict], findings: list[dict], args) -> str:
+def _summary(calls: list[dict], findings: list[dict], out: Path | None) -> str:
+    """The run's table, followed by its notes.md (the machine, what it shows),
+    so `score` can rebuild the summary without losing them."""
     # Models are only compared on the PRs every one of them finished, so a
     # run stopped partway can't set one model's full set against another's few.
     reviewed: dict[str, set[tuple[str, str]]] = defaultdict(set)
@@ -152,6 +155,9 @@ def _summary(calls: list[dict], findings: list[dict], args) -> str:
     lines += [""]
     if not marked:
         lines.append("No findings have been marked yet. Precision needs maintainers to mark each row of findings.csv right or wrong, then `bench.py score`.")
+    notes = out / "notes.md" if out is not None else None
+    if notes is not None and notes.exists():
+        lines += ["", notes.read_text(encoding="utf-8").strip()]
     lines.append("")
     return "\n".join(lines)
 
