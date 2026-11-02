@@ -232,3 +232,10 @@ def test_shallow_clone(repo, tmp_path):
     two = repo.clone(tmp_path / "depth2", 2)
     assert owners(two, now=NOW) == {"app": ModuleOwners("app", 180, {"alice": 1})}
     assert hotspots(two, now=NOW) == []  # one change isn't a hotspot
+
+
+def test_no_note_when_the_sole_owner_wrote_the_pr_under_an_email():
+    entry = ModuleOwners("backend/billing", 180, {"dev@corp.example": 9, "other@corp.example": 1})
+    owners_by_module = {"backend/billing": entry}
+    assert bus_factor_notes(owners_by_module, ["backend/billing/x.py"], {"devlogin", "Dev@corp.example"}) == []
+    assert bus_factor_notes(owners_by_module, ["backend/billing/x.py"], "devlogin") != []

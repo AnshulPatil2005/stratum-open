@@ -121,7 +121,25 @@ def thread_fingerprint(thread: dict, bot: str) -> str | None:
 
 
 def resolved_by_stratum(thread: dict, bot: str) -> bool:
-    return any(_is_bot(c, bot) and RESOLVED_MARKER in c["body"] for c in thread["comments"][1:])
+    """Stratum closed this thread: its comment carries the resolved marker
+    (or, before comments were edited, a reply did)."""
+    return any(_is_bot(c, bot) and RESOLVED_MARKER in c["body"] for c in thread["comments"])
+
+
+def is_open(thread: dict, bot: str) -> bool:
+    return not thread["resolved"] and not resolved_by_stratum(thread, bot)
+
+
+def closed_body(body: str, reason: str) -> str:
+    """The comment, struck through with the reason, the original folded away.
+    The finding marker stays, so Stratum still knows the thread."""
+    marker = _FINDING.search(body)
+    original = _FINDING.sub("", body).strip()
+    title = original.split("\n", 1)[0].replace("**", "").strip()
+    return (
+        f"~~{title}~~\n\n**{reason}**\n\n<details><summary>The original comment</summary>\n\n{original}\n\n</details>\n"
+        f"{RESOLVED_MARKER}\n{marker.group(0) if marker else ''}"
+    )
 
 
 def publish_inline(gh: GitHub, number: int, head_sha: str, findings: list[Finding], threads: list[dict], *, bot: str, limit: int, feedback: bool) -> list[str]:
@@ -132,9 +150,9 @@ def publish_inline(gh: GitHub, number: int, head_sha: str, findings: list[Findin
         fp = thread_fingerprint(thread, bot)
         if fp:
             existing[fp] = thread
-    still_open = sum(1 for t in existing.values() if not t["resolved"])
-    def returned(fp: str) -> bool:  # Stratum resolved it when its code changed, and it's back
-        return existing[fp]["resolved"] and resolved_by_stratum(existing[fp], bot)
+    still_open = sum(1 for t in existing.values() if is_open(t, bot))
+    def returned(fp: str) -> bool:  # Stratum closed it when its code changed, and it's back
+        return resolved_by_stratum(existing[fp], bot)
 
     fresh = [f for f in findings if f.anchored and (f.fingerprint not in existing or returned(f.fingerprint))]
     fresh = fresh[: max(0, limit - still_open)]
@@ -165,25 +183,31 @@ def _inline(finding: Finding, feedback: bool) -> dict[str, Any]:
     return comment
 
 
-def resolve_threads(gh: GitHub, number: int, threads: list[dict], gone: dict[str, str], *, bot: str) -> int:
-    """Resolve Stratum's open threads whose finding is gone, then reply once
-    saying why. `gone` maps a fingerprint to the reason."""
-    resolved = 0
+def resolve_threads(gh: GitHub, number: int, threads: list[dict], gone: dict[str, str], *, bot: str,
+                    log=lambda line: None) -> int:
+    """Close Stratum's open threads whose finding is gone, saying why. `gone`
+    maps a fingerprint to the reason.
+
+    The comment itself is edited to say it's closed, because GitHub refuses
+    to let an Actions token resolve threads, even its own; resolving is tried
+    too, for tokens that may."""
+    closed = 0
     for thread in threads:
         fp = thread_fingerprint(thread, bot)
-        if fp not in gone or thread["resolved"]:
+        if fp not in gone or not is_open(thread, bot):
             continue
+        root = thread["comments"][0]
+        try:
+            gh.edit_review_comment(root["id"], closed_body(root["body"], gone[fp]))
+        except GitHubError as exc:
+            log(f"couldn't mark a finding's comment as closed: {exc}")
+            continue
+        closed += 1
         try:
             gh.resolve_thread(thread["id"])
         except GitHubError:
-            continue
-        resolved += 1
-        if not resolved_by_stratum(thread, bot):
-            try:
-                gh.reply(number, thread["comments"][0]["id"], f"{gone[fp]} {RESOLVED_MARKER}")
-            except GitHubError:
-                pass
-    return resolved
+            pass  # the edit already says it's closed
+    return closed
 
 
 # ── summary comment ──────────────────────────────────────────────────────

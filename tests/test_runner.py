@@ -38,7 +38,7 @@ def model_answer(findings=None, **extra):
             "fix": "Pass it as a parameter.",
         }, {
             "file": "app/users.py", "code": '    print("unreachable")', "line": 7,
-            "severity": "low", "category": "bug", "title": "Dead code", "detail": "This line never runs.", "fix": "Remove it.",
+            "severity": "medium", "category": "bug", "title": "Dead code", "detail": "This line never runs.", "fix": "Remove it.",
         }],
         **extra,
     })
@@ -89,11 +89,29 @@ def test_a_push_reviews_only_what_changed_and_keeps_findings_until_their_code_ch
     # Both threads on the old query line close: the model's because its code
     # changed, the SQL check's because the check no longer fires.
     assert len(gh.resolved) == 2
-    replies = [body for _, _, body in gh.replies]
-    assert any("the code this was about has changed" in body for body in replies)
-    assert any("the check no longer finds this" in body for body in replies)
+    edits = [body for _, body in gh.edited]
+    assert any(body.startswith("~~") and "the code this was about has changed" in body for body in edits)
+    assert any("the check no longer finds this" in body for body in edits)
+    assert all(publish.RESOLVED_MARKER in body and "stratum:finding" in body for body in edits)
     # Posting again doesn't duplicate the comment that's still open.
     assert sum("Dead code" in c["body"] for review in gh.reviews for c in review["comments"]) == 1
+
+
+def test_threads_close_even_when_github_refuses_to_resolve_them(gh):
+    """GitHub won't let an Actions token resolve threads, even its own."""
+    gh.refuse_resolve = True
+    review_pull(context(gh, FakeModel(model_answer())), 7)
+    gh.move_head(7, "b" * 40, FIXED)
+    gh.compare[("a" * 40, "b" * 40)] = ["app/users.py"]
+    review_pull(context(gh, FakeModel(model_answer(findings=[]))), 7)
+    closed = [t for t in gh.threads if publish.resolved_by_stratum(t, BOT)]
+    assert len(closed) == 2 and gh.resolved == []
+    # A third push doesn't close them again, and the summary no longer counts them.
+    edits = len(gh.edited)
+    gh.move_head(7, "c" * 40)
+    gh.compare[("b" * 40, "c" * 40)] = []
+    review_pull(context(gh, FakeModel()), 7)
+    assert len(gh.edited) == edits
 
 
 def test_same_head_costs_no_model_call(gh):

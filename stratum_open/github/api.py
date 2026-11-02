@@ -194,6 +194,9 @@ class GitHub:
             "commit_id": head_sha, "event": "COMMENT", "body": body, "comments": comments,
         })
 
+    def edit_review_comment(self, comment_id: int, body: str) -> dict:
+        return self.request("PATCH", f"{self._r}/pulls/comments/{comment_id}", json={"body": body})
+
     def reply(self, number: int, comment_id: int, body: str) -> dict:
         return self.request("POST", f"{self._r}/pulls/{number}/comments/{comment_id}/replies", json={"body": body})
 

@@ -18,7 +18,7 @@ from stratum_open.github import publish
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
 from stratum_open.policy import Policy, load_policy
-from stratum_open.review import ReviewResult, _locate, review
+from stratum_open.review import ReviewResult, _locate, review, shown
 from stratum_open.storage import NullStorage, Storage
 from stratum_open.track_record import AuthorRecord, author_identity, build_records
 from stratum_open.triage import PRFacts, Triage, triage
@@ -110,6 +110,9 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     # repeating it on the next push doesn't make it fixed.
     reviewed_now = set(result.packed.reviewed + result.packed.clipped) if result and result.packed and result.ran else set()
     carried, gone = _carry(state.findings, files, {f.fingerprint for f in findings}, reviewed_now)
+    for finding in [f for f in carried if not shown(f, policy)]:  # the policy's bar may have risen since
+        carried.remove(finding)
+        gone[finding.fingerprint] = f"Hidden: this project shows the model's findings from {policy.review.min_severity} severity up."
     findings = dedupe(findings + carried)
 
     muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []
@@ -157,8 +160,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         marker = publish.thread_marker(thread, ctx.bot)
         if marker and not marker[1].startswith("model:") and marker[0] not in current:
             gone.setdefault(marker[0], "Fixed: the check no longer finds this.")
-    publish.resolve_threads(gh, number, threads, gone, bot=ctx.bot)
-    on_lines = {publish.thread_fingerprint(t, ctx.bot) for t in threads if not t["resolved"]}
+    publish.resolve_threads(gh, number, threads, gone, bot=ctx.bot, log=ctx.log)
+    on_lines = {publish.thread_fingerprint(t, ctx.bot) for t in threads if publish.is_open(t, ctx.bot)}
     posted = publish.publish_inline(gh, number, head, findings, threads, bot=ctx.bot, limit=policy.review.max_inline_comments, feedback=ctx.feedback)
     summary.inline = (on_lines | set(posted)) & {f.fingerprint for f in findings}
     body = publish.render_summary(summary, new_state)
@@ -231,7 +234,7 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
             ("imports", lambda: notes.extend(reach_note(importers(ctx.checkout, changed)))),
             ("ownership", lambda: notes.extend(bus_factor_notes(
                 owners(ctx.checkout, ctx.history_ref, window_days=window, exclude=ctx.policy.track_record.exclude),
-                changed, author_identity((pull.get("user") or {}).get("login", ""))))),
+                changed, _identities(ctx, (pull.get("user") or {}).get("login", ""))))),
         ):
             try:
                 step()
@@ -260,6 +263,16 @@ def _record(ctx: Context, pull: dict) -> AuthorRecord | None:
     return record_for(ctx, login)
 
 
+def _identities(ctx: Context, login: str) -> set[str]:
+    """A login and the commit emails GitHub links to it."""
+    found = {login} if login else set()
+    try:
+        found |= ctx.gh.commit_emails(login) if login else set()
+    except GitHubError:
+        pass
+    return found
+
+
 def record_for(ctx: Context, login: str) -> AuthorRecord | None:
     """A login's record. Commits carry emails, not logins, so the emails
     GitHub links to the login are matched too."""
@@ -267,11 +280,7 @@ def record_for(ctx: Context, login: str) -> AuthorRecord | None:
     if not ctx.checkout or not login or author_identity(login) in {author_identity(e) for e in policy.exclude}:
         return None
     records = build_records(ctx.checkout, ctx.history_ref, window_days=policy.window_days, followup_days=policy.followup_days, exclude=policy.exclude)
-    identities = {author_identity(login)}
-    try:
-        identities |= {author_identity(email) for email in ctx.gh.commit_emails(login)}
-    except GitHubError:
-        pass
+    identities = {author_identity(name) for name in _identities(ctx, login)}
     merged = AuthorRecord(author_identity(login))
     for identity in identities:
         if identity in records:
