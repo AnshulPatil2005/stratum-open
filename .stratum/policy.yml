@@ -1,0 +1,12 @@
+# Stratum Open's own rules for its PRs. Every key and its default: policy.example.yml.
+version: 1
+
+review:
+  rules:
+    - "Every field the App stores is listed in DATA.md's Stored fields section."
+    - "Nothing leaves the maintainers' infrastructure except what DATA.md lists."
+    - "No code from a pull request is ever run: PRs are read through the GitHub API only."
+    - "A model's reply is checked before it's used: findings outside the diff are dropped."
+
+triage:
+  enabled: true
