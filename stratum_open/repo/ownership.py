@@ -67,17 +67,22 @@ def owners(
     return found
 
 
-def bus_factor_notes(owners: dict[str, ModuleOwners], changed_paths: Iterable[str], pr_author: str) -> list[str]:
+def bus_factor_notes(owners: dict[str, ModuleOwners], changed_paths: Iterable[str], pr_author: str | Iterable[str]) -> list[str]:
     """A line for each module the PR touches that one other person has
-    written almost alone lately. Nothing when that person wrote the PR."""
-    author = author_identity(pr_author) if pr_author else ""
+    written almost alone lately. Nothing when that person wrote the PR.
+
+    `pr_author` is the author's login, or the login and the emails GitHub
+    links to it: history knows people by email, so the login alone misses
+    authors who don't commit with GitHub's noreply address."""
+    names = [pr_author] if isinstance(pr_author, str) else list(pr_author)
+    authors = {author_identity(name) for name in names if name}
     notes = []
     for module in dict.fromkeys(module_of(path) for path in changed_paths):
         entry = owners.get(module)
         if entry is None or entry.commits < MIN_COMMITS:
             continue
         owner, count = entry.top()
-        if owner == author or count / entry.commits < SOLE_SHARE:
+        if owner in authors or count / entry.commits < SOLE_SHARE:
             continue
         notes.append(
             f"Only {_name(owner)} has changed {_where(module)} in the last {entry.window_days} days "

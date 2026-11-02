@@ -231,7 +231,7 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
             ("imports", lambda: notes.extend(reach_note(importers(ctx.checkout, changed)))),
             ("ownership", lambda: notes.extend(bus_factor_notes(
                 owners(ctx.checkout, ctx.history_ref, window_days=window, exclude=ctx.policy.track_record.exclude),
-                changed, author_identity((pull.get("user") or {}).get("login", ""))))),
+                changed, _identities(ctx, (pull.get("user") or {}).get("login", ""))))),
         ):
             try:
                 step()
@@ -260,6 +260,16 @@ def _record(ctx: Context, pull: dict) -> AuthorRecord | None:
     return record_for(ctx, login)
 
 
+def _identities(ctx: Context, login: str) -> set[str]:
+    """A login and the commit emails GitHub links to it."""
+    found = {login} if login else set()
+    try:
+        found |= ctx.gh.commit_emails(login) if login else set()
+    except GitHubError:
+        pass
+    return found
+
+
 def record_for(ctx: Context, login: str) -> AuthorRecord | None:
     """A login's record. Commits carry emails, not logins, so the emails
     GitHub links to the login are matched too."""
@@ -267,11 +277,7 @@ def record_for(ctx: Context, login: str) -> AuthorRecord | None:
     if not ctx.checkout or not login or author_identity(login) in {author_identity(e) for e in policy.exclude}:
         return None
     records = build_records(ctx.checkout, ctx.history_ref, window_days=policy.window_days, followup_days=policy.followup_days, exclude=policy.exclude)
-    identities = {author_identity(login)}
-    try:
-        identities |= {author_identity(email) for email in ctx.gh.commit_emails(login)}
-    except GitHubError:
-        pass
+    identities = {author_identity(name) for name in _identities(ctx, login)}
     merged = AuthorRecord(author_identity(login))
     for identity in identities:
         if identity in records:
