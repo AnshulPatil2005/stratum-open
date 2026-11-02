@@ -113,18 +113,30 @@ def _score(out: Path) -> int:
 
 
 def _summary(calls: list[dict], findings: list[dict], args) -> str:
+    # Models are only compared on the PRs every one of them finished, so a
+    # run stopped partway can't set one model's full set against another's few.
+    reviewed: dict[str, set[tuple[str, str]]] = defaultdict(set)
+    for row in calls:
+        reviewed[row["model"]].add((row["repo"], str(row["pr"])))
+    shared = set.intersection(*reviewed.values()) if reviewed else set()
     by_model: dict[str, list[dict]] = defaultdict(list)
     for row in calls:
-        by_model[row["model"]].append(row)
+        if (row["repo"], str(row["pr"])) in shared:
+            by_model[row["model"]].append(row)
     verdicts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for row in findings:
-        verdicts[row["model"]][(row.get("verdict") or "").strip().lower() or "unmarked"] += 1
-    prs = {(r["repo"], r["pr"]) for r in calls}
+        if (row["repo"], str(row["pr"])) in shared:
+            verdicts[row["model"]][(row.get("verdict") or "").strip().lower() or "unmarked"] += 1
     lines = [
         "# Small-model benchmark",
         "",
-        f"{len(prs)} merged PR(s), reviewed by each model with the same prompt and settings.",
+        f"{len(shared)} merged PR(s), reviewed by every model with the same prompt and settings.",
         "Only the model's findings are counted; Stratum's checks don't depend on the model.",
+    ]
+    if any(len(done) != len(shared) for done in reviewed.values()):
+        lines.append("**Incomplete run:** only the PRs every model finished are compared. Finished: "
+                     + ", ".join(f"`{model}` {len(done)}" for model, done in reviewed.items()) + ".")
+    lines += [
         "",
         "| Model | Median time per PR | Findings per PR | Failed calls | Marked right | Marked wrong | Not marked |",
         "| --- | --- | --- | --- | --- | --- | --- |",
