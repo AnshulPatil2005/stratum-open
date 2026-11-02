@@ -9,7 +9,8 @@ then let maintainers mark each finding right or wrong.
 `run` writes findings.csv (one row per finding, verdict blank), calls.csv (one
 row per PR and model: time, tokens, failures) and summary.md. `score` rebuilds
 summary.md once verdicts are in. Only the model's findings are compared: the
-checks are the same for every model.
+checks are the same for every model. Put the machine a run used, and anything
+worth saying about it, in the run's notes.md; the summary includes it.
 
 PR diffs are fetched with GITHUB_TOKEN (or `gh auth token`) and cached in
 benchmark/.cache, which isn't committed.
