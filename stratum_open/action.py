@@ -14,7 +14,7 @@ from typing import Mapping
 
 from stratum_open.checks.dependencies import PackageLookup
 from stratum_open.github.api import API, GitHub
-from stratum_open.github.commands import handle
+from stratum_open.github.commands import NEEDS_MODEL, handle, parse
 from stratum_open.model import model_from_policy
 from stratum_open.triage_queue import update_queue
 from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull
@@ -74,6 +74,17 @@ def main(env: Mapping[str, str] = os.environ) -> int:
     else:
         print(f"Stratum doesn't handle {event_name} events.")
     return 0
+
+
+def needs_model(env: Mapping[str, str] = os.environ) -> bool:
+    """Whether this event can call the model, so the workflow only starts
+    Ollama when it has to. It asks the same parser that runs the command."""
+    if env.get("GITHUB_EVENT_NAME") not in ("issue_comment", "pull_request_review_comment"):
+        return True
+    with open(env["GITHUB_EVENT_PATH"], encoding="utf-8") as handle_file:
+        payload = json.load(handle_file)
+    parsed = parse((payload.get("comment") or {}).get("body", ""))
+    return parsed is not None and parsed[0] in NEEDS_MODEL
 
 
 def _checkout(workspace: str | None) -> str | None:

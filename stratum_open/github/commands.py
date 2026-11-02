@@ -15,6 +15,8 @@ from stratum_open.runner import Context, record_for, review_pull
 
 COMMAND = re.compile(r"^\s*@stratum\s+([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
 WRITE = {"admin", "maintain", "write"}
+# Commands that can call the model: explain, and the ones that review again.
+NEEDS_MODEL = {"review", "re-review", "rereview", "ignore", "explain"}
 
 HELP = """Stratum commands, as a comment on this PR:
 

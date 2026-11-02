@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 from fakes import FakeGitHub, FakeModel
 from test_runner import DIFF, model_answer
 
@@ -49,3 +51,22 @@ def test_schedule_builds_the_queue(tmp_path, monkeypatch):
     run(tmp_path, monkeypatch, "schedule", {"repository": {"default_branch": "main"}}, gh)
     [queue] = gh.issues
     assert queue["title"] == "Stratum triage queue" and "#7 Add a thing" in queue["body"]
+
+
+@pytest.mark.parametrize(
+    "event_name, body, expected",
+    [
+        ("pull_request_target", None, True),
+        ("schedule", None, True),
+        ("issue_comment", "@stratum triage", False),
+        ("issue_comment", "@stratum record", False),
+        ("issue_comment", "@stratum  rereview", True),
+        ("issue_comment", "@stratum\texplain", True),
+        ("pull_request_review_comment", "@Stratum Ignore", True),
+        ("issue_comment", "thanks!", False),
+    ],
+)
+def test_needs_model_asks_the_command_parser(tmp_path, event_name, body, expected):
+    event = tmp_path / "event.json"
+    event.write_text(json.dumps({"comment": {"body": body}} if body is not None else {}))
+    assert action.needs_model({"GITHUB_EVENT_NAME": event_name, "GITHUB_EVENT_PATH": str(event)}) is expected

@@ -65,11 +65,12 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8080")))
 
     sub.add_parser("action", help="the GitHub Action's entry point")
+    sub.add_parser("needs-model", help="the GitHub Action: print whether this event can call the model")
 
     args = parser.parse_args(argv)
     return {
         "review": _review, "record": _record, "policy": _policy, "triage": _triage,
-        "data": _data, "serve": _serve, "action": _action,
+        "data": _data, "serve": _serve, "action": _action, "needs-model": _needs_model,
     }[args.command](args)
 
 
@@ -248,6 +249,13 @@ def _action(args) -> int:
     from stratum_open.action import main as action_main
 
     return action_main()
+
+
+def _needs_model(args) -> int:
+    from stratum_open.action import needs_model
+
+    print("true" if needs_model() else "false")
+    return 0
 
 
 def _policy_notes(policy: Policy) -> None:

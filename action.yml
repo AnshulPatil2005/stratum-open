@@ -31,25 +31,25 @@ runs:
       with:
         python-version: "3.12"
 
+    - name: Install Stratum Open
+      shell: bash
+      run: python -m pip install --quiet --disable-pip-version-check "$GITHUB_ACTION_PATH"
+
+    - name: Does this event need the model?
+      # Comment commands like triage and record don't, so they skip starting Ollama.
+      id: need
+      shell: bash
+      run: echo "model=$(stratum needs-model)" >> "$GITHUB_OUTPUT"
+
     - name: Cache Ollama and the model
-      # Of the comment commands, only explain, review and ignore (which re-reviews) can need the model.
-      if: >-
-        inputs.ollama-model != '' && (
-          (github.event_name != 'issue_comment' && github.event_name != 'pull_request_review_comment') ||
-          contains(github.event.comment.body, '@stratum explain') || contains(github.event.comment.body, '@stratum review') ||
-          contains(github.event.comment.body, '@stratum re-review') || contains(github.event.comment.body, '@stratum ignore'))
+      if: inputs.ollama-model != '' && steps.need.outputs.model == 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.stratum-ollama
         key: stratum-ollama-${{ runner.os }}-${{ runner.arch }}-0.40.13-${{ inputs.ollama-model }}
 
     - name: Start Ollama
-      # Of the comment commands, only explain, review and ignore (which re-reviews) can need the model.
-      if: >-
-        inputs.ollama-model != '' && (
-          (github.event_name != 'issue_comment' && github.event_name != 'pull_request_review_comment') ||
-          contains(github.event.comment.body, '@stratum explain') || contains(github.event.comment.body, '@stratum review') ||
-          contains(github.event.comment.body, '@stratum re-review') || contains(github.event.comment.body, '@stratum ignore'))
+      if: inputs.ollama-model != '' && steps.need.outputs.model == 'true'
       shell: bash
       env:
         MODEL: ${{ inputs.ollama-model }}
@@ -70,10 +70,6 @@ runs:
           sleep 1
         done
         "$root/bin/ollama" pull "$MODEL"
-
-    - name: Install Stratum Open
-      shell: bash
-      run: python -m pip install --quiet --disable-pip-version-check "$GITHUB_ACTION_PATH"
 
     - name: Review
       shell: bash
