@@ -1,0 +1,42 @@
+[
+  {
+    "repo": "pallets/flask",
+    "pr": 6176
+  },
+  {
+    "repo": "pallets/flask",
+    "pr": 6095
+  },
+  {
+    "repo": "encode/httpx",
+    "pr": 3690
+  },
+  {
+    "repo": "psf/black",
+    "pr": 5649
+  },
+  {
+    "repo": "psf/black",
+    "pr": 5510
+  },
+  {
+    "repo": "pallets/click",
+    "pr": 3899
+  },
+  {
+    "repo": "pallets/click",
+    "pr": 3884
+  },
+  {
+    "repo": "pydantic/pydantic",
+    "pr": 14176
+  },
+  {
+    "repo": "pydantic/pydantic",
+    "pr": 14172
+  },
+  {
+    "repo": "Textualize/rich",
+    "pr": 3180
+  }
+]
