@@ -34,6 +34,7 @@ class Review:
     context_tokens: int = 16384  # the model's context window; the diff is split to fit it
     max_chunks: int = 3  # model calls per review at most; files past that are listed as not reviewed
     max_inline_comments: int = 12
+    min_severity: str = "medium"  # the model's findings below this aren't shown; the checks' always are
     rules: tuple[str, ...] = ()  # the project's own review rules, in plain words, added to the prompt
     ignore_paths: tuple[str, ...] = DEFAULT_IGNORED
     log_prompts: bool = False
@@ -122,7 +123,7 @@ def matches_any(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 # Values that are checked beyond their type.
-_CHOICES = {("review", "model"): ("local", "hosted")}
+_CHOICES = {("review", "model"): ("local", "hosted"), ("review", "min_severity"): ("low", "medium", "high", "critical")}
 _MINIMUMS = {
     ("review", "max_inline_comments"): 0,
     ("review", "context_tokens"): 2048,

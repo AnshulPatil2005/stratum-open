@@ -18,7 +18,7 @@ from stratum_open.github import publish
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
 from stratum_open.policy import Policy, load_policy
-from stratum_open.review import ReviewResult, _locate, review
+from stratum_open.review import ReviewResult, _locate, review, shown
 from stratum_open.storage import NullStorage, Storage
 from stratum_open.track_record import AuthorRecord, author_identity, build_records
 from stratum_open.triage import PRFacts, Triage, triage
@@ -110,6 +110,9 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     # repeating it on the next push doesn't make it fixed.
     reviewed_now = set(result.packed.reviewed + result.packed.clipped) if result and result.packed and result.ran else set()
     carried, gone = _carry(state.findings, files, {f.fingerprint for f in findings}, reviewed_now)
+    for finding in [f for f in carried if not shown(f, policy)]:  # the policy's bar may have risen since
+        carried.remove(finding)
+        gone[finding.fingerprint] = f"Hidden: this project shows the model's findings from {policy.review.min_severity} severity up."
     findings = dedupe(findings + carried)
 
     muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []

@@ -124,3 +124,14 @@ def test_a_repeated_vague_finding_becomes_one():
     assert len(titles) == 3 and titles.count("Potential for insecure execution") <= 1
     vague = [f for f in result.findings if f.title.startswith("Potential")]
     assert not vague or "The same applies to lines" in vague[0].detail
+
+
+def test_narration_and_low_findings_are_not_shown_by_default():
+    narrated = {"file": "app/users.py", "code": "return cur.fetchone()", "severity": "medium", "category": "maintainability",
+                "title": "New function", "detail": "A function was added."}
+    low = {"file": "app/users.py", "code": "import requests", "severity": "low", "category": "bug",
+           "title": "Unused import", "detail": "requests isn't used here."}
+    result = run(FakeModel(answer(findings=[narrated, low])))
+    assert result.findings == [] and result.dropped == 2
+    shown_low = run(FakeModel(answer(findings=[narrated, low])), parse_policy("review:\n  min_severity: low\n"))
+    assert [f.title for f in shown_low.findings] == ["Unused import"]

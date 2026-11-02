@@ -9,6 +9,7 @@ review:
   context_tokens: 16384        # the model's context window; big diffs are split to fit it
   max_chunks: 3                # model calls per review at most
   max_inline_comments: 12
+  min_severity: medium         # the model's findings below this aren't shown (low | medium | high | critical); the checks' always are
   rules: []                    # your own review rules in plain words, e.g. "Every SQL query is parameterized."
   ignore_paths: ["**/*.lock", "**/package-lock.json", "**/pnpm-lock.yaml", "**/go.sum",
                  "**/*.min.js", "**/*.min.css", "**/*.map", "**/*.svg", "**/*.snap",

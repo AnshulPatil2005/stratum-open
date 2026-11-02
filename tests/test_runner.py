@@ -38,7 +38,7 @@ def model_answer(findings=None, **extra):
             "fix": "Pass it as a parameter.",
         }, {
             "file": "app/users.py", "code": '    print("unreachable")', "line": 7,
-            "severity": "low", "category": "bug", "title": "Dead code", "detail": "This line never runs.", "fix": "Remove it.",
+            "severity": "medium", "category": "bug", "title": "Dead code", "detail": "This line never runs.", "fix": "Remove it.",
         }],
         **extra,
     })
