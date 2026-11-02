@@ -1,0 +1,39 @@
+# .stratum/policy.yml: every key with its default.
+# It's read from the default branch, so a PR can't change the rules it's judged by.
+version: 1
+
+review:
+  model: local                 # local | hosted
+  endpoint: http://localhost:11434/v1   # any OpenAI-compatible server; this is Ollama's
+  model_name: ""               # empty = the model the benchmark picked
+  max_inline_comments: 12
+  log_prompts: false           # true keeps prompts and replies in the job log for 14 days
+
+always_human:                  # matching PRs are labelled for a person and never closed
+  paths: [".github/workflows/**", ".stratum/**"]
+  new_dependencies: true
+
+triage:
+  enabled: false               # true lets Stratum add the labels below and close PRs
+  labels:
+    ready: "triage: ready"
+    needs_work: "triage: needs work"
+    low_effort: "triage: low effort"
+    needs_human: "triage: needs a maintainer"
+  label_low_effort: true
+  require_linked_issue: false  # true labels PRs with no linked issue "needs work"
+  close_without_issue: false   # true closes them, with a comment saying why
+
+track_record:
+  enabled: true                # each contributor can always see their own
+  affects_triage: false        # true lets a record move a PR's label
+  window_days: 180
+  followup_days: 14
+  exclude: []                  # logins or emails whose record is never built
+
+dependencies:
+  registry_lookup: true        # check how new an added package is
+  min_package_age_days: 30     # younger packages are flagged
+
+data:                          # GitHub App only
+  findings_retention_days: 180

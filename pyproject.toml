@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stratum-core"
+version = "0.0.1"
+description = "PR review and triage for open-source maintainers, on a model you run yourself."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = ["pyyaml>=6"]
+# No license yet: see README.
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.setuptools]
+packages = ["stratum_core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
