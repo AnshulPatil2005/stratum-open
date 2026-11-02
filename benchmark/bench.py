@@ -66,11 +66,14 @@ def _run(args) -> int:
         name, _, endpoint = spec.partition("@")
         models.append(Model(endpoint or "http://localhost:11434/v1", name, api_key=os.environ.get("STRATUM_MODEL_API_KEY"), context_tokens=args.context_tokens))
 
+    # One model at a time, so a small machine holds only one in memory, and
+    # the files are rewritten after every PR so a stopped run keeps its results.
+    pulls = {(item["repo"], int(item["pr"])): _fetch(item["repo"], int(item["pr"])) for item in prs}
     finding_rows, call_rows = [], []
-    for item in prs:
-        pull, text = _fetch(item["repo"], int(item["pr"]))
-        files = parse_diff(text)
-        for model in models:
+    (out / "prs.json").write_text(json.dumps(prs, indent=2) + "\n", encoding="utf-8")
+    for model in models:
+        for (repo, number), (pull, text) in pulls.items():
+            files = parse_diff(text)
             started = time.monotonic()
             result = review(title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=policy, model=model)
             findings = anchor_to_diff(result.findings, files)
@@ -78,7 +81,7 @@ def _run(args) -> int:
             findings = rank(dedupe(findings))
             seconds = time.monotonic() - started
             call_rows.append({
-                "repo": item["repo"], "pr": item["pr"], "model": model.name, "seconds": round(seconds, 1),
+                "repo": repo, "pr": number, "model": model.name, "seconds": round(seconds, 1),
                 "prompt_tokens": sum(c.get("prompt_tokens") or 0 for c in result.calls),
                 "output_tokens": sum(c.get("output_tokens") or 0 for c in result.calls),
                 "calls": len(result.calls), "failed_calls": result.failed_calls,
@@ -88,17 +91,15 @@ def _run(args) -> int:
             })
             for f in findings:
                 finding_rows.append({
-                    "repo": item["repo"], "pr": item["pr"], "model": model.name, "severity": f.severity, "category": f.category,
+                    "repo": repo, "pr": number, "model": model.name, "severity": f.severity, "category": f.category,
                     "path": f.path, "line": f.line_start or "", "title": f.title, "detail": " ".join(f.detail.split()),
                     "verdict": "", "note": "",
                 })
-            print(f"{item['repo']}#{item['pr']} {model.name}: {len(findings)} finding(s) in {seconds:.0f}s"
+            print(f"{repo}#{number} {model.name}: {len(findings)} finding(s) in {seconds:.0f}s"
                   + (f", {result.failed_calls} failed call(s): {call_rows[-1]['error']}" if result.failed_calls else ""), flush=True)
-
-    _write(out / "findings.csv", FINDING_COLUMNS, finding_rows)
-    _write(out / "calls.csv", CALL_COLUMNS, call_rows)
-    (out / "prs.json").write_text(json.dumps(prs, indent=2) + "\n", encoding="utf-8")
-    (out / "summary.md").write_text(_summary(call_rows, finding_rows, args), encoding="utf-8")
+            _write(out / "findings.csv", FINDING_COLUMNS, finding_rows)
+            _write(out / "calls.csv", CALL_COLUMNS, call_rows)
+            (out / "summary.md").write_text(_summary(call_rows, finding_rows, args), encoding="utf-8")
     print(f"Wrote {out}/summary.md")
     return 0
 
@@ -112,18 +113,30 @@ def _score(out: Path) -> int:
 
 
 def _summary(calls: list[dict], findings: list[dict], args) -> str:
+    # Models are only compared on the PRs every one of them finished, so a
+    # run stopped partway can't set one model's full set against another's few.
+    reviewed: dict[str, set[tuple[str, str]]] = defaultdict(set)
+    for row in calls:
+        reviewed[row["model"]].add((row["repo"], str(row["pr"])))
+    shared = set.intersection(*reviewed.values()) if reviewed else set()
     by_model: dict[str, list[dict]] = defaultdict(list)
     for row in calls:
-        by_model[row["model"]].append(row)
+        if (row["repo"], str(row["pr"])) in shared:
+            by_model[row["model"]].append(row)
     verdicts: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     for row in findings:
-        verdicts[row["model"]][(row.get("verdict") or "").strip().lower() or "unmarked"] += 1
-    prs = {(r["repo"], r["pr"]) for r in calls}
+        if (row["repo"], str(row["pr"])) in shared:
+            verdicts[row["model"]][(row.get("verdict") or "").strip().lower() or "unmarked"] += 1
     lines = [
         "# Small-model benchmark",
         "",
-        f"{len(prs)} merged PR(s), reviewed by each model with the same prompt and settings.",
+        f"{len(shared)} merged PR(s), reviewed by every model with the same prompt and settings.",
         "Only the model's findings are counted; Stratum's checks don't depend on the model.",
+    ]
+    if any(len(done) != len(shared) for done in reviewed.values()):
+        lines.append("**Incomplete run:** only the PRs every model finished are compared. Finished: "
+                     + ", ".join(f"`{model}` {len(done)}" for model, done in reviewed.items()) + ".")
+    lines += [
         "",
         "| Model | Median time per PR | Findings per PR | Failed calls | Marked right | Marked wrong | Not marked |",
         "| --- | --- | --- | --- | --- | --- | --- |",
