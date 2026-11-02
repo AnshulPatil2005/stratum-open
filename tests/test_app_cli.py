@@ -1,0 +1,132 @@
+import hashlib
+import hmac
+import io
+import json
+import os
+import subprocess
+
+import pytest
+
+from stratum_open import cli
+from stratum_open.app import Server
+from stratum_open.findings import Finding
+from stratum_open.storage import SQLiteStorage
+
+
+class Auth:
+    api = "https://api.github.invalid"
+
+    def bot_login(self):
+        return "stratum-test[bot]"
+
+
+@pytest.fixture
+def server(tmp_path, monkeypatch):
+    monkeypatch.setattr("threading.Thread.start", lambda self: None)  # no workers in tests
+    storage = SQLiteStorage(str(tmp_path / "s.db"))
+    return Server(Auth(), "s3cret", storage, str(tmp_path / "repos"), env={}, log=lambda line: None)
+
+
+def call(server, body: bytes, *, event="pull_request", secret=b"s3cret", path="/webhook"):
+    signature = "sha256=" + hmac.new(secret, body, hashlib.sha256).hexdigest()
+    environ = {
+        "PATH_INFO": path, "REQUEST_METHOD": "POST", "CONTENT_LENGTH": str(len(body)), "wsgi.input": io.BytesIO(body),
+        "HTTP_X_HUB_SIGNATURE_256": signature, "HTTP_X_GITHUB_EVENT": event,
+    }
+    status = []
+    response = b"".join(server(environ, lambda s, headers: status.append(s)))
+    return status[0], json.loads(response)
+
+
+def pr_event(number=7, action="synchronize", draft=False):
+    return json.dumps({
+        "action": action, "installation": {"id": 1}, "repository": {"full_name": "acme/widget", "default_branch": "main"},
+        "pull_request": {"number": number, "draft": draft},
+    }).encode()
+
+
+def test_webhook_signature_is_required(server):
+    assert call(server, pr_event(), secret=b"wrong")[0] == "401 Unauthorized"
+    assert call(server, pr_event())[0] == "202 Accepted"
+    assert call(server, b"", path="/healthz")[0] == "200 OK"
+
+
+def test_a_newer_push_replaces_the_queued_review(server):
+    call(server, pr_event(action="opened"))
+    call(server, pr_event(action="synchronize"))
+    assert server._queue.qsize() == 1
+    assert server._pending[("acme/widget", 7, "review")][1]["action"] == "synchronize"
+    assert call(server, pr_event(number=8, draft=True))[1] == {"queued": False}
+
+
+def test_only_comments_that_mention_stratum_are_queued(server):
+    def comment(body):
+        return json.dumps({"action": "created", "installation": {"id": 1}, "repository": {"full_name": "acme/widget"},
+                           "issue": {"number": 7, "pull_request": {}}, "comment": {"id": 9, "body": body}}).encode()
+
+    assert call(server, comment("looks good"), event="issue_comment")[1] == {"queued": False}
+    assert call(server, comment("@stratum review"), event="issue_comment")[1] == {"queued": True}
+
+
+def test_uninstalling_deletes_the_repos_rows_and_clone(server, tmp_path):
+    server.storage.record_review("acme/widget", 7, "a" * 40, 50, "s", [Finding("t", "d", path="x.py")])
+    clone = server._clone_dir("acme/widget")
+    os.makedirs(clone)
+    body = json.dumps({"action": "deleted", "installation": {"id": 1}, "repositories": [{"full_name": "acme/widget"}]}).encode()
+    call(server, body, event="installation")
+    assert server.storage.latest_findings("acme/widget", 7) == []
+    assert not os.path.exists(clone)
+
+
+# ── CLI ──────────────────────────────────────────────────────────────────
+
+
+def test_policy_check(tmp_path, capsys):
+    good = tmp_path / "good.yml"
+    good.write_text("review:\n  max_inline_comments: 4\n")
+    bad = tmp_path / "bad.yml"
+    bad.write_text("review:\n  model: cloud\n")
+    assert cli.main(["policy", "check", str(good)]) == 0
+    assert cli.main(["policy", "check", str(bad)]) == 1
+    assert "review.model must be one of: local, hosted." in capsys.readouterr().out
+
+
+def test_review_local_runs_the_checks(tmp_path, capsys, monkeypatch):
+    empty = tmp_path / "gitconfig"
+    empty.write_text("")
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": str(empty), "GIT_CONFIG_NOSYSTEM": "1",
+           "GIT_AUTHOR_NAME": "a", "GIT_AUTHOR_EMAIL": "a@example.com", "GIT_COMMITTER_NAME": "a", "GIT_COMMITTER_EMAIL": "a@example.com"}
+    repo = tmp_path / "repo"
+    repo.mkdir()
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, env=env)
+
+    git("init", "-q", "-b", "main")
+    (repo / "app.py").write_text("x = 1\n")
+    git("add", ".")
+    git("commit", "-q", "-m", "init")
+    git("checkout", "-q", "-b", "feature")
+    (repo / "app.py").write_text('x = 1\nAPI_KEY = "sk-live-0123456789abcdef0123"\n')
+    git("commit", "-q", "-am", "Add key")
+    monkeypatch.chdir(repo)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    code = cli.main(["review", "--local", "main", "--no-model", "--json", str(tmp_path / "out.json")])
+    out = capsys.readouterr().out
+    assert "app.py:2" in out and "code/secret" in out
+    assert code == 1  # a critical finding
+    assert json.loads((tmp_path / "out.json").read_text())[0]["rule"] == "code/secret"
+
+
+def test_data_commands(tmp_path, capsys):
+    db = str(tmp_path / "s.db")
+    storage = SQLiteStorage(db)
+    storage.record_review("acme/widget", 7, "a" * 40, 50, "s", [Finding("t", "d", path="x.py")])
+    storage.record_vote("acme/widget", "model:t", "f" * 12, 1, "mona", -1)
+    storage.close()
+    assert cli.main(["data", "delete", "--db", db, "--repo", "acme/widget", "--pr", "7"]) == 0
+    assert cli.main(["data", "delete", "--db", db, "--feedback"]) == 0
+    out = capsys.readouterr().out
+    assert "for acme/widget#7" in out and "Deleted 1 vote and mute row(s)." in out
+    with pytest.raises(SystemExit):
+        cli.main(["data", "delete", "--db", str(tmp_path / "missing.db"), "--feedback"])

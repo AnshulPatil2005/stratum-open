@@ -1,0 +1,130 @@
+from stratum_open.diff import approx_tokens, pack, parse_diff, render
+from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank, risk_score
+
+DIFF = """diff --git a/app/users.py b/app/users.py
+index 3f1c2a1..9b2e7d0 100644
+--- a/app/users.py
++++ b/app/users.py
+@@ -1,6 +1,8 @@ import sqlite3
+ import sqlite3
++import requests
+
+
+ def get_user(conn, user_id):
+-    cur = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))
++    cur = conn.execute(f"SELECT * FROM users WHERE id = {user_id}")
++    log(user_id)
+     return cur.fetchone()
+@@ -20,3 +22,4 @@ def delete_user(conn, user_id):
+     conn.execute("DELETE FROM users WHERE id = ?", (user_id,))
++    conn.commit()
+     return True
+\\ No newline at end of file
+diff --git a/docs/new.md b/docs/new.md
+new file mode 100644
+--- /dev/null
++++ b/docs/new.md
+@@ -0,0 +1,2 @@
++# New
++Hello
+diff --git a/old.txt b/old.txt
+deleted file mode 100644
+--- a/old.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-bye
+diff --git a/a.py b/b.py
+similarity index 100%
+rename from a.py
+rename to b.py
+diff --git a/logo.png b/logo.png
+Binary files a/logo.png and b/logo.png differ
+"""
+
+
+def test_parse_counts_lines_on_the_new_side():
+    files = parse_diff(DIFF)
+    assert [(f.path, f.status) for f in files] == [
+        ("app/users.py", "modified"), ("docs/new.md", "added"), ("old.txt", "deleted"), ("b.py", "renamed"), ("logo.png", "modified"),
+    ]
+    users = files[0]
+    assert users.added() == [
+        (2, "import requests"), (6, '    cur = conn.execute(f"SELECT * FROM users WHERE id = {user_id}")'),
+        (7, "    log(user_id)"), (23, "    conn.commit()"),
+    ]
+    assert (users.additions, users.deletions) == (4, 1)
+    assert users.new_side()[8] == "    return cur.fetchone()"
+    assert files[3].old_path == "a.py"
+    assert files[4].binary
+
+
+def test_can_comment_only_inside_one_hunk():
+    users = parse_diff(DIFF)[0]
+    assert users.can_comment(6, 7)
+    assert users.can_comment(1)
+    assert not users.can_comment(8, 22)  # spans two hunks
+    assert not users.can_comment(15)  # between hunks
+
+
+def test_render_numbers_new_lines_only():
+    text = render(parse_diff(DIFF)[0])
+    assert "     6 +      cur = conn.execute(f\"SELECT" in text
+    assert "       -      cur = conn.execute(\"SELECT" in text
+
+
+def test_pack_skips_what_the_model_cant_use_and_respects_the_budget():
+    files = parse_diff(DIFF)
+    packed = pack(files, budget_tokens=10_000, max_chunks=3, skip=lambda p: p.endswith(".md"))
+    assert packed.reviewed == ["app/users.py"]
+    assert set(packed.skipped) == {"docs/new.md", "old.txt", "b.py", "logo.png"}
+
+    big = parse_diff(DIFF)[:1]
+    tiny = pack(big, budget_tokens=approx_tokens(render(big[0], big[0].hunks[:1])) + 5, max_chunks=1)
+    assert tiny.clipped == ["app/users.py"] and len(tiny.chunks) == 1
+
+    none = pack(big, budget_tokens=5, max_chunks=1)
+    assert none.omitted == ["app/users.py"] and none.chunks == []
+
+
+def test_findings_are_anchored_fingerprinted_and_deduped():
+    files = parse_diff(DIFF)
+    a = Finding("SQL injection", "Built from a string.", "high", "security", "app/users.py", 6, 6)
+    same_spot = Finding("Unsafe query", "Same thing in other words.", "medium", "security", "app/users.py", 6, 7)
+    off_diff = Finding("Somewhere else", "Not in this PR.", "low", "bug", "lib/other.py", 3, 3)
+    between = Finding("Between hunks", "Line 15 isn't shown.", "low", "bug", "app/users.py", 15, 15, replacement="x")
+    kept = anchor_to_diff([a, same_spot, off_diff, between], files)
+    assert off_diff not in kept
+    assert (between.line_start, between.replacement) == (None, None)
+    assign_fingerprints(kept, files)
+    assert dedupe(kept) == [a, between]
+
+
+def test_fingerprint_follows_the_code_not_the_line_number():
+    first = parse_diff(DIFF)
+    moved = parse_diff(DIFF.replace("@@ -1,6 +1,8 @@", "@@ -1,6 +11,8 @@"))
+    f1 = Finding("SQL injection", "x", "high", "security", "app/users.py", 6, 6)
+    f2 = Finding("Injection risk", "y", "high", "security", "app/users.py", 16, 16)
+    assign_fingerprints([f1], first)
+    assign_fingerprints([f2], moved)
+    assert f1.fingerprint == f2.fingerprint
+
+
+def test_rank_and_risk():
+    low = Finding("a", "b", "low")
+    critical = Finding("c", "d", "critical")
+    assert rank([low, critical]) == [critical, low]
+    assert risk_score([]) == 5
+    assert risk_score([low]) == 20
+    assert risk_score([low, critical]) == 90
+
+
+def test_unknown_severity_and_category_are_normalised():
+    finding = Finding("t", "d", severity="urgent", category="weird")
+    assert (finding.severity, finding.category, finding.rule) == ("medium", "bug", "model:t")
+
+
+def test_only_newline_ends_a_line():
+    crafted = "diff --git a/x.py b/x.py\n--- a/x.py\n+++ b/x.py\n@@ -1,2 +1,2 @@\n a = 1\u2028+fake = 2\n-b = 1\n+b = 2\r\n"
+    [file] = parse_diff(crafted)
+    assert file.added() == [(2, "b = 2")]
+    assert file.new_side()[1] == "a = 1\u2028+fake = 2"

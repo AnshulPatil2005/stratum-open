@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from stratum_core.policy import POLICY_PATH, Policy, load_policy, parse_policy
+from stratum_open.policy import POLICY_PATH, Policy, forbidden_pairs, load_policy, parse_policy
 
 
 def test_no_file_means_defaults():
@@ -84,6 +84,18 @@ def test_an_unusable_file_falls_back_to_defaults_and_says_why(text, error):
     assert policy.source == "defaults (file unusable)"
     assert policy.errors == (error,)
     assert policy.review == Policy().review
+
+
+def test_boundaries():
+    policy = parse_policy("boundaries:\n  modules: {api: ['server/api/**'], db: ['server/db/**']}\n  forbid: ['api -> db']\n")
+    assert policy.boundaries.modules == (("api", ("server/api/**",)), ("db", ("server/db/**",)))
+    assert forbidden_pairs(policy.boundaries) == [("api", "db")]
+
+    assert parse_policy("boundaries:\n  forbid: ['api to db']\n").errors == ('boundaries.forbid entry "api to db" must look like "a -> b".',)
+    assert parse_policy("boundaries:\n  modules: {api: ['x/**']}\n  forbid: ['api -> db']\n").errors == (
+        "boundaries.forbid entry \"api -> db\" names db, which boundaries.modules doesn't define.",
+    )
+    assert parse_policy("boundaries:\n  modules: {api: x}\n").errors == ("boundaries.modules must map names to lists of text values.",)
 
 
 def test_one_bad_value_rejects_the_whole_file():

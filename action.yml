@@ -1,0 +1,75 @@
+name: Stratum Open
+description: PR review and triage for maintainers, on a model you run yourself. Nothing is sent to Stratum.
+author: Anshul Patil
+branding:
+  icon: layers
+  color: purple
+
+inputs:
+  github-token:
+    description: Token for reading the PR and posting the review. The default works with the permissions in the example workflow.
+    default: ${{ github.token }}
+  ollama-model:
+    description: >-
+      Run this model with Ollama on the runner itself, e.g. qwen2.5-coder:7b. No server needed, but reviews are
+      slow on GitHub's CPU runners. Leave empty to use the endpoint in .stratum/policy.yml (or model-endpoint).
+    default: ""
+  model-endpoint:
+    description: An OpenAI-compatible endpoint to use instead of the policy file's, e.g. a GPU box your project runs.
+    default: ""
+  model-name:
+    description: The model to ask at that endpoint, instead of the policy file's.
+    default: ""
+  model-api-key:
+    description: API key for the endpoint, if it needs one. Pass it from a secret.
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: "3.12"
+
+    - name: Cache Ollama and the model
+      if: inputs.ollama-model != ''
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+      with:
+        path: ~/.stratum-ollama
+        key: stratum-ollama-${{ runner.os }}-${{ runner.arch }}-0.40.13-${{ inputs.ollama-model }}
+
+    - name: Start Ollama
+      if: inputs.ollama-model != ''
+      shell: bash
+      env:
+        MODEL: ${{ inputs.ollama-model }}
+        OLLAMA_VERSION: "0.40.13"
+      run: |
+        set -euo pipefail
+        root="$HOME/.stratum-ollama"
+        if [ ! -x "$root/bin/ollama" ]; then
+          mkdir -p "$root"
+          curl -fsSL "https://github.com/ollama/ollama/releases/download/v${OLLAMA_VERSION}/ollama-linux-amd64.tar.zst" | tar --zstd -x -C "$root"
+          # GitHub's runners have no GPU; drop the GPU libraries so the cache stays small.
+          find "$root/lib/ollama" -mindepth 1 -maxdepth 1 -type d \( -name 'cuda*' -o -name 'rocm*' -o -name 'mlx*' \) -exec rm -rf {} + 2>/dev/null || true
+        fi
+        export OLLAMA_MODELS="$root/models"
+        nohup "$root/bin/ollama" serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
+        for _ in $(seq 1 60); do
+          if curl -sf http://localhost:11434/api/version > /dev/null; then break; fi
+          sleep 1
+        done
+        "$root/bin/ollama" pull "$MODEL"
+
+    - name: Install Stratum Open
+      shell: bash
+      run: python -m pip install --quiet --disable-pip-version-check "$GITHUB_ACTION_PATH"
+
+    - name: Review
+      shell: bash
+      env:
+        STRATUM_GITHUB_TOKEN: ${{ inputs.github-token }}
+        STRATUM_MODEL_ENDPOINT: ${{ inputs.ollama-model != '' && 'http://localhost:11434/v1' || inputs.model-endpoint }}
+        STRATUM_MODEL_NAME: ${{ inputs.ollama-model != '' && inputs.ollama-model || inputs.model-name }}
+        STRATUM_MODEL_API_KEY: ${{ inputs.model-api-key }}
+      run: stratum action

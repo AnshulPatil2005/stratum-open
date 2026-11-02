@@ -17,14 +17,24 @@ import yaml
 
 POLICY_PATH = ".stratum/policy.yml"
 VERSION = 1
+DEFAULT_MODEL = "qwen2.5-coder:7b"
+DEFAULT_IGNORED = (
+    "**/*.lock", "**/package-lock.json", "**/pnpm-lock.yaml", "**/go.sum",
+    "**/*.min.js", "**/*.min.css", "**/*.map", "**/*.svg", "**/*.snap",
+    "**/vendor/**", "**/node_modules/**", "**/dist/**",
+)
 
 
 @dataclass(frozen=True)
 class Review:
     model: str = "local"  # local | hosted
     endpoint: str = "http://localhost:11434/v1"  # any OpenAI-compatible server; this is Ollama's
-    model_name: str = ""  # empty = the model the benchmark picked
+    model_name: str = ""  # empty = DEFAULT_MODEL
+    context_tokens: int = 16384  # the model's context window; the diff is split to fit it
+    max_chunks: int = 3  # model calls per review at most; files past that are listed as not reviewed
     max_inline_comments: int = 12
+    rules: tuple[str, ...] = ()  # the project's own review rules, in plain words, added to the prompt
+    ignore_paths: tuple[str, ...] = DEFAULT_IGNORED
     log_prompts: bool = False
 
 
@@ -67,6 +77,14 @@ class Dependencies:
 
 
 @dataclass(frozen=True)
+class Boundaries:
+    # module name -> path globs, e.g. {"api": ("server/api/**",)}
+    modules: tuple[tuple[str, tuple[str, ...]], ...] = ()
+    # "a -> b": code in module a must not import module b
+    forbid: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class Data:
     findings_retention_days: int = 180
 
@@ -79,6 +97,7 @@ class Policy:
     triage: Triage = field(default_factory=Triage)
     track_record: TrackRecord = field(default_factory=TrackRecord)
     dependencies: Dependencies = field(default_factory=Dependencies)
+    boundaries: Boundaries = field(default_factory=Boundaries)
     data: Data = field(default_factory=Data)
     source: str = "defaults"  # "defaults" | "file" | "defaults (file unusable)"
     warnings: tuple[str, ...] = ()
@@ -86,18 +105,33 @@ class Policy:
 
     def needs_human(self, path: str) -> bool:
         """Whether a changed file falls under `always_human.paths`."""
-        return any(_glob(pattern).fullmatch(path.lstrip("/")) for pattern in self.always_human.paths)
+        return matches_any(path, self.always_human.paths)
+
+    def ignored(self, path: str) -> bool:
+        """Whether a file is kept out of the model's view."""
+        return matches_any(path, self.review.ignore_paths)
+
+    @property
+    def model_name(self) -> str:
+        return self.review.model_name or DEFAULT_MODEL
+
+
+def matches_any(path: str, patterns: tuple[str, ...]) -> bool:
+    return any(_glob(pattern).fullmatch(path.lstrip("/")) for pattern in patterns)
 
 
 # Values that are checked beyond their type.
 _CHOICES = {("review", "model"): ("local", "hosted")}
 _MINIMUMS = {
     ("review", "max_inline_comments"): 0,
+    ("review", "context_tokens"): 2048,
+    ("review", "max_chunks"): 1,
     ("track_record", "window_days"): 1,
     ("track_record", "followup_days"): 1,
     ("dependencies", "min_package_age_days"): 0,
     ("data", "findings_retention_days"): 1,
 }
+_MAPPINGS = {("boundaries", "modules")}  # name -> list of text values
 _META = {"source", "warnings", "errors"}
 
 
@@ -119,6 +153,8 @@ def parse_policy(text: str | None) -> Policy:
     warnings: list[str] = []
     errors: list[str] = []
     policy = _build(Policy, raw, (), warnings, errors)
+    if not errors:
+        errors.extend(_boundary_errors(policy.boundaries))
     if errors:
         return _unusable(*errors, warnings=warnings)
     return replace(policy, source="file", warnings=tuple(warnings))
@@ -128,6 +164,27 @@ def load_policy(read_default_branch_file: Callable[[str], str | None]) -> Policy
     """`read_default_branch_file(path)` returns a file's text on the default
     branch, or None when it doesn't exist. Never pass the PR's head here."""
     return parse_policy(read_default_branch_file(POLICY_PATH))
+
+
+_FORBID = re.compile(r"^\s*([\w.-]+)\s*->\s*([\w.-]+)\s*$")
+
+
+def forbidden_pairs(boundaries: Boundaries) -> list[tuple[str, str]]:
+    return [(m.group(1), m.group(2)) for m in map(_FORBID.match, boundaries.forbid) if m]
+
+
+def _boundary_errors(boundaries: Boundaries) -> list[str]:
+    names = {name for name, _ in boundaries.modules}
+    errors = []
+    for rule in boundaries.forbid:
+        match = _FORBID.match(rule)
+        if not match:
+            errors.append(f'boundaries.forbid entry "{rule}" must look like "a -> b".')
+            continue
+        for name in match.groups():
+            if name not in names:
+                errors.append(f"boundaries.forbid entry \"{rule}\" names {name}, which boundaries.modules doesn't define.")
+    return errors
 
 
 def _unusable(*errors: str, warnings: list[str] | None = None) -> Policy:
@@ -164,6 +221,13 @@ _INVALID = object()
 
 def _check(path: tuple[str, ...], value: Any, default: Any, errors: list[str]) -> Any:
     name = _dotted(path)
+    if path in _MAPPINGS:
+        if isinstance(value, dict) and all(
+            isinstance(k, str) and isinstance(v, list) and all(isinstance(i, str) for i in v) for k, v in value.items()
+        ):
+            return tuple((k, tuple(v)) for k, v in value.items())
+        errors.append(f"{name} must map names to lists of text values.")
+        return _INVALID
     if isinstance(default, bool):
         if isinstance(value, bool):
             return value

@@ -1,21 +1,35 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "stratum-core"
-version = "0.0.1"
+name = "stratum-open"
+version = "0.1.0"
 description = "PR review and triage for open-source maintainers, on a model you run yourself."
 readme = "README.md"
 requires-python = ">=3.11"
-dependencies = ["pyyaml>=6"]
-# No license yet: see README.
+dependencies = ["pyyaml>=6", "requests>=2.31"]
+license = "AGPL-3.0-only"
+license-files = ["LICENSE"]
+authors = [{ name = "Anshul Patil" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.urls]
+Source = "https://github.com/AnshulPatil2005/stratum-open"
+
+[project.scripts]
+stratum = "stratum_open.cli:main"
 
 [project.optional-dependencies]
 test = ["pytest>=8"]
+app = ["PyJWT[crypto]>=2.8"]
+bandit = ["bandit>=1.7"]
 
 [tool.setuptools]
-packages = ["stratum_core"]
+packages = ["stratum_open", "stratum_open.checks", "stratum_open.repo", "stratum_open.github"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

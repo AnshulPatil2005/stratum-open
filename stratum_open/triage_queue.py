@@ -1,0 +1,40 @@
+"""The triage queue: one issue listing every open PR, sorted.
+
+It's rebuilt from each PR's last Stratum summary, so it costs no model calls
+and needs no database.
+"""
+
+from __future__ import annotations
+
+from stratum_open.github import publish
+from stratum_open.runner import Context
+from stratum_open.triage import PRFacts, Triage, render_queue
+
+TITLE = "Stratum triage queue"
+MAX_PULLS = 100
+
+
+def update_queue(ctx: Context, *, post: bool = True) -> str:
+    gh = ctx.gh
+    rows: list[tuple[PRFacts, Triage | None]] = []
+    for pull in gh.open_pulls()[:MAX_PULLS]:
+        if pull.get("draft"):
+            continue
+        summary = publish.find_summary(gh.issue_comments(pull["number"]), ctx.bot)
+        found = publish.State.decode(summary["body"]).triage if summary else {}
+        facts = PRFacts.from_pull(pull, [])
+        facts.additions, facts.deletions = found.get("additions", 0), found.get("deletions", 0)
+        result = None
+        if found.get("key"):
+            result = Triage(found["key"], found.get("reasons", []), found.get("evidence", []), float(found.get("score", 0)))
+        rows.append((facts, result))
+    body = render_queue(rows, ctx.policy)
+    if post:
+        issue = next((i for i in gh.paginate(f"/repos/{gh.repo}/issues", state="open")
+                      if i.get("title") == TITLE and "pull_request" not in i
+                      and (i.get("user") or {}).get("login", "").lower() == ctx.bot.lower()), None)
+        if issue:
+            gh.edit_issue(issue["number"], body)
+        else:
+            gh.create_issue(TITLE, body)
+    return body

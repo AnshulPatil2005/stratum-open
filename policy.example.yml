@@ -5,8 +5,14 @@ version: 1
 review:
   model: local                 # local | hosted
   endpoint: http://localhost:11434/v1   # any OpenAI-compatible server; this is Ollama's
-  model_name: ""               # empty = the model the benchmark picked
+  model_name: ""               # empty = qwen2.5-coder:7b
+  context_tokens: 16384        # the model's context window; big diffs are split to fit it
+  max_chunks: 3                # model calls per review at most
   max_inline_comments: 12
+  rules: []                    # your own review rules in plain words, e.g. "Every SQL query is parameterized."
+  ignore_paths: ["**/*.lock", "**/package-lock.json", "**/pnpm-lock.yaml", "**/go.sum",
+                 "**/*.min.js", "**/*.min.css", "**/*.map", "**/*.svg", "**/*.snap",
+                 "**/vendor/**", "**/node_modules/**", "**/dist/**"]   # never sent to the model
   log_prompts: false           # true keeps prompts and replies in the job log for 14 days
 
 always_human:                  # matching PRs are labelled for a person and never closed
@@ -34,6 +40,10 @@ track_record:
 dependencies:
   registry_lookup: true        # check how new an added package is
   min_package_age_days: 30     # younger packages are flagged
+
+boundaries:                    # module rules; a PR that breaks one gets a finding
+  modules: {}                  # e.g. {api: ["server/api/**"], db: ["server/db/**"]}
+  forbid: []                   # e.g. ["api -> db"]: code in api must not import db
 
 data:                          # GitHub App only
   findings_retention_days: 180

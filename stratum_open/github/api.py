@@ -1,0 +1,289 @@
+"""The GitHub REST and GraphQL calls Stratum makes, and nothing else.
+
+One small client over `requests`, so every call that leaves the
+maintainers' infrastructure is listed in this file.
+"""
+
+from __future__ import annotations
+
+import base64
+import re
+import time
+from typing import Any, Iterator
+
+import requests
+
+API = "https://api.github.com"
+_NEXT = re.compile(r'<([^>]+)>;\s*rel="next"')
+
+
+class GitHubError(Exception):
+    def __init__(self, status: int, message: str):
+        super().__init__(f"GitHub answered {status}: {message}")
+        self.status = status
+
+
+class GitHub:
+    def __init__(self, token: str, repo: str, *, api: str = API, session: requests.Session | None = None):
+        self.repo = repo  # owner/name
+        self.api = api.rstrip("/")
+        self.session = session or requests.Session()
+        self.session.headers.update({
+            "Authorization": f"Bearer {token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "stratum-open",
+        })
+
+    # ── plumbing ─────────────────────────────────────────────────────────
+
+    def request(self, method: str, path: str, *, accept: str | None = None, ok404: bool = False, **kwargs) -> Any:
+        url = path if path.startswith("http") else f"{self.api}{path}"
+        headers = {"Accept": accept} if accept else {}
+        for attempt in range(3):
+            response = self.session.request(method, url, headers=headers, timeout=30, **kwargs)
+            if response.status_code in (502, 503, 504) or _secondary_limit(response):
+                if attempt < 2:
+                    time.sleep(min(60.0, float(response.headers.get("Retry-After") or 2 * 3**attempt)))
+                    continue
+            break
+        if ok404 and response.status_code == 404:
+            return None
+        if response.status_code >= 400:
+            raise GitHubError(response.status_code, _message(response))
+        if response.status_code == 204 or not response.content:
+            return None
+        if accept and "json" not in accept:
+            return response.text
+        return response.json()
+
+    def get(self, path: str, **params) -> Any:
+        return self.request("GET", path, params=params or None)
+
+    def paginate(self, path: str, **params) -> Iterator[dict]:
+        url: str | None = f"{self.api}{path}"
+        params = {"per_page": 100, **params}
+        while url:
+            response = self.session.get(url, params=params, timeout=30)
+            if response.status_code >= 400:
+                raise GitHubError(response.status_code, _message(response))
+            data = response.json()
+            yield from (data if isinstance(data, list) else data.get("check_runs", data.get("items", [])))
+            match = _NEXT.search(response.headers.get("Link", ""))
+            url, params = (match.group(1), None) if match else (None, None)
+
+    def graphql(self, query: str, **variables) -> dict:
+        data = self.request("POST", "/graphql", json={"query": query, "variables": variables})
+        if data.get("errors"):
+            raise GitHubError(200, "; ".join(e.get("message", "") for e in data["errors"]))
+        return data["data"]
+
+    @property
+    def _r(self) -> str:
+        return f"/repos/{self.repo}"
+
+    # ── repository ───────────────────────────────────────────────────────
+
+    def repository(self) -> dict:
+        return self.get(self._r)
+
+    def file_text(self, path: str, ref: str) -> str | None:
+        """A file's text at `ref`, or None when it doesn't exist there."""
+        data = self.request("GET", f"{self._r}/contents/{requests.utils.quote(path)}", params={"ref": ref}, ok404=True)
+        if not isinstance(data, dict) or data.get("type") != "file":
+            return None
+        if data.get("encoding") == "base64" and data.get("content"):
+            return base64.b64decode(data["content"]).decode("utf-8", errors="replace")
+        if data.get("download_url"):  # files over 1 MB come without content
+            response = self.session.get(data["download_url"], timeout=30)
+            return response.text if response.ok else None
+        return None
+
+    def compare_files(self, base: str, head: str) -> list[str] | None:
+        """Paths changed between two commits; None when they don't share
+        history (a force-push), so the caller reviews everything again."""
+        data = self.request("GET", f"{self._r}/compare/{base}...{head}", ok404=True)
+        if not data or data.get("status") not in ("ahead", "identical"):
+            return None
+        files = data.get("files", [])
+        if len(files) >= 300:  # GitHub lists at most 300 files here
+            return None
+        return [f["filename"] for f in files] + [f["previous_filename"] for f in files if f.get("previous_filename")]
+
+    # ── pull requests ────────────────────────────────────────────────────
+
+    def pull(self, number: int) -> dict:
+        return self.get(f"{self._r}/pulls/{number}")
+
+    def open_pulls(self) -> list[dict]:
+        return list(self.paginate(f"{self._r}/pulls", state="open"))
+
+    def pull_diff(self, number: int) -> str:
+        """The PR's diff. GitHub refuses one over its size limit; the file
+        list's patches stand in for it then (each capped by GitHub too)."""
+        try:
+            return self.request("GET", f"{self._r}/pulls/{number}", accept="application/vnd.github.diff")
+        except GitHubError as exc:
+            if exc.status not in (406, 422):
+                raise
+        parts = []
+        for file in self.paginate(f"{self._r}/pulls/{number}/files"):
+            old = file.get("previous_filename") or file["filename"]
+            header = f"diff --git a/{old} b/{file['filename']}\n"
+            if file["status"] == "added":
+                header += f"new file mode 100644\n--- /dev/null\n+++ b/{file['filename']}\n"
+            elif file["status"] == "removed":
+                header += f"deleted file mode 100644\n--- a/{old}\n+++ /dev/null\n"
+            else:
+                header += f"--- a/{old}\n+++ b/{file['filename']}\n"
+            parts.append(header + (file.get("patch") or "Binary files differ") + "\n")
+        return "".join(parts)
+
+    def commit_emails(self, login: str) -> set[str]:
+        """Emails on this login's recent commits here; GitHub links them to
+        the account, git history only has the emails."""
+        commits = self.request("GET", f"{self._r}/commits", params={"author": login, "per_page": 100}, ok404=True) or []
+        return {((c.get("commit") or {}).get("author") or {}).get("email") or "" for c in commits} - {""}
+
+    def linked_issues(self, number: int) -> list[int]:
+        owner, name = self.repo.split("/", 1)
+        data = self.graphql(
+            "query($owner:String!,$name:String!,$number:Int!){repository(owner:$owner,name:$name){pullRequest(number:$number)"
+            "{closingIssuesReferences(first:10){nodes{number}}}}}",
+            owner=owner, name=name, number=number,
+        )
+        nodes = (((data.get("repository") or {}).get("pullRequest") or {}).get("closingIssuesReferences") or {}).get("nodes") or []
+        return [node["number"] for node in nodes]
+
+    def ci_state(self, sha: str, *, ignore: set[str]) -> bool | None:
+        """True when every check and status on the commit passed, False when
+        one failed, None while they're pending or when there are none.
+        Stratum's own checks (`ignore`) don't count."""
+        runs = [r for r in self.paginate(f"{self._r}/commits/{sha}/check-runs") if r.get("name") not in ignore]
+        status = self.get(f"{self._r}/commits/{sha}/status")
+        states = [s.get("state") for s in status.get("statuses", [])]
+        if any(r.get("conclusion") in ("failure", "timed_out", "cancelled", "action_required") for r in runs) or any(
+            s in ("failure", "error") for s in states
+        ):
+            return False
+        if not runs and not states:
+            return None
+        if any(r.get("status") != "completed" for r in runs) or any(s == "pending" for s in states):
+            return None
+        return True
+
+    # ── comments, reviews and threads ────────────────────────────────────
+
+    def issue_comments(self, number: int) -> list[dict]:
+        return list(self.paginate(f"{self._r}/issues/{number}/comments"))
+
+    def comment(self, number: int, body: str) -> dict:
+        return self.request("POST", f"{self._r}/issues/{number}/comments", json={"body": body})
+
+    def edit_comment(self, comment_id: int, body: str) -> dict:
+        return self.request("PATCH", f"{self._r}/issues/comments/{comment_id}", json={"body": body})
+
+    def review_comments(self, number: int) -> list[dict]:
+        return list(self.paginate(f"{self._r}/pulls/{number}/comments"))
+
+    def review_comment(self, comment_id: int) -> dict | None:
+        return self.request("GET", f"{self._r}/pulls/comments/{comment_id}", ok404=True)
+
+    def create_review(self, number: int, head_sha: str, comments: list[dict], body: str = "") -> dict:
+        return self.request("POST", f"{self._r}/pulls/{number}/reviews", json={
+            "commit_id": head_sha, "event": "COMMENT", "body": body, "comments": comments,
+        })
+
+    def reply(self, number: int, comment_id: int, body: str) -> dict:
+        return self.request("POST", f"{self._r}/pulls/{number}/comments/{comment_id}/replies", json={"body": body})
+
+    def react(self, comment_id: int, content: str, *, review_comment: bool = False) -> None:
+        kind = "pulls/comments" if review_comment else "issues/comments"
+        self.request("POST", f"{self._r}/{kind}/{comment_id}/reactions", json={"content": content})
+
+    def reactions(self, comment_id: int) -> list[dict]:
+        return list(self.paginate(f"{self._r}/pulls/comments/{comment_id}/reactions"))
+
+    def review_threads(self, number: int) -> list[dict]:
+        """Every review thread with its first comment's database id, body and
+        author, and whether it's resolved."""
+        owner, name = self.repo.split("/", 1)
+        threads, cursor = [], None
+        while True:
+            data = self.graphql(
+                "query($owner:String!,$name:String!,$number:Int!,$cursor:String){repository(owner:$owner,name:$name)"
+                "{pullRequest(number:$number){reviewThreads(first:100,after:$cursor){pageInfo{hasNextPage endCursor}"
+                "nodes{id isResolved path comments(first:50){nodes{databaseId body author{login}}}}}}}}",
+                owner=owner, name=name, number=number, cursor=cursor,
+            )
+            page = data["repository"]["pullRequest"]["reviewThreads"]
+            for node in page["nodes"]:
+                comments = [
+                    {"id": c["databaseId"], "body": c.get("body") or "", "author": (c.get("author") or {}).get("login", "")}
+                    for c in node["comments"]["nodes"]
+                ]
+                if comments:
+                    threads.append({"id": node["id"], "resolved": node["isResolved"], "path": node.get("path"), "comments": comments})
+            if not page["pageInfo"]["hasNextPage"]:
+                return threads
+            cursor = page["pageInfo"]["endCursor"]
+
+    def resolve_thread(self, thread_id: str) -> None:
+        self.graphql("mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id}}}", id=thread_id)
+
+    def permission(self, login: str) -> str:
+        """admin | maintain | write | triage | read | none."""
+        data = self.request("GET", f"{self._r}/collaborators/{login}/permission", ok404=True)
+        if not data:
+            return "none"
+        return (data.get("user") or {}).get("role_name") or data.get("permission") or "none"
+
+    # ── checks, labels, issues ───────────────────────────────────────────
+
+    def check_run(self, head_sha: str, name: str, conclusion: str, title: str, summary: str, text: str, annotations: list[dict]) -> dict:
+        """GitHub takes 50 annotations per request; the rest follow in updates."""
+        output = {"title": title[:255], "summary": summary[:65000], "text": text[:65000], "annotations": annotations[:50]}
+        run = self.request("POST", f"{self._r}/check-runs", json={
+            "name": name, "head_sha": head_sha, "status": "completed", "conclusion": conclusion, "output": output,
+        })
+        for start in range(50, len(annotations), 50):
+            self.request("PATCH", f"{self._r}/check-runs/{run['id']}", json={
+                "output": {**output, "annotations": annotations[start:start + 50]},
+            })
+        return run
+
+    def ensure_label(self, name: str, color: str, description: str) -> None:
+        if self.request("GET", f"{self._r}/labels/{requests.utils.quote(name)}", ok404=True) is None:
+            self.request("POST", f"{self._r}/labels", json={"name": name, "color": color, "description": description[:100]})
+
+    def add_labels(self, number: int, labels: list[str]) -> None:
+        if labels:
+            self.request("POST", f"{self._r}/issues/{number}/labels", json={"labels": labels})
+
+    def remove_label(self, number: int, label: str) -> None:
+        self.request("DELETE", f"{self._r}/issues/{number}/labels/{requests.utils.quote(label)}", ok404=True)
+
+    def close(self, number: int) -> None:
+        self.request("PATCH", f"{self._r}/pulls/{number}", json={"state": "closed"})
+
+    def create_issue(self, title: str, body: str) -> dict:
+        return self.request("POST", f"{self._r}/issues", json={"title": title, "body": body})
+
+    def edit_issue(self, number: int, body: str) -> dict:
+        return self.request("PATCH", f"{self._r}/issues/{number}", json={"body": body})
+
+
+def _secondary_limit(response: requests.Response) -> bool:
+    return response.status_code in (403, 429) and (
+        "Retry-After" in response.headers or response.headers.get("X-RateLimit-Remaining") == "0"
+    )
+
+
+def _message(response: requests.Response) -> str:
+    try:
+        data = response.json()
+    except ValueError:
+        return response.text[:200]
+    errors = data.get("errors")
+    detail = f" ({errors})" if errors else ""
+    return f"{data.get('message', '')}{detail}"[:300]

@@ -1,0 +1,53 @@
+# Stratum reviewing its own PRs, with the same workflow as examples/stratum.yml.
+# The action comes from the default branch's checkout, never from the PR.
+name: Stratum
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened, ready_for_review]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  # Optional: re-sort a PR when your CI finishes, so its label sees the result.
+  # Name your CI workflows here. (GitHub leaves fork PRs out of these events.)
+  # workflow_run:
+  #   workflows: [tests]
+  #   types: [completed]
+  schedule:
+    - cron: "17 6 * * *"  # rebuild the triage queue issue once a day
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  checks: write
+
+concurrency:
+  # A new push cancels the review of the old one; comments queue on their own.
+  group: stratum-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
+
+jobs:
+  stratum:
+    if: >-
+      github.event_name == 'pull_request_target' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'workflow_run' ||
+      contains(github.event.comment.body, '@stratum')
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      # The default branch, with history for track records, ownership and hotspots.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: ./
+        with:
+          # Runs the model on the runner: no server needed, but slow on CPU.
+          # To use your own server instead, remove this line and set
+          # review.endpoint in .stratum/policy.yml (or model-endpoint here).
+          ollama-model: qwen2.5-coder:7b

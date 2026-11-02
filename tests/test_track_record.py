@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from stratum_core.track_record import author_identity, build_records
+from stratum_open.track_record import author_identity, build_records
 
 NOW = datetime(2026, 11, 1, tzinfo=timezone.utc)
 START = NOW - timedelta(days=100)
