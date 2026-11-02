@@ -320,19 +320,24 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
     lines = []
     if incremental and previous_head:
         if changed:
-            lines.append(f"Reviewed only the {len(changed)} file(s) changed since {previous_head[:7]}; findings elsewhere were kept.")
+            lines.append(f"Reviewed only the {_files(len(changed))} changed since {previous_head[:7]}; findings elsewhere were kept.")
         else:
             lines.append(f"No files changed since {previous_head[:7]}; the earlier findings were kept and the checks ran again.")
     if result and result.packed:
         packed = result.packed
         if packed.reviewed or packed.clipped:
-            lines.append(f"The model read {len(packed.reviewed) + len(packed.clipped)} file(s) in {len(packed.chunks)} call(s).")
+            calls = len(packed.chunks)
+            lines.append(f"The model read {_files(len(packed.reviewed) + len(packed.clipped))} in {calls} call{'' if calls == 1 else 's'}.")
         if packed.clipped:
             lines.append("Read in part (too big for one call): " + ", ".join(f"`{p}`" for p in packed.clipped[:10]))
         if packed.omitted:
-            lines.append(f"Not read by the model ({len(packed.omitted)} file(s) past the review's size limit): " + ", ".join(f"`{p}`" for p in packed.omitted[:10]))
-    lines.append(f"The checks ran on all {len(files)} changed file(s).")
+            lines.append(f"Not read by the model ({_files(len(packed.omitted))} past the review's size limit): " + ", ".join(f"`{p}`" for p in packed.omitted[:10]))
+    lines.append(f"The checks ran on {'the' if len(files) == 1 else 'all'} {_files(len(files))} changed.")
     return lines
+
+
+def _files(n: int) -> str:
+    return f"{n} file" if n == 1 else f"{n} files"
 
 
 def checkout_ref(checkout: str, default_branch: str) -> str:
