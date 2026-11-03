@@ -1,0 +1,8 @@
+{
+ "ok": true,
+ "error": "",
+ "seconds": 5.4,
+ "prompt_tokens": 6849,
+ "output_tokens": 99,
+ "text": "{\n  \"summary\": \"The PR adds several helper functions and tests for different steps of a pipeline, including fingerprint, matcher, AI, and language processing. It also updates the test configuration and adds a new test for the `ai` module.\",\n  \"matches_description\": \"no\",\n  \"mismatch\": \"The description is empty, but the PR adds multiple files and functions, including tests. The description should provide more context about the changes.\",\n  \"findings\": []\n}"
+}
