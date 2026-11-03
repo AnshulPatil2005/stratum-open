@@ -97,7 +97,9 @@ def comment_body(finding: Finding, *, feedback: bool) -> str:
     if finding.suggestion:
         lines += ["", f"**Fix:** {finding.suggestion}"]
     if finding.replacement is not None:
-        fence = "````" if "```" in finding.replacement else "```"
+        # The fence has to be longer than any run of backticks inside, or GitHub ends the block early.
+        longest = max((len(run) for run in re.findall(r"`+", finding.replacement)), default=0)
+        fence = "`" * max(3, longest + 1)
         lines += ["", f"{fence}suggestion", finding.replacement.rstrip("\n"), fence]
     source = f"a check (`{finding.rule}`)" if finding.source == "check" else "the model"
     hint = f"From {source}. Reply `@stratum ignore` to hide it on this PR, or `@stratum explain` for more."

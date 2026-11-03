@@ -10,6 +10,7 @@ from __future__ import annotations
 import codecs
 import math
 import re
+import warnings
 from dataclasses import dataclass, field
 from typing import Callable, Iterable
 
@@ -60,9 +61,10 @@ class FileDiff:
         return {line.new: line.text for hunk in self.hunks for line in hunk.lines if line.new is not None}
 
     def can_comment(self, start: int, end: int | None = None) -> bool:
-        """GitHub only takes a comment on new-file lines inside one hunk."""
+        """GitHub only takes a comment on new-file lines inside one hunk, and
+        none at all on a binary file or a submodule entry."""
         end = end or start
-        if start > end:
+        if start > end or self.binary:
             return False
         for hunk in self.hunks:
             shown = {line.new for line in hunk.lines if line.new is not None}
@@ -130,6 +132,8 @@ def _header_line(current: FileDiff, raw: str) -> None:
         current.status = "renamed"
     elif raw.startswith("Binary files ") or raw.startswith("GIT binary patch"):
         current.binary = True
+    elif raw.startswith("index ") and raw.rstrip().endswith(" 160000"):
+        current.binary = True  # a submodule: the "Subproject commit" line is not code anyone can comment on
     elif raw.startswith("--- "):
         old = _strip_prefix(_unquote(raw[4:].split("\t")[0]), "a/")
         if old != "/dev/null" and current.old_path is None:
@@ -165,7 +169,12 @@ def _unquote(path: str) -> str:
     """git quotes paths with unusual characters as C strings."""
     path = path.strip()
     if len(path) >= 2 and path[0] == path[-1] == '"':
-        raw = codecs.escape_decode(path[1:-1].encode("utf-8"))[0]
+        try:
+            with warnings.catch_warnings():  # an escape git wouldn't write is kept as it is, quietly
+                warnings.simplefilter("ignore")
+                raw = codecs.escape_decode(path[1:-1].encode("utf-8"))[0]
+        except ValueError:
+            return path[1:-1]
         return raw.decode("utf-8", errors="replace")
     return path
 
