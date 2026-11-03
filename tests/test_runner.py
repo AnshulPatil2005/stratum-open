@@ -159,6 +159,16 @@ def test_stored_review_in_app_mode(gh, tmp_path):
     assert {f["title"] for f in storage.latest_findings("acme/widget", 7)} >= {"Unknown id"}
 
 
+def test_a_muted_rule_closes_its_threads(gh, tmp_path):
+    storage = SQLiteStorage(str(tmp_path / "s.db"))
+    ctx = context(gh, FakeModel(model_answer(), model_answer()), storage=storage, feedback=True)
+    review_pull(ctx, 7)
+    storage.mute("acme/widget", "model:dead-code", by="maintainer")
+    review_pull(ctx, 7)
+    dead = next(t for t in gh.threads if "Dead code" in t["comments"][0]["body"])
+    assert dead["resolved"] and "Muted in this repository." in dead["comments"][0]["body"]
+
+
 def test_triage_labels_stay_off_by_default(gh):
     review_pull(context(gh, FakeModel(model_answer()), policy=parse_policy(None)), 7)
     assert gh.labels[7] == []
@@ -207,6 +217,13 @@ def test_ignore_a_rule_and_help_and_bots(gh):
     event, payload = comment_event("@stratum ignore model:dead-code", login="mona")
     handle(ctx, event, payload)
     assert publish.State.decode(gh.issue_comments_[7][0]["body"]).ignored_rules == ["model:dead-code"]
+    dead = next(t for t in gh.threads if "Dead code" in t["comments"][0]["body"])
+    assert dead["resolved"] and "Ignored on this PR." in dead["comments"][0]["body"]
+
+    event, payload = comment_event("@stratum ignore code/sql", login="mona")
+    handle(ctx, event, payload)
+    sql = next(t for t in gh.threads if "SQL built from strings" in t["comments"][0]["body"])
+    assert "Ignored on this PR." in sql["comments"][0]["body"] and "Fixed" not in sql["comments"][0]["body"]
 
     event, payload = comment_event("@stratum what")
     assert handle(ctx, event, payload) == "help"

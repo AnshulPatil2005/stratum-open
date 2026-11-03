@@ -119,9 +119,12 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
     )
     policy, findings, result, gone = engine.policy, engine.findings, engine.review, dict(engine.gone)
+    # Before the check sweep below, which would call an ignored check "fixed".
     for finding in engine.excluded:
-        if finding.fingerprint in state.ignored:
+        if finding.fingerprint in state.ignored or finding.rule in state.ignored_rules:
             gone.setdefault(finding.fingerprint, "Ignored on this PR.")
+        elif finding.rule in muted:
+            gone.setdefault(finding.fingerprint, "Muted in this repository.")
     if result is not None:
         if not result.ran:
             errors = sorted({c["error"] for c in result.calls if c.get("error")})
