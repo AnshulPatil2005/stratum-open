@@ -136,3 +136,15 @@ def test_two_check_findings_on_one_line_stay_apart():
     b = Finding("New dependency: `requests`", "x", "low", "supply-chain", "app/users.py", 2, source="check", rule="deps/new")
     assign_fingerprints([a, b], files)
     assert a.fingerprint != b.fingerprint and dedupe([a, b]) == [a, b]
+
+
+def test_a_hunk_that_only_removes_lines_is_one_note():
+    diff = (
+        "diff --git a/a.py b/a.py\n--- a/a.py\n+++ b/a.py\n"
+        "@@ -1,5 +1,2 @@ def f():\n x = 1\n-y = 2\n-z = 3\n-w = 4\n x2 = 5\n"
+        "@@ -10,2 +7,3 @@\n a = 1\n+b = 2\n c = 3\n"
+    )
+    text = render(parse_diff(diff)[0])
+    assert "(3 lines removed after line 1)" in text
+    assert "y = 2" not in text and "z = 3" not in text
+    assert "     8 +  b = 2" in text  # a hunk that adds lines is shown in full
