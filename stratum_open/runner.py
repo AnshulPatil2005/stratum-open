@@ -58,12 +58,13 @@ def load_context_policy(gh: GitHub, default_branch: str) -> Policy:
     return load_policy(lambda path: gh.file_text(path, default_branch))
 
 
-def skip_reason(pull: dict, action: str, policy: Policy) -> str | None:
+def skip_reason(pull: dict, action: str | None, policy: Policy) -> str | None:
     """Why a PR event doesn't start a review, per `review.events` and the
-    `review.skip_*` settings; None when it should. `@stratum review` doesn't
-    ask: a maintainer asking outranks these."""
+    `review.skip_*` settings; None when it should. `action` is None for a
+    review that isn't a PR event (CI finishing), which skips the events check.
+    `@stratum review` doesn't ask: a maintainer asking outranks these."""
     rules = policy.review
-    if action not in rules.events:
+    if action is not None and action not in rules.events:
         return f"Nothing to do for a {action} event."
     if pull.get("draft") and rules.skip_drafts:
         return "Draft PR: Stratum reviews it once it's ready for review, or on `@stratum review`."

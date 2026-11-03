@@ -62,9 +62,15 @@ def main(env: Mapping[str, str] = os.environ) -> int:
         done = handle(ctx, event_name, payload)
         print(f"Command: {done or 'none in this comment'}")
     elif event_name == "workflow_run":
-        # CI finished: sort the PR again with its result. Same head, so no model call.
-        for pull in (payload.get("workflow_run") or {}).get("pull_requests") or []:
-            outcome = review_pull(ctx, pull["number"])
+        # CI finished: sort the PR again with its result. Same head, so no model
+        # call. The skip settings apply here too; review.events doesn't, since
+        # this isn't a PR event.
+        for ref in (payload.get("workflow_run") or {}).get("pull_requests") or []:
+            reason = skip_reason(gh.pull(ref["number"]), None, policy)
+            if reason:
+                print(f"PR #{ref['number']}: {reason}")
+                continue
+            outcome = review_pull(ctx, ref["number"])
             print(f"PR #{outcome.number}: re-sorted as {outcome.triage.key if outcome.triage else outcome.status}")
     elif event_name in ("schedule", "workflow_dispatch"):
         update_queue(ctx)

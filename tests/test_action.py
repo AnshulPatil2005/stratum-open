@@ -70,3 +70,15 @@ def test_needs_model_asks_the_command_parser(tmp_path, event_name, body, expecte
     event = tmp_path / "event.json"
     event.write_text(json.dumps({"comment": {"body": body}} if body is not None else {}))
     assert action.needs_model({"GITHUB_EVENT_NAME": event_name, "GITHUB_EVENT_PATH": str(event)}) is expected
+
+
+def test_ci_finishing_respects_the_skip_settings(tmp_path, monkeypatch, capsys):
+    from stratum_open import action as action_module
+
+    gh = FakeGitHub(diff=DIFF, author="renovate[bot]")
+    gh.files[(".stratum/policy.yml", "main")] = "review:\n  skip_bots: true\n"
+    reviewed = []
+    monkeypatch.setattr(action_module, "review_pull", lambda ctx, number: reviewed.append(number))
+    payload = {"repository": {"default_branch": "main"}, "workflow_run": {"pull_requests": [{"number": 7}]}}
+    run(tmp_path, monkeypatch, "workflow_run", payload, gh)
+    assert reviewed == [] and "review.skip_bots is on" in capsys.readouterr().out
