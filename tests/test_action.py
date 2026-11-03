@@ -82,3 +82,15 @@ def test_ci_finishing_respects_the_skip_settings(tmp_path, monkeypatch, capsys):
     payload = {"repository": {"default_branch": "main"}, "workflow_run": {"pull_requests": [{"number": 7}]}}
     run(tmp_path, monkeypatch, "workflow_run", payload, gh)
     assert reviewed == [] and "review.skip_bots is on" in capsys.readouterr().out
+
+
+def test_the_runners_cpu_gets_small_calls_unless_the_policy_says_otherwise():
+    from stratum_open.action import context_from_env
+    from stratum_open.policy import parse_policy
+
+    assert context_from_env(parse_policy(None), {"STRATUM_CONTEXT_TOKENS": "8192"}).review.context_tokens == 8192
+    assert context_from_env(parse_policy(None), {}).review.context_tokens == 16384
+    pinned = parse_policy("review:\n  context_tokens: 12000\n")
+    assert context_from_env(pinned, {"STRATUM_CONTEXT_TOKENS": "8192"}).review.context_tokens == 12000
+    # Explicit now, so the profile doesn't raise it again.
+    assert "review.context_tokens" in context_from_env(parse_policy(None), {"STRATUM_CONTEXT_TOKENS": "8192"}).explicit

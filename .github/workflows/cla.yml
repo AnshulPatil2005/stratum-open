@@ -28,3 +28,6 @@ jobs:
           path-to-document: https://github.com/AnshulPatil2005/stratum-open/blob/main/CLA.md
           branch: cla-signatures
           allowlist: AnshulPatil2005,dependabot[bot],github-actions[bot]
+          # Its default locks every PR when it closes, merged or not, which stops
+          # @stratum commands and replies there, and caught a PR closed by accident.
+          lock-pullrequest-aftermerge: false
