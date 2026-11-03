@@ -308,3 +308,50 @@ def test_the_left_out_notice_stays_inside_its_budget():
     paths = [f"services/{'x' * 140}/module_{i}.py" for i in range(21)]
     text = _names(paths)
     assert len(text) <= LEFT_OUT_CHARS + 20 and text.endswith("more")
+
+
+@pytest.mark.parametrize(
+    "policy_text, pull, action, expected",
+    [
+        ("", {"draft": False}, "opened", None),
+        ("", {"draft": False}, "labeled", "Nothing to do for a labeled event."),
+        ("", {"draft": True}, "opened", "Draft PR"),
+        ("review:\n  skip_drafts: false\n", {"draft": True}, "opened", None),
+        ("review:\n  events: [opened]\n", {}, "synchronize", "Nothing to do for a synchronize event."),
+        ("review:\n  skip_bots: true\n", {"user": {"login": "dependabot[bot]", "type": "Bot"}}, "opened", "A PR by a bot"),
+        ("review:\n  skip_authors: [Renovate]\n", {"user": {"login": "renovate"}}, "opened", "PRs by renovate"),
+        ("review:\n  skip_labels: [wip]\n", {"labels": [{"name": "wip"}]}, "opened", "the label 'wip'"),
+        ("review:\n  skip_branches: ['release/**']\n", {"head": {"ref": "release/1.2"}}, "opened", "PRs from release/1.2"),
+    ],
+)
+def test_skip_reason(policy_text, pull, action, expected):
+    from stratum_open.runner import skip_reason
+
+    reason = skip_reason(pull, action, parse_policy(policy_text or None))
+    assert (reason is None) if expected is None else (expected in reason)
+
+
+def test_command_permissions_follow_the_policy(gh):
+    ctx = context(gh, FakeModel(model_answer()), policy=parse_policy("commands:\n  triage: write\n  review: author\n"))
+    review_pull(ctx, 7)
+    event, payload = comment_event("@stratum triage", login="erin")
+    assert handle(ctx, event, payload) == "refused"
+    assert "only people with write access" in gh.issue_comments_[7][-1]["body"]
+    ctx.model.replies.append(model_answer())
+    event, payload = comment_event("@stratum review", login="carol")  # the PR's author, allowed by "author"
+    assert handle(ctx, event, payload) == "review"
+
+
+def test_the_profile_follows_the_model(gh):
+    from stratum_open.profiles import ModelInfo
+
+    class Described(FakeModel):
+        def describe(self):
+            return ModelInfo(billions=70, context=128_000, local=False)
+
+    big = Described(model_answer())
+    review_pull(context(gh, big), 7)
+    system, user = big.prompts[0]
+    assert "__new hunk__" in user  # large: split hunks
+    assert big.context_tokens == 32768
+    assert "Profile: `large` (70B parameters)." in gh.issue_comments_[7][0]["body"]

@@ -38,13 +38,13 @@ from stratum_open.github.api import API, GitHub, GitHubError
 from stratum_open.github.commands import handle
 from stratum_open.github.feedback import collect_votes
 from stratum_open.model import model_from_policy
-from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull
+from stratum_open.policy import REVIEW_EVENTS
+from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull, skip_reason
 from stratum_open.storage import SQLiteStorage, Storage
 
 MAX_BODY = 25 * 1024 * 1024  # GitHub's own webhook payload limit
 DELIVERY_TTL = 3600.0  # seconds a delivery ID is remembered
 MAX_DELIVERIES = 5000
-REVIEW_ACTIONS = {"opened", "synchronize", "reopened", "ready_for_review"}
 JOBS_DAYS = 14
 PURGE_EVERY = 24 * 3600
 _SAFE_NAME = re.compile(r"[^A-Za-z0-9_.-]")
@@ -172,7 +172,9 @@ class Server:
         repo = (payload.get("repository") or {}).get("full_name")
         if not installation or not repo:
             return False
-        if event == "pull_request" and payload.get("action") in REVIEW_ACTIONS and not payload["pull_request"].get("draft"):
+        # Drafts, review.events and the review.skip_* settings are the repo's
+        # own policy, so they're checked when the job runs and the policy's loaded.
+        if event == "pull_request" and payload.get("action") in REVIEW_EVENTS:
             self.enqueue((repo, payload["pull_request"]["number"], "review"), event, payload)
             return True
         if event in ("issue_comment", "pull_request_review_comment") and payload.get("action") == "created":
@@ -224,6 +226,10 @@ class Server:
         ctx = self.context(payload["installation"]["id"], repo, payload["repository"].get("default_branch") or "main")
         if event == "pull_request":
             number = payload["pull_request"]["number"]
+            reason = skip_reason(payload["pull_request"], payload.get("action", ""), ctx.policy)
+            if reason:
+                self.storage.record_job(repo, number, "review", "skipped", reason)
+                return
             try:
                 collect_votes(ctx.gh, number, ctx.bot, self.storage)
             except GitHubError as exc:

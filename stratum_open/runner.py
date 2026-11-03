@@ -17,7 +17,7 @@ from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, 
 from stratum_open.github import publish
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
-from stratum_open.policy import Policy, load_policy
+from stratum_open.policy import Policy, load_policy, matches_any
 from stratum_open.review import ReviewResult, _locate, review, shown
 from stratum_open.storage import NullStorage, Storage
 from stratum_open.track_record import AuthorRecord, author_identity, build_records
@@ -58,8 +58,58 @@ def load_context_policy(gh: GitHub, default_branch: str) -> Policy:
     return load_policy(lambda path: gh.file_text(path, default_branch))
 
 
+def skip_reason(pull: dict, action: str | None, policy: Policy) -> str | None:
+    """Why a PR event doesn't start a review, per `review.events` and the
+    `review.skip_*` settings; None when it should. `action` is None for a
+    review that isn't a PR event (CI finishing), which skips the events check.
+    `@stratum review` doesn't ask: a maintainer asking outranks these."""
+    rules = policy.review
+    if action is not None and action not in rules.events:
+        return f"Nothing to do for a {action} event."
+    if pull.get("draft") and rules.skip_drafts:
+        return "Draft PR: Stratum reviews it once it's ready for review, or on `@stratum review`."
+    user = pull.get("user") or {}
+    login = user.get("login", "")
+    if rules.skip_bots and (user.get("type") == "Bot" or login.endswith("[bot]")):
+        return f"A PR by a bot ({login}), and review.skip_bots is on."
+    if login.lower() in {name.lower() for name in rules.skip_authors}:
+        return f"PRs by {login} aren't reviewed (review.skip_authors)."
+    labels = sorted({label.get("name", "") for label in pull.get("labels", [])} & set(rules.skip_labels))
+    if labels:
+        return f"The PR has the label {labels[0]!r} (review.skip_labels)."
+    branch = (pull.get("head") or {}).get("ref", "")
+    if branch and matches_any(branch, rules.skip_branches):
+        return f"PRs from {branch} aren't reviewed (review.skip_branches)."
+    return None
+
+
+def effective_policy(policy: Policy, model: Model | None) -> tuple[Policy, str, str]:
+    """The policy with its profile's defaults filled in for this model, the
+    profile, and a line saying why. The model's context window follows."""
+    from stratum_open.profiles import ModelInfo, apply, choose
+
+    # A model that can't describe itself is treated as small and local,
+    # the cheaper guess; embedders set review.profile to say otherwise.
+    describe = getattr(model, "describe", None)
+    info = describe() if callable(describe) else ModelInfo()
+    profile = choose(policy, info) if model is not None else "small"
+    policy = apply(policy, profile, info)
+    if model is not None:
+        model.context_tokens = policy.review.context_tokens
+    if policy.review.profile != "auto":
+        why = "set in the policy"
+    elif info.billions is not None:
+        why = f"{info.billions:g}B parameters"
+    elif info.context is not None:
+        why = f"a {info.context:,}-token context window"
+    else:
+        why = "runs locally" if info.local else "a hosted model of unknown size"
+    return policy, profile, why
+
+
 def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = True) -> Outcome:
-    gh, policy = ctx.gh, ctx.policy
+    gh = ctx.gh
+    policy, profile, profile_why = effective_policy(ctx.policy, ctx.model)
     pull = gh.pull(number)
     if pull.get("state") != "open":
         return Outcome(number, "skipped", note="the PR isn't open")
@@ -82,7 +132,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             changed = set(since) & set(paths) if since is not None else None
     incremental = changed is not None
 
-    checks = _checks(ctx, files, head)
+    checks = _checks(ctx, policy, files, head)
     notes, hotspots, boundary = _history(ctx, files, pull)
     record = _record(ctx, pull)
 
@@ -128,7 +178,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
 
     facts = PRFacts.from_pull(pull, paths)
     try:
-        facts.ci_ok = gh.ci_state(head, ignore={publish.CHECK_NAME, *ctx.own_checks})
+        facts.ci_ok = gh.ci_state(head, ignore={policy.review.check_name, *ctx.own_checks})
         facts.linked_issues = gh.linked_issues(number)
     except GitHubError as exc:
         problems.append(f"Couldn't read CI status or linked issues ({exc.status}).")
@@ -139,6 +189,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     )
 
     coverage = _coverage(result, incremental, changed, state.head, files)
+    if ctx.model is not None:
+        coverage.append(f"Profile: `{profile}` ({profile_why}).")
     summary = publish.Summary(
         findings=findings, inline=set(), policy=policy, model_name=ctx.model.name if ctx.model else None,
         model_summary=(result.summary if result and result.ran else ""),
@@ -172,7 +224,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     publish.upsert_summary(gh, number, existing, body)
     complete = result.complete if result is not None else True  # no new code to read is a complete review
     try:
-        publish.publish_check(gh, head, findings, body.split("<details>")[0], complete=complete)
+        publish.publish_check(gh, head, findings, body.split("<details>")[0], complete=complete, policy=policy)
     except GitHubError as exc:
         ctx.log(f"couldn't publish the check run: {exc}")
 
@@ -188,7 +240,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     return Outcome(number, "published", findings, sorted_pr, result, body)
 
 
-def _checks(ctx: Context, files: list[FileDiff], head: str) -> list[Finding]:
+def _checks(ctx: Context, policy: Policy, files: list[FileDiff], head: str) -> list[Finding]:
     """The checks, with the full new text of the files where context matters:
     workflows and manifests always (they're small), Python files for Bandit
     when it's installed."""
@@ -214,8 +266,8 @@ def _checks(ctx: Context, files: list[FileDiff], head: str) -> list[Finding]:
             text = None
         if text is not None:
             contents[file.path] = text
-    lookup = ctx.lookup if ctx.policy.dependencies.registry_lookup else None
-    return run_checks(files, ctx.policy, lookup=lookup, contents=contents or None)
+    lookup = ctx.lookup if policy.dependencies.registry_lookup else None
+    return run_checks(files, policy, lookup=lookup, contents=contents or None)
 
 
 def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str], set[str], list[Finding]]:

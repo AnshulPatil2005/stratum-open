@@ -19,15 +19,26 @@ def test_no_file_means_defaults():
 
 def test_the_example_file_lists_every_key_with_its_default():
     example = (Path(__file__).parent.parent / "policy.example.yml").read_text(encoding="utf-8")
-    assert parse_policy(example) == replace(Policy(), source="file")
+    parsed = parse_policy(example)
+    assert replace(parsed, explicit=frozenset()) == replace(Policy(), source="file")
 
     def keys(value, prefix=""):
         if not isinstance(value, dict):
             return set()
         return {prefix + k for k in value} | {key for k, v in value.items() for key in keys(v, f"{prefix}{k}.")}
 
-    expected = {k: v for k, v in asdict(Policy()).items() if k not in ("source", "warnings", "errors")}
+    expected = {k: v for k, v in asdict(Policy()).items() if k not in ("source", "warnings", "errors", "explicit")}
     assert keys(yaml.safe_load(example)) == keys(expected)
+
+
+def test_the_file_records_which_keys_it_set():
+    policy = parse_policy("review:\n  diff_format: split\ncommands:\n  explain: write\n")
+    assert policy.explicit == frozenset({"review.diff_format", "commands.explain"})
+    assert parse_policy("review:\n  events: [opened, closed]\n").errors == (
+        "review.events can't include 'closed'; it can include: opened, synchronize, reopened, ready_for_review.",
+    )
+    assert parse_policy("review:\n  fail_at: 40\n  warn_at: 60\n").errors == ("review.warn_at must not be above review.fail_at.",)
+    assert parse_policy("commands:\n  review: everyone\n").errors == ("commands.review must be one of: anyone, author, write.",)
 
 
 def test_empty_file_means_defaults_from_the_file():
@@ -138,3 +149,38 @@ def test_glob_rules():
     assert not policy.needs_human("docs/README.md")
     assert policy.needs_human("docs/a.txt")
     assert not policy.needs_human("docs/ab.txt")
+
+
+def test_profiles_fill_in_only_what_the_file_left_out():
+    from stratum_open.profiles import PRESETS, ModelInfo, apply, choose, keys_of, size_from_name
+
+    for preset in PRESETS.values():
+        assert set(preset) <= keys_of(Policy)  # presets only name real keys
+    assert size_from_name("qwen2.5-coder:7b") == 7
+    assert size_from_name("nvidia/nemotron-3-super-120b-a12b:free") == 120
+    assert size_from_name("north-mini-code") is None
+    policy = parse_policy(None)
+    assert choose(policy, ModelInfo(billions=7.6)) == "small"
+    assert choose(policy, ModelInfo(billions=31)) == "large"
+    assert choose(policy, ModelInfo(context=8192, local=False)) == "small"
+    assert choose(policy, ModelInfo(local=False)) == "large"
+    assert choose(policy, ModelInfo(local=True)) == "small"
+    assert choose(parse_policy("review:\n  profile: small\n"), ModelInfo(billions=405)) == "small"
+
+    large = apply(policy, "large", ModelInfo(context=20_000))
+    assert (large.review.diff_format, large.checks.bandit_low, large.review.context_tokens) == ("split", True, 20_000)
+    pinned = apply(parse_policy("review:\n  diff_format: interleaved\n"), "large")
+    assert pinned.review.diff_format == "interleaved" and pinned.checks.bandit_low is True
+
+
+def test_score_based_conclusions():
+    from stratum_open.findings import Finding
+    from stratum_open.github.publish import conclusion
+
+    scored = parse_policy("review:\n  conclusion: score\n  fail_at: 70\n  warn_at: 50\n")
+    high = [Finding("t", "d", "high")]
+    assert conclusion(high, True) == "neutral"  # by severity: high is neutral
+    assert conclusion(high, True, scored, score=75) == "failure"
+    assert conclusion(high, True, scored, score=55) == "neutral"
+    assert conclusion([], True, scored, score=10) == "success"
+    assert conclusion([], False, scored, score=10) == "neutral"

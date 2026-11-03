@@ -56,7 +56,10 @@ def test_a_newer_push_replaces_the_queued_review(server):
     call(server, pr_event(action="synchronize"))
     assert server._queue.qsize() == 1
     assert server._pending[("acme/widget", 7, "review")][1]["action"] == "synchronize"
-    assert call(server, pr_event(number=8, draft=True))[1] == {"queued": False}
+    # Drafts are queued: whether to skip them is the repo's own policy (review.skip_drafts),
+    # which the job reads; see test_the_job_skips_what_the_repos_policy_says.
+    assert call(server, pr_event(number=8, draft=True))[1] == {"queued": True}
+    assert call(server, pr_event(number=9, action="labeled"))[1] == {"queued": False}
 
 
 def test_only_comments_that_mention_stratum_are_queued(server):
@@ -143,3 +146,18 @@ def test_a_redelivered_webhook_is_ignored(server):
     assert deliver("d-1") == {"queued": True}
     assert deliver("d-1") == {"queued": False, "duplicate": True}
     assert deliver("d-2")["queued"] is True
+
+
+def test_the_job_skips_what_the_repos_policy_says(server, monkeypatch):
+    from stratum_open.policy import parse_policy
+    from stratum_open.runner import Context
+
+    reviewed = []
+    policy = parse_policy("review:\n  skip_labels: [wip]\n")
+    monkeypatch.setattr(server, "context", lambda installation, repo, branch: Context(gh=None, policy=policy, model=None, bot="b[bot]"))
+    monkeypatch.setattr("stratum_open.app.review_pull", lambda ctx, number: reviewed.append(number))
+    payload = json.loads(pr_event(number=11))
+    payload["pull_request"]["labels"] = [{"name": "wip"}]
+    server.run("pull_request", payload)
+    assert reviewed == []
+    assert server.storage.export("acme/widget")["jobs"][-1]["outcome"] == "skipped"

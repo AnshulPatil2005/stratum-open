@@ -71,9 +71,15 @@ USER = """Pull request: {title}
 {description}
 Files changed in this PR: {all_files}
 {left_out}{previous}{note}
-The diff. Each line starts with its line number in the new file (blank for removed lines), then + added, - removed or a space for unchanged:
+{legend}
 
 {diff}"""
+
+LEGEND = {
+    "interleaved": "The diff. Each line starts with its line number in the new file (blank for removed lines), then + added, - removed or a space for unchanged:",
+    "split": ("The diff. Each hunk shows the new code under __new hunk__ (each line with its number in the new file, + for added lines), "
+              "then the removed code under __old hunk__ (- for removed lines) when lines were removed:"),
+}
 
 MAX_PREVIOUS = 10
 MAX_PREVIOUS_CHARS = 1200
@@ -149,14 +155,17 @@ def review(
     description = (description or "").strip()[:MAX_DESCRIPTION_CHARS] or "(no description)"
     all_files = ", ".join(f.path for f in files[:60]) + (f" and {len(files) - 60} more" if len(files) > 60 else "")
     previous_block = _previous_block(previous or [], {f.path for f in in_scope})
+    style = policy.review.diff_format
+    legend = LEGEND[style]
     skeleton = USER.format(title=title, description=f"Description:\n{description}\n", all_files=all_files,
-                           left_out="", previous=previous_block, note="", diff="")
+                           left_out="", previous=previous_block, note="", legend=legend, diff="")
     # 250 more for the line naming files left out, known only after packing.
     budget = policy.review.context_tokens - diffs.approx_tokens(system + skeleton) - OUTPUT_RESERVE_TOKENS - 450
     packed = diffs.pack(
         in_scope, max(1000, budget), policy.review.max_chunks,
         skip=policy.ignored,
         priority=lambda f: (f.path in (hotspots or set())) * 1000 + f.additions + f.deletions,
+        style=style, large=policy.review.large_patch,
     )
     result.packed = packed
     by_path = {f.path: f for f in files}
@@ -167,7 +176,7 @@ def review(
         if len(packed.chunks) > 1:
             note = f"This is part {index + 1} of {len(packed.chunks)} of the diff; judge the description against what you can see.\n"
         user = USER.format(title=title, description=f"Description:\n{description}\n", all_files=all_files,
-                           left_out=left_out, previous=previous_block, note=note, diff=chunk)
+                           left_out=left_out, previous=previous_block, note=note, legend=legend, diff=chunk)
         reply = model.complete(system, user, max_tokens=OUTPUT_RESERVE_TOKENS)
         call = reply.as_dict()
         result.calls.append(call)

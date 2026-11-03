@@ -17,9 +17,8 @@ from stratum_open.github.api import API, GitHub
 from stratum_open.github.commands import NEEDS_MODEL, handle, parse
 from stratum_open.model import model_from_policy
 from stratum_open.triage_queue import update_queue
-from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull
+from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull, skip_reason
 
-REVIEW_ACTIONS = {"opened", "synchronize", "reopened", "ready_for_review"}
 DEFAULT_BOT = "github-actions[bot]"
 
 
@@ -53,10 +52,9 @@ def main(env: Mapping[str, str] = os.environ) -> int:
 
     if event_name in ("pull_request", "pull_request_target"):
         pull = payload["pull_request"]
-        if payload.get("action") not in REVIEW_ACTIONS:
-            print(f"Nothing to do for a {payload.get('action')} event.")
-        elif pull.get("draft"):
-            print("Draft PR: Stratum reviews it once it's ready for review, or on `@stratum review`.")
+        reason = skip_reason(pull, payload.get("action", ""), policy)
+        if reason:
+            print(reason)
         else:
             outcome = review_pull(ctx, pull["number"])
             print(f"PR #{outcome.number}: {outcome.status}, {len(outcome.findings)} finding(s)" + (f", {outcome.triage.key}" if outcome.triage else ""))
@@ -64,9 +62,15 @@ def main(env: Mapping[str, str] = os.environ) -> int:
         done = handle(ctx, event_name, payload)
         print(f"Command: {done or 'none in this comment'}")
     elif event_name == "workflow_run":
-        # CI finished: sort the PR again with its result. Same head, so no model call.
-        for pull in (payload.get("workflow_run") or {}).get("pull_requests") or []:
-            outcome = review_pull(ctx, pull["number"])
+        # CI finished: sort the PR again with its result. Same head, so no model
+        # call. The skip settings apply here too; review.events doesn't, since
+        # this isn't a PR event.
+        for ref in (payload.get("workflow_run") or {}).get("pull_requests") or []:
+            reason = skip_reason(gh.pull(ref["number"]), None, policy)
+            if reason:
+                print(f"PR #{ref['number']}: {reason}")
+                continue
+            outcome = review_pull(ctx, ref["number"])
             print(f"PR #{outcome.number}: re-sorted as {outcome.triage.key if outcome.triage else outcome.status}")
     elif event_name in ("schedule", "workflow_dispatch"):
         update_queue(ctx)

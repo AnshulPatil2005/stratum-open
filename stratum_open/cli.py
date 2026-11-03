@@ -123,14 +123,20 @@ def _review_local(args, base: str) -> int:
     if not files:
         print(f"No changes between {base} and HEAD.")
         return 0
+    from stratum_open.runner import effective_policy
+
     policy = parse_policy(_git_or_none(".", "show", f"{base}:{POLICY_PATH}"))
     _policy_notes(policy)
+    model = None if args.no_model else model_from_policy(policy)
+    # The same profile choice as on GitHub, so a local review matches the PR's.
+    policy, profile, why = effective_policy(policy, model)
     findings = run_checks(files, policy, lookup=PackageLookup() if policy.dependencies.registry_lookup else None)
     findings += boundary_findings(files, policy, ".")
-    if not args.no_model:
+    if model is not None:
+        print(f"Profile: {profile} ({why}).", file=sys.stderr)
         subject = _git(".", "log", "-1", "--format=%s").strip()
         body = _git(".", "log", "-1", "--format=%b").strip()
-        result = review(title=subject, description=body, files=files, policy=policy, model=model_from_policy(policy))
+        result = review(title=subject, description=body, files=files, policy=policy, model=model)
         if not result.ran:
             print("The model didn't answer: " + "; ".join(sorted({c['error'] for c in result.calls if c.get('error')})), file=sys.stderr)
         elif result.summary:

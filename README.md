@@ -91,6 +91,12 @@ The target is a 7–14B open coding model. Defaults:
 - any OpenAI-compatible server works;
 - a hosted model works too, if your project prefers one (`review.model: hosted`, with the key in `STRATUM_MODEL_API_KEY`).
 
+How much a review asks of the model depends on the model. `review.profile: auto` asks the model's server for its size:
+- **`small`**, for models up to about 20B: a compact diff, 1–3 model calls.
+- **`large`**, for bigger ones: the new and old code shown apart, a bigger context window, and Bandit's low-severity results too.
+
+A profile only fills in settings your policy file doesn't set, so anything you set stays as you set it. Each review says which profile it used and why.
+
 Small models make more mistakes than large ones, so Stratum checks their answers:
 - a finding goes on the line whose code the model quoted, not the line number it guessed;
 - a suggested fix is offered only where the model showed which lines it replaces;

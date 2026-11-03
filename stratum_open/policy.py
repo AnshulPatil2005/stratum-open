@@ -26,18 +26,51 @@ DEFAULT_IGNORED = (
 )
 
 
+REVIEW_EVENTS = ("opened", "synchronize", "reopened", "ready_for_review")
+
+
 @dataclass(frozen=True)
 class Review:
     model: str = "local"  # local | hosted
     endpoint: str = "http://localhost:11434/v1"  # any OpenAI-compatible server; this is Ollama's
     model_name: str = ""  # empty = DEFAULT_MODEL
+    profile: str = "auto"  # auto | small | large: how much the review asks of the model
     context_tokens: int = 16384  # the model's context window; the diff is split to fit it
     max_chunks: int = 3  # model calls per review at most; files past that are listed as not reviewed
+    diff_format: str = "interleaved"  # interleaved | split (new and old hunks apart)
+    large_patch: str = "clip"  # clip | skip a file too big for one call
     max_inline_comments: int = 12
     min_severity: str = "medium"  # the model's findings below this aren't shown; the checks' always are
     rules: tuple[str, ...] = ()  # the project's own review rules, in plain words, added to the prompt
     ignore_paths: tuple[str, ...] = DEFAULT_IGNORED
     log_prompts: bool = False
+    check_name: str = "Stratum"  # the check run's name, as branch protection requires it
+    conclusion: str = "severity"  # severity: critical fails, high is neutral | score: by risk score
+    fail_at: int = 70  # with conclusion: score, a risk score at or above this fails the check
+    warn_at: int = 50  # ... and at or above this is neutral
+    events: tuple[str, ...] = REVIEW_EVENTS  # PR events that start a review
+    skip_drafts: bool = True
+    skip_bots: bool = False
+    skip_authors: tuple[str, ...] = ()  # logins whose PRs aren't reviewed
+    skip_labels: tuple[str, ...] = ()  # PRs with any of these labels aren't reviewed
+    skip_branches: tuple[str, ...] = ()  # globs; PRs from a matching branch aren't reviewed
+
+
+@dataclass(frozen=True)
+class Checks:
+    bandit_low: bool = False  # keep Bandit's low-severity and low-confidence results
+
+
+@dataclass(frozen=True)
+class Commands:
+    """Who may run each `@stratum` command: anyone | author (the PR's author,
+    or anyone with write access) | write (write access)."""
+    review: str = "write"
+    ignore: str = "write"
+    mute: str = "write"
+    explain: str = "author"  # it's a model call; anyone would let strangers use the model
+    triage: str = "anyone"
+    record: str = "anyone"
 
 
 @dataclass(frozen=True)
@@ -100,10 +133,13 @@ class Policy:
     track_record: TrackRecord = field(default_factory=TrackRecord)
     dependencies: Dependencies = field(default_factory=Dependencies)
     boundaries: Boundaries = field(default_factory=Boundaries)
+    checks: Checks = field(default_factory=Checks)
+    commands: Commands = field(default_factory=Commands)
     data: Data = field(default_factory=Data)
     source: str = "defaults"  # "defaults" | "file" | "defaults (file unusable)"
     warnings: tuple[str, ...] = ()
     errors: tuple[str, ...] = ()
+    explicit: frozenset[str] = frozenset()  # dotted keys the file set; a profile never overrides them
 
     def needs_human(self, path: str) -> bool:
         """Whether a changed file falls under `always_human.paths`."""
@@ -123,18 +159,29 @@ def matches_any(path: str, patterns: tuple[str, ...]) -> bool:
 
 
 # Values that are checked beyond their type.
-_CHOICES = {("review", "model"): ("local", "hosted"), ("review", "min_severity"): ("low", "medium", "high", "critical")}
+_WHO = ("anyone", "author", "write")
+_CHOICES = {
+    ("review", "model"): ("local", "hosted"),
+    ("review", "min_severity"): ("low", "medium", "high", "critical"),
+    ("review", "profile"): ("auto", "small", "large"),
+    ("review", "diff_format"): ("interleaved", "split"),
+    ("review", "large_patch"): ("clip", "skip"),
+    ("review", "conclusion"): ("severity", "score"),
+    **{("commands", name): _WHO for name in ("review", "ignore", "mute", "explain", "triage", "record")},
+}
 _MINIMUMS = {
     ("review", "max_inline_comments"): 0,
     ("review", "context_tokens"): 2048,
     ("review", "max_chunks"): 1,
+    ("review", "fail_at"): 0,
+    ("review", "warn_at"): 0,
     ("track_record", "window_days"): 1,
     ("track_record", "followup_days"): 1,
     ("dependencies", "min_package_age_days"): 0,
     ("data", "findings_retention_days"): 1,
 }
 _MAPPINGS = {("boundaries", "modules")}  # name -> list of text values
-_META = {"source", "warnings", "errors"}
+_META = {"source", "warnings", "errors", "explicit"}
 
 
 def parse_policy(text: str | None) -> Policy:
@@ -154,12 +201,17 @@ def parse_policy(text: str | None) -> Policy:
 
     warnings: list[str] = []
     errors: list[str] = []
-    policy = _build(Policy, raw, (), warnings, errors)
+    explicit: set[str] = set()
+    policy = _build(Policy, raw, (), warnings, errors, explicit)
     if not errors:
         errors.extend(_boundary_errors(policy.boundaries))
+        errors.extend(f"review.events can't include {e!r}; it can include: {', '.join(REVIEW_EVENTS)}."
+                      for e in policy.review.events if e not in REVIEW_EVENTS)
+        if policy.review.warn_at > policy.review.fail_at:
+            errors.append("review.warn_at must not be above review.fail_at.")
     if errors:
         return _unusable(*errors, warnings=warnings)
-    return replace(policy, source="file", warnings=tuple(warnings))
+    return replace(policy, source="file", warnings=tuple(warnings), explicit=frozenset(explicit))
 
 
 def load_policy(read_default_branch_file: Callable[[str], str | None]) -> Policy:
@@ -193,7 +245,7 @@ def _unusable(*errors: str, warnings: list[str] | None = None) -> Policy:
     return Policy(source="defaults (file unusable)", errors=tuple(errors), warnings=tuple(warnings or ()))
 
 
-def _build(cls: type, raw: dict, path: tuple[str, ...], warnings: list[str], errors: list[str]) -> Any:
+def _build(cls: type, raw: dict, path: tuple[str, ...], warnings: list[str], errors: list[str], explicit: set[str]) -> Any:
     known = {f.name: f for f in fields(cls) if f.name not in _META}
     for key in raw:
         if key not in known:
@@ -210,11 +262,12 @@ def _build(cls: type, raw: dict, path: tuple[str, ...], warnings: list[str], err
             if not isinstance(value, dict):
                 errors.append(f"{_dotted(key_path)} must be a mapping.")
                 continue
-            values[name] = _build(type(default), value, key_path, warnings, errors)
+            values[name] = _build(type(default), value, key_path, warnings, errors, explicit)
         else:
             checked = _check(key_path, value, default, errors)
             if checked is not _INVALID:
                 values[name] = checked
+                explicit.add(_dotted(key_path))
     return replace(defaults, **values) if values else defaults
 
 

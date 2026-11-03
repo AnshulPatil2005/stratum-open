@@ -14,6 +14,7 @@ import re
 import time
 from dataclasses import dataclass
 from typing import Any, Mapping
+from urllib.parse import urlparse
 
 import requests
 import yaml
@@ -80,6 +81,30 @@ class Model:
             reply = Reply("", self.name, 0, error=str(exc))
         reply.seconds = time.monotonic() - started
         return reply
+
+    def describe(self):
+        """The model's size and context window, as far as its server says,
+        for `review.profile: auto`. Never fails: what it can't learn is None."""
+        from stratum_open.profiles import ModelInfo, size_from_name
+
+        billions = context = None
+        base = self._ollama_base()
+        local = base is not None or (urlparse(self.endpoint).hostname or "") in LOCAL_HOSTS
+        try:
+            if base:
+                data = self.session.post(f"{base}/api/show", json={"model": self.name}, timeout=10).json()
+                billions = _billions((data.get("details") or {}).get("parameter_size"))
+                context = next((int(v) for k, v in (data.get("model_info") or {}).items()
+                                if k.endswith(".context_length") and isinstance(v, (int, float))), None)
+            else:
+                headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+                data = self.session.get(f"{self.endpoint}/models", headers=headers, timeout=10).json()
+                entry = next((m for m in data.get("data", []) if isinstance(m, dict) and m.get("id") == self.name), {})
+                found = entry.get("context_length") or entry.get("context_window") or (entry.get("top_provider") or {}).get("context_length")
+                context = int(found) if isinstance(found, (int, float)) else None
+        except (requests.RequestException, ValueError, TypeError, AttributeError):
+            pass
+        return ModelInfo(billions if billions is not None else size_from_name(self.name), context, local)
 
     def _ollama_base(self) -> str | None:
         if self._ollama is False:
@@ -162,6 +187,20 @@ def model_from_policy(policy: Policy, env: Mapping[str, str] = os.environ) -> Mo
     name = env.get("STRATUM_MODEL_NAME") or policy.model_name
     api_key = env.get("STRATUM_MODEL_API_KEY") or None
     return Model(endpoint, name, api_key=api_key, context_tokens=policy.review.context_tokens)
+
+
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal"}
+_PARAMS = re.compile(r"^\s*(?:(\d+)\s*x\s*)?(\d+(?:\.\d+)?)\s*([bm])\s*$", re.IGNORECASE)
+
+
+def _billions(text: Any) -> float | None:
+    """Ollama's "7.6B", "8x7B" or "500M", in billions."""
+    match = _PARAMS.match(str(text or ""))
+    if not match:
+        return None
+    count, size, unit = match.groups()
+    value = float(size) * (int(count) if count else 1)
+    return value / 1000 if unit.lower() == "m" else value
 
 
 def repair_text(text: str) -> str:

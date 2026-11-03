@@ -42,7 +42,7 @@ def run_checks(
         ("coding-agent files", lambda: agents.check_instruction_files(files)),
         ("hidden Unicode", lambda: agents.check_hidden_unicode(files)),
         ("dependency", lambda: dependencies.check(files, policy, lookup=registry, contents=contents)),
-        ("Bandit", lambda: bandit.check(files, contents)),
+        ("Bandit", lambda: bandit.check(files, contents, keep_low=policy.checks.bandit_low)),
     ]
     findings: list[Finding] = []
     for name, run in checks:
