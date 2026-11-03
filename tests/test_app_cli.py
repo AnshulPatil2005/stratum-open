@@ -130,3 +130,16 @@ def test_data_commands(tmp_path, capsys):
     assert "for acme/widget#7" in out and "Deleted 1 vote and mute row(s)." in out
     with pytest.raises(SystemExit):
         cli.main(["data", "delete", "--db", str(tmp_path / "missing.db"), "--feedback"])
+
+
+def test_a_redelivered_webhook_is_ignored(server):
+    def deliver(delivery):
+        body = pr_event()
+        signature = "sha256=" + hmac.new(b"s3cret", body, hashlib.sha256).hexdigest()
+        environ = {"PATH_INFO": "/webhook", "REQUEST_METHOD": "POST", "CONTENT_LENGTH": str(len(body)), "wsgi.input": io.BytesIO(body),
+                   "HTTP_X_HUB_SIGNATURE_256": signature, "HTTP_X_GITHUB_EVENT": "pull_request", "HTTP_X_GITHUB_DELIVERY": delivery}
+        return json.loads(b"".join(server(environ, lambda status, headers: None)))
+
+    assert deliver("d-1") == {"queued": True}
+    assert deliver("d-1") == {"queued": False, "duplicate": True}
+    assert deliver("d-2")["queued"] is True

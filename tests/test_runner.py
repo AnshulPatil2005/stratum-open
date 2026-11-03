@@ -219,13 +219,59 @@ def test_explain_and_triage_commands(gh):
     review_pull(ctx, 7)
     sql = next(c for c in gh.review_comments_ if "Unknown id" in c["body"])
     gh.files[("app/users.py", "a" * 40)] = "import sqlite3\n" * 10
-    event, payload = comment_event("@stratum explain", inline_reply_to=sql["id"])
+    event, payload = comment_event("@stratum explain", login="carol", inline_reply_to=sql["id"])  # the PR's author
     assert handle(ctx, event, payload) == "explain"
     assert gh.replies[-1][2].startswith("Here's why")
+    assert "<!-- stratum:explained carol -->" in gh.replies[-1][2]
 
-    event, payload = comment_event("@stratum triage")
+    event, payload = comment_event("@stratum triage")  # anyone
     handle(ctx, event, payload)
     assert "This PR is sorted as" in gh.issue_comments_[7][-1]["body"]
+
+
+def test_explain_is_for_the_author_and_writers_only(gh):
+    model = FakeModel(model_answer())
+    ctx = context(gh, model)
+    review_pull(ctx, 7)
+    sql = next(c for c in gh.review_comments_ if "Unknown id" in c["body"])
+    calls = len(model.prompts)
+    event, payload = comment_event("@stratum explain", login="mallory", inline_reply_to=sql["id"])
+    assert handle(ctx, event, payload) == "refused"
+    assert "for this PR's author and people with write access" in gh.replies[-1][2]
+    assert len(model.prompts) == calls  # no model call for a stranger
+
+    gh.permissions["mona"] = "write"
+    model.replies.append("Because the id is never checked.")
+    event, payload = comment_event("@stratum explain", login="mona", inline_reply_to=sql["id"])
+    assert handle(ctx, event, payload) == "explain"
+
+
+def test_explain_has_a_daily_limit_per_person_and_per_pr(gh):
+    from stratum_open.github import commands
+
+    ctx = context(gh, FakeModel(model_answer(), *["An explanation."] * 30))
+    review_pull(ctx, 7)
+    sql = next(c for c in gh.review_comments_ if "Unknown id" in c["body"])
+    gh.files[("app/users.py", "a" * 40)] = "x = 1\n"
+    for _ in range(commands.EXPLAIN_PER_PERSON):
+        event, payload = comment_event("@stratum explain", login="carol", inline_reply_to=sql["id"])
+        assert handle(ctx, event, payload) == "explain"
+    event, payload = comment_event("@stratum explain", login="carol", inline_reply_to=sql["id"])
+    assert handle(ctx, event, payload) == "refused"
+    assert "Try again tomorrow" in gh.replies[-1][2]
+
+    # Old explanations stop counting after a day.
+    for comment in gh.review_comments_:
+        if "stratum:explained" in comment["body"]:
+            comment["created_at"] = "2026-01-01T00:00:00Z"
+    event, payload = comment_event("@stratum explain", login="carol", inline_reply_to=sql["id"])
+    assert handle(ctx, event, payload) == "explain"
+
+    # A forged marker from someone else doesn't count against anyone.
+    gh.review_comments_.extend({"id": 9000 + n, "body": "<!-- stratum:explained carol -->", "user": {"login": "mallory"},
+                                "created_at": gh.now} for n in range(10))
+    event, payload = comment_event("@stratum explain", login="carol", inline_reply_to=sql["id"])
+    assert handle(ctx, event, payload) == "explain"
 
 
 def test_record_command_without_history(gh):
@@ -233,3 +279,11 @@ def test_record_command_without_history(gh):
     event, payload = comment_event("@stratum record")
     handle(ctx, event, payload)
     assert "needs the repo's history" in gh.issue_comments_[7][-1]["body"]
+
+
+def test_a_cut_off_reply_never_passes_the_check(gh):
+    cut = '{"summary": "Changes the user query.", "matches_description": "yes", "findings": ['
+    outcome = review_pull(context(gh, FakeModel(cut)), 7)
+    assert outcome.review.salvaged_calls == 1
+    assert gh.checks[-1]["conclusion"] != "success"
+    assert "were cut off; anything it found after the cut is missing" in gh.issue_comments_[7][0]["body"]
