@@ -207,6 +207,28 @@ def _git(repo_dir: str, *args: str) -> str:
     ).stdout
 
 
+def describe_subprocess_error(exc: BaseException, limit: int = 200) -> str:
+    """One line for a git command that failed: what it wrote to stderr when
+    it ran, else its exit status or timeout; for an `OSError` (git missing, a
+    path that isn't there) the error itself. Never the command: the App runs
+    git with an authorization header in its arguments, and `str(exc)` of a
+    `CalledProcessError` would print it."""
+    if isinstance(exc, OSError):
+        return f"{type(exc).__name__}: {exc}"[:limit]
+    stderr = getattr(exc, "stderr", None)
+    if isinstance(stderr, bytes):
+        stderr = stderr.decode("utf-8", errors="replace")
+    detail = (stderr or "").strip()
+    if not detail:
+        if isinstance(exc, subprocess.TimeoutExpired):
+            detail = f"timed out after {exc.timeout:g} s"
+        elif isinstance(exc, subprocess.CalledProcessError):
+            detail = f"exit status {exc.returncode}"
+        else:
+            detail = type(exc).__name__
+    return detail[:limit]
+
+
 def _history(repo_dir: str, ref: str, since: datetime) -> dict[str, _Commit]:
     out = _git(repo_dir, "log", f"--since={int(since.timestamp())}", "--format=%H%x1f%P%x1f%aE%x1f%ct%x1f%B%x1e", ref)
     commits = {}

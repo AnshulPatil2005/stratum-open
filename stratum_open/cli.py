@@ -22,7 +22,7 @@ from stratum_open.findings import Finding
 from stratum_open.github.api import API, GitHubError
 from stratum_open.model import model_from_policy
 from stratum_open.policy import POLICY_PATH, Policy, parse_policy
-from stratum_open.track_record import author_identity, build_records
+from stratum_open.track_record import author_identity, build_records, describe_subprocess_error
 
 _PR = re.compile(r"(?:https://github\.com/)?([\w.-]+/[\w.-]+)(?:/pull/|#)(\d+)/?$")
 MAX_LOCAL_CONTENTS = 40  # files whose full text the checks get on a local review
@@ -222,8 +222,7 @@ def _record(args) -> int:
     try:
         records = build_records(args.repo, args.ref)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
-        detail = (getattr(exc, "stderr", "") or "").strip() or str(exc)
-        sys.exit(f"Couldn't read the history of {args.repo} at {args.ref}: {detail[:300] or 'is this a git repo, and does that ref exist?'}")
+        sys.exit(f"Couldn't read the history of {args.repo} at {args.ref}: {describe_subprocess_error(exc, 300)}")
     record = records.get(author_identity(args.login))
     if record is None:
         print(f"No merged PRs by {args.login} in the last 180 days of {args.ref}. Records match a login only through "

@@ -7,10 +7,8 @@ counts them.
 
 from __future__ import annotations
 
-import codecs
 import math
 import re
-import warnings
 from dataclasses import dataclass, field
 from typing import Callable, Iterable
 
@@ -169,14 +167,40 @@ def _unquote(path: str) -> str:
     """git quotes paths with unusual characters as C strings."""
     path = path.strip()
     if len(path) >= 2 and path[0] == path[-1] == '"':
-        try:
-            with warnings.catch_warnings():  # an escape git wouldn't write is kept as it is, quietly
-                warnings.simplefilter("ignore")
-                raw = codecs.escape_decode(path[1:-1].encode("utf-8"))[0]
-        except ValueError:
-            return path[1:-1]
-        return raw.decode("utf-8", errors="replace")
+        return _unescape(path[1:-1].encode("utf-8")).decode("utf-8", errors="replace")
     return path
+
+
+_C_ESCAPES = {b"a": b"\a", b"b": b"\b", b"f": b"\f", b"n": b"\n", b"r": b"\r", b"t": b"\t", b"v": b"\v", b"\\": b"\\", b'"': b'"'}
+
+
+def _unescape(text: bytes) -> bytes:
+    """git's C-style quoting undone: the named escapes and `\\NNN` octal
+    bytes. An escape git wouldn't write is kept as it is. Done here rather
+    than with `codecs.escape_decode`, which warns about such escapes through
+    the process-wide warning filters (not something to touch from a thread)."""
+    out = bytearray()
+    i, n = 0, len(text)
+    while i < n:
+        byte = text[i:i + 1]
+        if byte != b"\\" or i + 1 >= n:
+            out += byte
+            i += 1
+            continue
+        after = text[i + 1:i + 2]
+        if after in _C_ESCAPES:
+            out += _C_ESCAPES[after]
+            i += 2
+        elif after.isdigit() and after < b"8":
+            length = 1  # up to three octal digits, as many as follow
+            while length < 3 and b"0" <= text[i + 1 + length:i + 2 + length] < b"8" and text[i + 1 + length:i + 2 + length]:
+                length += 1
+            out.append(int(text[i + 1:i + 1 + length], 8) & 0xFF)
+            i += 1 + length
+        else:
+            out += byte + after
+            i += 2
+    return bytes(out)
 
 
 # ── what the model sees ──────────────────────────────────────────────────

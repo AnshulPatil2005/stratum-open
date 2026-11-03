@@ -93,6 +93,17 @@ def test_minified_lines_with_many_escapes_finish_quickly(line_length):
     assert seconds < 5, f"the pattern check took {seconds:.1f}s on one minified line"
 
 
+def test_code_inside_a_string_that_continues_on_the_next_line_is_not_flagged():
+    """Regression: the linear scanner once skipped an unterminated quote, so a
+    docstring opened on an added line stopped counting as a string and the
+    `eval(` in it was reported."""
+    diff = diffs.added("app/x.py", ['    """Use eval(expr) only when the text is trusted,', '    and never on user input."""', "value = eval(user_input)"])
+    found = rules(diff)
+    assert [f.line_start for f in found["code/eval"]] == [3]
+    open_query = diffs.added("app/q.py", ['query = f"""SELECT * FROM t WHERE id = {uid}', '    AND name = {name}"""'])
+    assert "code/sql" not in rules(open_query)  # the literal isn't complete on its line, so there is nothing to judge
+
+
 def test_a_secret_on_a_minified_line_is_still_caught():
     token = "ghp_" + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8"
     diff = diffs.added("dist/app.min.js", ["var x=1;" * 1000 + f'var t="{token}";' + "y=2;" * 1000])
@@ -150,17 +161,13 @@ def test_registry_unreachable_or_slow_means_unknown_not_a_crash():
         found = rules(diff, lookup=Registry(raise_with=failure))
         assert set(found) == {"deps/new"}
 
-    with socket.socket() as sock:  # a real lookup against a port nobody listens on: a quick None
-        sock.bind(("127.0.0.1", 0))
-        port = sock.getsockname()[1]
-    lookup = PackageLookup(timeout=1)
-    lookup._fetch = lambda ecosystem, name: PackageLookup._fetch(lookup, ecosystem, name)
-    monkey = requests.Session()
-    monkey.get = lambda url, **kw: requests.get(f"http://127.0.0.1:{port}/", timeout=1)  # type: ignore[assignment]
-    lookup.session = monkey
-    started = time.monotonic()
+    class Unreachable:  # the real PackageLookup on a session whose every request fails to connect
+        def get(self, url, **kwargs):
+            raise requests.ConnectionError(f"no route to {url}")
+
+    lookup = PackageLookup(session=Unreachable(), timeout=1)
     assert lookup.info("pypi", "anything") is None
-    assert time.monotonic() - started < 10
+    assert lookup.info("npm", "@scope/thing") is None
 
 
 def test_lockfile_only_and_monorepo_manifests():

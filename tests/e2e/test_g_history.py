@@ -105,7 +105,9 @@ def test_reverts_squashes_merges_and_octopus_merges(repo):
     struck = {(s.pr.number, s.kind) for s in author.strikes}
     assert (10, "revert") in struck
     assert 11 in {pr.number for r in records.values() for pr in r.merged}
-    assert hotspots(str(repo.path)) is not None and owners(str(repo.path))
+    top_level = owners(str(repo.path))["."]  # the branch commits by b1, b2 and b3 all touched top-level files
+    assert {"b1", "b2", "b3"} <= set(top_level.authors) and top_level.commits >= 3
+    assert isinstance(hotspots(str(repo.path)), list)  # `a.py` is edited often but has no branches, so it isn't one
 
 
 def test_huge_history_past_the_time_limit_is_bounded(fake_github, make_context, logs, repo, monkeypatch):

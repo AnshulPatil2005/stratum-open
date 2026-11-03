@@ -9,6 +9,7 @@ everything but token-shaped secrets, which leak just the same from a test.
 
 from __future__ import annotations
 
+import functools
 import re
 
 from stratum_open.checks.common import basename, extension, is_comment, is_test_path, view
@@ -241,23 +242,21 @@ def _code_search(pattern: re.Pattern, text: str) -> re.Match | None:
 
 
 def _in_string(text: str, pos: int) -> bool:
-    """Whether `pos` falls inside a string literal opened earlier on the line."""
+    """Whether `pos` falls inside a string literal opened earlier on the line,
+    including one that opens here and closes on a later line."""
     return any(start < pos < end for start, end, _, _ in _strings(text))
 
 
-def _strings(text: str) -> list[tuple[int, int, str, str]]:
+@functools.lru_cache(maxsize=1)  # the checks ask about the same line several times in a row
+def _strings(text: str) -> tuple[tuple[int, int, str, str | None], ...]:
     """Every string literal on a line as (start, end, quote, body), from one
     left-to-right scan. A regex for this is easy to write and easy to get
     exponentially wrong: `\\.` and "any character" both match a backslash, and
-    a minified line with thousands of escapes then backtracks for minutes. An
-    unterminated quote is skipped, not matched to the end of the line.
-
-    The checks ask about the same line several times in a row, so the last
-    line's scan is kept."""
-    cached = _STRINGS_CACHE.get(text)
-    if cached is not None:
-        return cached
-    found: list[tuple[int, int, str, str]] = []
+    a minified line with thousands of escapes then backtracks for minutes. A
+    quote left open (a docstring or string that continues on the next line)
+    runs to the end of the line with a body of None: code after it is inside a
+    string, but there is no complete literal to read."""
+    found: list[tuple[int, int, str, str | None]] = []
     i, n = 0, len(text)
     while i < n:
         char = text[i]
@@ -276,13 +275,9 @@ def _strings(text: str) -> list[tuple[int, int, str, str]]:
             else:
                 j += 1
         else:
-            i += 1  # unterminated: not a string
-    _STRINGS_CACHE.clear()
-    _STRINGS_CACHE[text] = found
-    return found
-
-
-_STRINGS_CACHE: dict[str, list[tuple[int, int, str, str]]] = {}
+            found.append((i, n, quote, None))  # open to the end of the line
+            break
+    return tuple(found)
 
 
 def _constant_command(lines: dict[int, str], number: int) -> bool:
@@ -311,7 +306,7 @@ _FORMAT_CALL = re.compile(r"(?:Sprintf|String\.format|string\.Format|format)\s*\
 
 def _sql(path: str, number: int, text: str, ext: str) -> list[Finding]:
     for start, end, quote, body in _strings(text):
-        if not _SQL.search(body) or not (_SQL_UPPER.search(body) or _SQL_SIGNS.search(body)):
+        if body is None or not _SQL.search(body) or not (_SQL_UPPER.search(body) or _SQL_SIGNS.search(body)):
             continue
         before, after = text[:start], text[end:]
         interpolated = (

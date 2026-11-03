@@ -3,7 +3,9 @@ comments, and spam."""
 
 from __future__ import annotations
 
+import itertools
 import subprocess
+from dataclasses import replace
 
 import pytest
 
@@ -20,8 +22,11 @@ WRITERS = {"mona": "write", "max": "maintain", "ada": "admin"}
 READERS = {"erin": "read", "tess": "triage"}
 
 
+_comment_ids = itertools.count(555)
+
+
 def event(body, *, login="erin", kind="User", inline_reply_to=None, action="created", number=7, issue=False):
-    comment = {"id": 555 + hash(body) % 1000, "body": body, "user": {"login": login, "type": kind} if login else None}
+    comment = {"id": next(_comment_ids), "body": body, "user": {"login": login, "type": kind} if login else None}
     if inline_reply_to:
         comment["in_reply_to_id"] = inline_reply_to
         return "pull_request_review_comment", {"action": action, "comment": comment, "pull_request": {"number": number}}
@@ -163,11 +168,10 @@ def test_record_for_an_author_with_no_history(fake_github, make_context, tmp_pat
     fake_github.add_pull(7, diff=DIFF)
     ctx = make_context(checkout=str(repo), model=None)
     handle(ctx, *event("@stratum record", login="erin"))
-    last = fake_github.issue_comments[7][-1]["body"]
-    assert "No merged PRs found" in last or "couldn't read this repo's history" in last
+    assert "No merged PRs found" in fake_github.issue_comments[7][-1]["body"]  # an empty repo has history, just none of theirs
     assert_no_secrets(fake_github)
     handle(ctx, *event("@stratum record", login="mallory"))
-    ctx.policy = ctx.policy.__class__(**{**ctx.policy.__dict__, "track_record": ctx.policy.track_record.__class__(exclude=("erin",))})
+    ctx.policy = replace(ctx.policy, track_record=replace(ctx.policy.track_record, exclude=("erin",)))
     handle(ctx, *event("@stratum record", login="erin"))
     assert "excludes your login" in fake_github.issue_comments[7][-1]["body"]
 

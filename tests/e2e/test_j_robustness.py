@@ -68,6 +68,25 @@ def test_logs_and_posted_text_never_carry_tokens(fake_github, make_context, logs
     assert_no_secrets(fake_github, *logs, secrets=["ghp_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"])
 
 
+def test_a_failed_git_command_is_described_without_its_arguments():
+    """The App runs git with the installation token in an authorization header
+    argument; a failed command's description must never echo the command."""
+    import subprocess
+
+    from stratum_open.track_record import describe_subprocess_error
+
+    secret = "basic " + "eC1hY2Nlc3MtdG9rZW46Z2hzX3NlY3JldFRva2Vu"
+    cmd = ["git", "-c", f"http.extraHeader=AUTHORIZATION: {secret}", "fetch", "origin"]
+    quiet = subprocess.CalledProcessError(128, cmd, stderr="")
+    assert describe_subprocess_error(quiet) == "exit status 128"
+    noisy = subprocess.CalledProcessError(128, cmd, stderr="fatal: could not read from remote repository\n")
+    assert describe_subprocess_error(noisy) == "fatal: could not read from remote repository"
+    slow = subprocess.TimeoutExpired(cmd, 600)
+    assert describe_subprocess_error(slow) == "timed out after 600 s"
+    for text in (describe_subprocess_error(quiet), describe_subprocess_error(slow), redact(f"header {secret}")):
+        assert "eC1hY2Nl" not in text and "extraHeader" not in text
+
+
 def test_redact_covers_every_credential_shape():
     text = ("token ghp_" + "A" * 36 + " key sk-" + "B" * 40 + " jwt eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiIxMjM0In0.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV "
             "Bearer abcdefghijklmnopqrstuvwxyz0123456789 password=hunter2hunter2 -----BEGIN RSA PRIVATE KEY-----\nMIIE\n-----END RSA PRIVATE KEY-----")

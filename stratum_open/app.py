@@ -42,6 +42,7 @@ from stratum_open.model import model_from_policy
 from stratum_open.policy import REVIEW_EVENTS
 from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull, skip_reason
 from stratum_open.storage import SQLiteStorage, Storage, redact
+from stratum_open.track_record import describe_subprocess_error
 
 MAX_BODY = 25 * 1024 * 1024  # GitHub's own webhook payload limit
 DELIVERY_TTL = 3600.0  # seconds a delivery ID is remembered
@@ -136,13 +137,18 @@ class Server:
             return _respond(start_response, "400 Bad Request", {"error": "not JSON"})
         if not isinstance(payload, dict):
             return _respond(start_response, "400 Bad Request", {"error": "not a JSON object"})
-        if self.seen(environ.get("HTTP_X_GITHUB_DELIVERY", "")):
+        delivery = environ.get("HTTP_X_GITHUB_DELIVERY", "")
+        if self.seen(delivery):
             return _respond(start_response, "202 Accepted", {"queued": False, "duplicate": True})
         try:
             accepted = self.dispatch(environ.get("HTTP_X_GITHUB_EVENT", ""), payload)
         except (KeyError, TypeError, AttributeError) as exc:  # a field GitHub always sends is missing, or of another type
+            self.unsee(delivery)
             self.log(f"webhook: a {environ.get('HTTP_X_GITHUB_EVENT', '')!r} payload isn't shaped as expected: {type(exc).__name__}: {exc}")
             return _respond(start_response, "400 Bad Request", {"error": "unexpected payload shape"})
+        except Exception:
+            self.unsee(delivery)
+            raise
         return _respond(start_response, "202 Accepted", {"queued": accepted})
 
     def verify(self, body: bytes, signature: str) -> bool:
@@ -166,6 +172,11 @@ class Server:
             if len(self._deliveries) > MAX_DELIVERIES:
                 self._deliveries.popitem(last=False)
             return False
+
+    def unsee(self, delivery: str) -> None:
+        """Forget a delivery that wasn't handled, so a redelivery of it runs."""
+        with self._lock:
+            self._deliveries.pop(delivery, None)
 
     # ── events ───────────────────────────────────────────────────────────
 
@@ -294,8 +305,7 @@ class Server:
                     _git(["-c", f"http.extraHeader={header}", "clone", "--quiet", "--single-branch", "--branch", branch, f"--shallow-since={since}", url, path])
                 return path
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
-                detail = str(exc) if isinstance(exc, OSError) else (getattr(exc, "stderr", None) or "").strip()[:200]
-                self.log(redact(f"{repo}: couldn't update the clone ({type(exc).__name__} {detail}); reviewing without history"))
+                self.log(redact(f"{repo}: couldn't update the clone ({type(exc).__name__} {describe_subprocess_error(exc)}); reviewing without history"))
                 return None
 
     # ── retention ────────────────────────────────────────────────────────

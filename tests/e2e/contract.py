@@ -22,7 +22,6 @@ from stratum_open.diff import parse_diff
 from fake_github import FakeGitHubServer
 
 TRACEBACK = "Traceback (most recent call last)"
-SECRET_MARKERS = ("ghp_", "sk-", "-----BEGIN", "Bearer ")
 
 
 def assert_no_traceback(*texts: str) -> None:
@@ -84,11 +83,12 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 def run_stratum(args: list[str], *, env: dict[str, str], timeout: float = 120, dev: bool = True, cwd: str | None = None) -> subprocess.CompletedProcess:
     """`python -m stratum_open.cli ARGS` with a clean environment plus `env`.
-    `dev` turns on -X dev and warnings-as-errors (the requests/urllib3 version
-    warning on the developer's machine is not Stratum's and is filtered)."""
+    `dev` turns on -X dev, and makes a warning raised from Stratum's own
+    modules an error; a dependency's warning on a newer Python is shown, not
+    failed on, so one noisy library can't take the whole process suite down."""
     base = {k: v for k, v in os.environ.items() if k in ("PATH", "SYSTEMROOT", "TEMP", "TMP", "HOME", "USERPROFILE", "PATHEXT", "COMSPEC", "LOCALAPPDATA", "APPDATA")}
     base.update({"PYTHONPATH": str(REPO_ROOT), "PYTHONIOENCODING": os.environ.get("STRATUM_E2E_IOENCODING", "cp1252"), "NO_COLOR": "1"})
     base.update(env)
-    flags = ["-X", "dev", "-W", "error", "-W", "ignore::Warning:requests", "-W", "ignore::DeprecationWarning", "-W", "ignore::ResourceWarning"] if dev else []
+    flags = ["-X", "dev", "-W", "error::Warning:stratum_open"] if dev else []
     return subprocess.run([sys.executable, *flags, "-m", "stratum_open.cli", *args], capture_output=True, text=True, encoding="utf-8",
                           errors="replace", env=base, timeout=timeout, cwd=cwd or str(REPO_ROOT))

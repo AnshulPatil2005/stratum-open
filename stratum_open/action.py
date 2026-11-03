@@ -12,7 +12,7 @@ import os
 import subprocess
 import sys
 import traceback
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from typing import Mapping
 
 import requests
@@ -51,17 +51,24 @@ def main(env: Mapping[str, str] = os.environ) -> int:
         return 1
     repo = env.get("GITHUB_REPOSITORY") or (payload.get("repository") or {}).get("full_name") or ""
     gh = GitHub(token, repo, api=env.get("GITHUB_API_URL") or API)
+    loaded = Loaded()  # filled in by _run once the policy is read, so a failure check matches the policy's check name
     try:
-        return _run(env, event_name, payload, gh)
+        return _run(env, event_name, payload, gh, loaded)
     except (GitHubError, requests.RequestException) as exc:
         print(f"::error::Stratum couldn't finish: {_describe(exc)}")
-        _fail_check(gh, payload, _describe(exc))
+        _fail_check(gh, payload, _describe(exc), loaded.check_name)
         return 1
     except Exception as exc:  # anything else is a bug: one line for the job, the details in the log
         print(f"::error::Stratum hit a bug and couldn't finish: {type(exc).__name__}: {exc}")
         print(redact(traceback.format_exc()), file=sys.stderr)
-        _fail_check(gh, payload, f"Stratum hit a bug ({type(exc).__name__}) and couldn't finish this review.")
+        _fail_check(gh, payload, f"Stratum hit a bug ({type(exc).__name__}) and couldn't finish this review.", loaded.check_name)
         return 1
+
+
+@dataclass
+class Loaded:
+    """What `_run` has learned by the time it fails, for the failure path."""
+    check_name: str = publish.CHECK_NAME
 
 
 def _describe(exc: BaseException) -> str:
@@ -70,21 +77,25 @@ def _describe(exc: BaseException) -> str:
     return f"couldn't reach GitHub ({type(exc).__name__})"
 
 
-def _fail_check(gh: GitHub, payload: dict, message: str) -> None:
+def _fail_check(gh: GitHub, payload: dict, message: str, name: str = publish.CHECK_NAME) -> None:
     """Best effort: a completed, neutral check run on the PR's head saying the
-    review didn't happen, so nobody waits on a check that never comes."""
+    review didn't happen, so nobody waits on a check that never comes. `name`
+    is the policy's `review.check_name` when the policy was read, which is the
+    name branch protection waits for."""
     head = ((payload.get("pull_request") or {}).get("head") or {}).get("sha")
     if not head or not gh.repo:
         return
     try:
-        gh.check_run(head, publish.CHECK_NAME, "neutral", "Stratum couldn't finish", redact(message)[:1000], "", [])
+        gh.check_run(head, name, "neutral", "Stratum couldn't finish", redact(message)[:1000], "", [])
     except (GitHubError, requests.RequestException) as exc:
         print(f"::warning::Stratum couldn't post its check run either: {_describe(exc)}")
 
 
-def _run(env: Mapping[str, str], event_name: str, payload: dict, gh: GitHub) -> int:
+def _run(env: Mapping[str, str], event_name: str, payload: dict, gh: GitHub, loaded: Loaded | None = None) -> int:
     default_branch = (payload.get("repository") or {}).get("default_branch") or gh.repository().get("default_branch") or "main"
     policy = context_from_env(load_context_policy(gh, default_branch), env)
+    if loaded is not None:
+        loaded.check_name = policy.review.check_name
     for error in policy.errors:
         print(f"::warning::.stratum/policy.yml: {error} Using the defaults.")
     for warning in policy.warnings:

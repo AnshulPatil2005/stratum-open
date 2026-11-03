@@ -96,6 +96,7 @@ _SECRET = re.compile(
     | \bsk-[\w-]{20,}
     | \beyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{8,}
     | (?i:\bbearer\s+)\S{16,}
+    | (?i:\bbasic\s+)[A-Za-z0-9+/=]{16,}
     | (?i:\b(?:access_token|api[_-]?key|client_secret|password)=)[^\s&"']+
     """,
     re.VERBOSE | re.DOTALL,

@@ -38,7 +38,8 @@ def test_every_policy_shape_gives_a_usable_policy(text, source):
         assert policy.review == Policy().review
     if text and "unknown_key" in text:
         assert len(policy.warnings) == 2
-    policy.ignored("any/path.py") and policy.needs_human("abs/x/y.py")  # the globs compile
+    assert isinstance(policy.ignored("any/path.py"), bool)  # the globs compile and answer
+    assert isinstance(policy.needs_human("abs/x/y.py"), bool)
 
 
 @pytest.mark.parametrize("level", ["low", "medium", "high", "critical"])

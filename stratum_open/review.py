@@ -397,7 +397,12 @@ def demention(text: str) -> str:
     text a model made up, and `@stratum review` in a reply is never a
     command. The bot's own comments are skipped by the command parser too;
     this covers people."""
-    return _MENTION.sub(lambda m: f"`@{m.group(1)}`", text)
+    def swap(match: re.Match) -> str:
+        if text.count("`", 0, match.start()) % 2:  # already inside a code span: GitHub won't link it, and more backticks would break the span
+            return match.group(0)
+        return f"`@{match.group(1)}`"
+
+    return _MENTION.sub(swap, text)
 
 
 def _text(value: Any, limit: int) -> str:

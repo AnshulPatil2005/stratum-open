@@ -21,7 +21,7 @@ from stratum_open.model import Model
 from stratum_open.policy import Policy, load_policy, matches_any
 from stratum_open.review import ReviewResult
 from stratum_open.storage import NullStorage, Storage, redact
-from stratum_open.track_record import AuthorRecord, author_identity, build_records
+from stratum_open.track_record import AuthorRecord, author_identity, build_records, describe_subprocess_error
 from stratum_open.triage import PRFacts, Triage, triage
 
 MAX_BANDIT_FILES = 20
@@ -319,8 +319,7 @@ def record_for(ctx: Context, login: str) -> AuthorRecord | None:
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
         # No history (an empty or shallow clone, a missing ref, git not installed, a huge log past its
         # time limit) means no record, never a failed review.
-        detail = str(exc) if isinstance(exc, OSError) else (getattr(exc, "stderr", "") or "").strip()[:200]
-        ctx.log(f"track record: couldn't read the history of {ctx.checkout} at {ctx.history_ref}: {type(exc).__name__} {detail}".rstrip())
+        ctx.log(f"track record: couldn't read the history of {ctx.checkout} at {ctx.history_ref}: {type(exc).__name__} {describe_subprocess_error(exc)}")
         return None
     identities = {author_identity(name) for name in _identities(ctx, login)}
     merged = AuthorRecord(author_identity(login))

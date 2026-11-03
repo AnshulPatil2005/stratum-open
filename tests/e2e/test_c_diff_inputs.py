@@ -164,9 +164,7 @@ def test_pr_from_a_deleted_fork_and_a_deleted_author(fake_github, make_context, 
 def test_force_push_while_the_review_runs_is_not_published(fake_github, make_context, fake_model, logs):
     fake_github.add_pull(7, diff=DIFF)
 
-    def move(record):
-        if record["method"] == "POST" and record["path"].endswith("/graphql") is False and "chat" in record["path"]:
-            return
+    def move(record):  # a new commit lands while Stratum is reading the diff
         if record["path"].endswith("/pulls/7") and "diff" in record["accept"]:
             fake_github.pulls[7]["head"]["sha"] = "c" * 40
 

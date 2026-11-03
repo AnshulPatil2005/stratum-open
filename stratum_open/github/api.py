@@ -62,7 +62,9 @@ class GitHub:
         headers = {"Accept": accept} if accept else {}
         for attempt in range(RETRIES + 1):
             response = self.session.request(method, url, headers=headers, timeout=TIMEOUT, **kwargs)
-            if (response.status_code in (500, 502, 503, 504) or _secondary_limit(response)) and attempt < RETRIES:
+            # A 500 may come after GitHub applied a write, so only a read is tried again on one.
+            transient = response.status_code in (502, 503, 504) or (response.status_code == 500 and method == "GET")
+            if (transient or _secondary_limit(response)) and attempt < RETRIES:
                 time.sleep(min(60.0, retry_after(response.headers.get("Retry-After"), 2 * 3**attempt)))
                 continue
             return response
