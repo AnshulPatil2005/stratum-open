@@ -287,3 +287,24 @@ def test_a_cut_off_reply_never_passes_the_check(gh):
     assert outcome.review.salvaged_calls == 1
     assert gh.checks[-1]["conclusion"] != "success"
     assert "were cut off; anything it found after the cut is missing" in gh.issue_comments_[7][0]["body"]
+
+
+def test_only_findings_that_will_be_kept_are_named_to_the_model(gh):
+    review_pull(context(gh, FakeModel(model_answer())), 7)
+    # The push edits the Unknown-id line (still unfixed) and leaves the dead code as it was.
+    edited = DIFF.replace('+    cur = conn.execute(f"SELECT * FROM users WHERE id = {user_id}")', '+    cur = conn.execute(f"SELECT * FROM users WHERE uid = {user_id}")')
+    gh.move_head(7, "b" * 40, edited)
+    gh.compare[("a" * 40, "b" * 40)] = ["app/users.py"]
+    model = FakeModel(model_answer(findings=[]))
+    review_pull(context(gh, model), 7)
+    _, user = model.prompts[0]
+    assert "Dead code" in user  # its code is unchanged: kept, so the model needn't repeat it
+    assert "Unknown id" not in user  # its line changed: it isn't kept, so the model may report it again
+
+
+def test_the_left_out_notice_stays_inside_its_budget():
+    from stratum_open.review import LEFT_OUT_CHARS, _names
+
+    paths = [f"services/{'x' * 140}/module_{i}.py" for i in range(21)]
+    text = _names(paths)
+    assert len(text) <= LEFT_OUT_CHARS + 20 and text.endswith("more")

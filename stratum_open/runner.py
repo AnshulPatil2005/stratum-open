@@ -91,7 +91,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         result = review(
             title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=policy,
             model=ctx.model, only_paths=changed, context=notes, hotspots=hotspots,
-            previous=state.findings if incremental else None,
+            previous=_still_there(state.findings, files) if incremental else None,
             log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
         )
         if not result.ran:
@@ -292,6 +292,22 @@ def record_for(ctx: Context, login: str) -> AuthorRecord | None:
             merged.strikes += records[identity].strikes
     merged.merged.sort(key=lambda pr: pr.merged_at)
     return merged
+
+
+def _still_there(prior: list[dict], files: list[FileDiff]) -> list[dict]:
+    """The prior model findings `_carry` will keep whatever the model says:
+    anchored ones whose code is still on the new side of the diff. Only
+    these may be named to the model as "already found". One whose code was
+    edited, or one about a whole file, is dropped when its file is reviewed
+    again, so the model must be free to report it again."""
+    by_path = {f.path: f for f in files}
+    kept = []
+    for data in prior:
+        file = by_path.get(data.get("path", ""))
+        if (data.get("source") == "model" and file is not None and data.get("line_start") is not None
+                and data.get("snippet") and _locate(data["snippet"], file, near=data["line_start"]) is not None):
+            kept.append(data)
+    return kept
 
 
 def _carry(prior: list[dict], files: list[FileDiff], current: set[str], reviewed_now: set[str]) -> tuple[list[Finding], dict[str, str]]:

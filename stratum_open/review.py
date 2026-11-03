@@ -77,6 +77,9 @@ The diff. Each line starts with its line number in the new file (blank for remov
 
 MAX_PREVIOUS = 10
 MAX_PREVIOUS_CHARS = 1200
+# Each of the two left-out lines; 2 × 300 characters fits the 250 tokens
+# the budget sets aside for them, at about 3 characters a token.
+LEFT_OUT_CHARS = 300
 
 # Titles that narrate the change instead of naming a defect.
 _NARRATION = re.compile(r"^(new|added?|adds|updated?|updates|changed?|changes|modified|refactor(?:ed|s)?|renamed?|removed?|moved|improved?|introduc\w*)\b", re.IGNORECASE)
@@ -206,11 +209,22 @@ def _left_out_block(packed: Packed) -> str:
     report something as missing that's in a file it was never shown."""
     lines = []
     if packed.omitted:
-        names = ", ".join(packed.omitted[:20]) + (f" and {len(packed.omitted) - 20} more" if len(packed.omitted) > 20 else "")
-        lines.append(f"Not shown, because the review's size limit was reached: {names}.")
+        lines.append(f"Not shown, because the review's size limit was reached: {_names(packed.omitted)}.")
     if packed.clipped:
-        lines.append("Shown only in part, because they're long: " + ", ".join(packed.clipped[:20]) + ".")
+        lines.append(f"Shown only in part, because they're long: {_names(packed.clipped)}.")
     return "".join(f"{line}\n" for line in lines)
+
+
+def _names(paths: list[str], limit: int = LEFT_OUT_CHARS) -> str:
+    """Paths up to `limit` characters, then "and N more", so the notice
+    stays inside the tokens set aside for it however long the paths are."""
+    shown: list[str] = []
+    for path in paths:
+        if shown and sum(len(p) + 2 for p in shown) + len(path) > limit:
+            break
+        shown.append(path if len(path) <= limit else "…" + path[-(limit - 1):])
+    rest = len(paths) - len(shown)
+    return ", ".join(shown) + (f" and {rest} more" if rest else "")
 
 
 def _previous_block(previous: list[dict[str, Any]], paths: set[str]) -> str:
