@@ -1,0 +1,8 @@
+{
+ "ok": true,
+ "error": "",
+ "seconds": 9.4,
+ "prompt_tokens": 12027,
+ "output_tokens": 47,
+ "text": "{\n  \"summary\": \"This PR improves the content script fetch and adds tests for fingerprint, matcher, and language functionalities.\",\n  \"matches_description\": \"yes\",\n  \"mismatch\": \"\",\n  \"findings\": []\n}"
+}

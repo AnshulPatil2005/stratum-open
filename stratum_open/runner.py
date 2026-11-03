@@ -9,6 +9,7 @@ from).
 from __future__ import annotations
 
 import subprocess
+import traceback
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -19,7 +20,7 @@ from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
 from stratum_open.policy import Policy, load_policy
 from stratum_open.review import ReviewResult, _locate, review, shown
-from stratum_open.storage import NullStorage, Storage
+from stratum_open.storage import NullStorage, Storage, redact
 from stratum_open.track_record import AuthorRecord, author_identity, build_records
 from stratum_open.triage import PRFacts, Triage, triage
 
@@ -88,15 +89,19 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
 
     result: ReviewResult | None = None
     if ctx.model is not None and (changed is None or changed):
-        result = review(
-            title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=policy,
-            model=ctx.model, only_paths=changed, context=notes, hotspots=hotspots,
-            log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
-        )
-        if not result.ran:
+        try:
+            result = review(
+                title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=policy,
+                model=ctx.model, only_paths=changed, context=notes, hotspots=hotspots,
+                log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
+            )
+        except Exception as exc:  # the model step is the one part of a review that may never stop the rest
+            ctx.log(redact(f"model review failed: {type(exc).__name__}: {exc}\n{traceback.format_exc()}"))
+            problems.append(f"The model step failed ({type(exc).__name__}), so this review has only the checks.")
+        if result is not None and not result.ran:
             errors = sorted({c["error"] for c in result.calls if c.get("error")})
             problems.append("The model didn't answer, so this review has only the checks" + (f": {errors[0]}" if errors else "."))
-        elif not result.complete:
+        elif result is not None and not result.complete:
             problems.append(f"{result.failed_calls} of {len(result.calls)} model calls failed; some files weren't reviewed.")
     elif ctx.model is None:
         problems.append("No model is configured, so this review has only the checks.")
@@ -154,18 +159,30 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     if gh.pull(number)["head"]["sha"] != head:
         return Outcome(number, "superseded", findings, sorted_pr, result, note="a newer commit arrived")
 
-    threads = gh.review_threads(number)
-    current = {f.fingerprint for f in findings}
-    for thread in threads:  # checks run on every push, so a check's finding that's gone is fixed
-        marker = publish.thread_marker(thread, ctx.bot)
-        if marker and not marker[1].startswith("model:") and marker[0] not in current:
-            gone.setdefault(marker[0], "Fixed: the check no longer finds this.")
-    publish.resolve_threads(gh, number, threads, gone, bot=ctx.bot, log=ctx.log)
+    # Each publishing step is its own attempt: GitHub refusing one (a token
+    # that lost a permission, a 5xx) must not stop the others, and the check
+    # run is always posted last so that it reports whatever did get through.
+    threads: list[dict] = []
+    posted: list[str] = []
+    try:
+        threads = gh.review_threads(number)
+        current = {f.fingerprint for f in findings}
+        for thread in threads:  # checks run on every push, so a check's finding that's gone is fixed
+            marker = publish.thread_marker(thread, ctx.bot)
+            if marker and not marker[1].startswith("model:") and marker[0] not in current:
+                gone.setdefault(marker[0], "Fixed: the check no longer finds this.")
+        publish.resolve_threads(gh, number, threads, gone, bot=ctx.bot, log=ctx.log)
+        posted = publish.publish_inline(gh, number, head, findings, threads, bot=ctx.bot, limit=policy.review.max_inline_comments, feedback=ctx.feedback)
+    except GitHubError as exc:
+        ctx.log(f"couldn't post inline comments: {exc}")
+        problems.append(f"Couldn't post inline comments (GitHub answered {exc.status}), so every finding is listed here instead.")
     on_lines = {publish.thread_fingerprint(t, ctx.bot) for t in threads if publish.is_open(t, ctx.bot)}
-    posted = publish.publish_inline(gh, number, head, findings, threads, bot=ctx.bot, limit=policy.review.max_inline_comments, feedback=ctx.feedback)
     summary.inline = (on_lines | set(posted)) & {f.fingerprint for f in findings}
     body = publish.render_summary(summary, new_state)
-    publish.upsert_summary(gh, number, existing, body)
+    try:
+        publish.upsert_summary(gh, number, existing, body)
+    except GitHubError as exc:
+        ctx.log(f"couldn't post the summary comment: {exc}")
     complete = result.complete if result is not None else True  # no new code to read is a complete review
     try:
         publish.publish_check(gh, head, findings, body.split("<details>")[0], complete=complete)
@@ -173,14 +190,20 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         ctx.log(f"couldn't publish the check run: {exc}")
 
     if policy.triage.enabled and not facts.draft:
-        current = [label["name"] for label in pull.get("labels", [])]
-        publish.apply_label(gh, number, policy, sorted_pr.key, current)
-        if policy.triage.close_without_issue and policy.triage.require_linked_issue and not facts.linked_issues and sorted_pr.key != "needs_human":
-            gh.comment(number, "Closing this PR: this project asks for every PR to link an issue (`Fixes #123`), and this one doesn't. "
-                               "Link one and reopen it, or ask a maintainer. Closed by Stratum under the project's `.stratum/policy.yml`.")
-            gh.close(number)
+        try:
+            current = [label.get("name", "") for label in pull.get("labels") or [] if isinstance(label, dict)]
+            publish.apply_label(gh, number, policy, sorted_pr.key, current)
+            if policy.triage.close_without_issue and policy.triage.require_linked_issue and not facts.linked_issues and sorted_pr.key != "needs_human":
+                gh.comment(number, "Closing this PR: this project asks for every PR to link an issue (`Fixes #123`), and this one doesn't. "
+                                   "Link one and reopen it, or ask a maintainer. Closed by Stratum under the project's `.stratum/policy.yml`.")
+                gh.close(number)
+        except GitHubError as exc:
+            ctx.log(f"couldn't apply the triage label: {exc}")
 
-    ctx.storage.record_review(gh.repo, number, head, risk_score(findings), result.summary if result else "", findings)
+    try:
+        ctx.storage.record_review(gh.repo, number, head, risk_score(findings), result.summary if result else "", findings)
+    except Exception as exc:  # the review is on GitHub already; a broken database loses only the App's copy
+        ctx.log(redact(f"couldn't store the review: {type(exc).__name__}: {exc}"))
     return Outcome(number, "published", findings, sorted_pr, result, body)
 
 
@@ -277,9 +300,16 @@ def record_for(ctx: Context, login: str) -> AuthorRecord | None:
     """A login's record. Commits carry emails, not logins, so the emails
     GitHub links to the login are matched too."""
     policy = ctx.policy.track_record
-    if not ctx.checkout or not login or author_identity(login) in {author_identity(e) for e in policy.exclude}:
+    if not ctx.checkout or not login or excluded(ctx, login):
         return None
-    records = build_records(ctx.checkout, ctx.history_ref, window_days=policy.window_days, followup_days=policy.followup_days, exclude=policy.exclude)
+    try:
+        records = build_records(ctx.checkout, ctx.history_ref, window_days=policy.window_days, followup_days=policy.followup_days, exclude=policy.exclude)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
+        # No history (an empty or shallow clone, a missing ref, git not installed, a huge log past its
+        # time limit) means no record, never a failed review.
+        detail = (getattr(exc, "stderr", "") or "").strip()[:200] if not isinstance(exc, OSError) else str(exc)
+        ctx.log(f"track record: couldn't read the history of {ctx.checkout} at {ctx.history_ref}: {type(exc).__name__} {detail}".rstrip())
+        return None
     identities = {author_identity(name) for name in _identities(ctx, login)}
     merged = AuthorRecord(author_identity(login))
     for identity in identities:
@@ -288,6 +318,11 @@ def record_for(ctx: Context, login: str) -> AuthorRecord | None:
             merged.strikes += records[identity].strikes
     merged.merged.sort(key=lambda pr: pr.merged_at)
     return merged
+
+
+def excluded(ctx: Context, login: str) -> bool:
+    """Whether the policy keeps this login out of track records."""
+    return author_identity(login) in {author_identity(e) for e in ctx.policy.track_record.exclude}
 
 
 def _carry(prior: list[dict], files: list[FileDiff], current: set[str], reviewed_now: set[str]) -> tuple[list[Finding], dict[str, str]]:
@@ -305,7 +340,10 @@ def _carry(prior: list[dict], files: list[FileDiff], current: set[str], reviewed
         if file is None:
             gone[fp] = "Resolved: this file is no longer changed by the PR."
             continue
-        finding = Finding.from_dict(data)
+        try:
+            finding = Finding.from_dict(data)
+        except (TypeError, ValueError):  # state written by an older release, or damaged
+            continue
         snippet = data.get("snippet") or ""
         if finding.line_start is not None:
             located = _locate(snippet, file, near=finding.line_start) if snippet else None
@@ -336,7 +374,8 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
         packed = result.packed
         if packed.reviewed or packed.clipped:
             calls = len(packed.chunks)
-            lines.append(f"The model read {_files(len(packed.reviewed) + len(packed.clipped))} in {calls} call{'' if calls == 1 else 's'}.")
+            sent = f"{_files(len(packed.reviewed) + len(packed.clipped))} in {calls} call{'' if calls == 1 else 's'}"
+            lines.append(f"The model read {sent}." if result.ran else f"The model was sent {sent}, but didn't answer.")
         if packed.clipped:
             lines.append("Read in part (too big for one call): " + ", ".join(f"`{p}`" for p in packed.clipped[:10]))
         if packed.omitted:

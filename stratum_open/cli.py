@@ -14,9 +14,12 @@ import subprocess
 import sys
 from pathlib import Path
 
+import requests
+
 from stratum_open import __version__
 from stratum_open.diff import parse_diff
 from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank
+from stratum_open.github.api import API, GitHubError
 from stratum_open.model import model_from_policy
 from stratum_open.policy import POLICY_PATH, Policy, parse_policy
 from stratum_open.track_record import author_identity, build_records
@@ -68,10 +71,53 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("needs-model", help="the GitHub Action: print whether this event can call the model")
 
     args = parser.parse_args(argv)
-    return {
+    _printable_output()
+    command = {
         "review": _review, "record": _record, "policy": _policy, "triage": _triage,
         "data": _data, "serve": _serve, "action": _action, "needs-model": _needs_model,
-    }[args.command](args)
+    }[args.command]
+    # Exit codes: 0 done; 1 a usage problem, or `review --local` found something critical;
+    # 2 GitHub or the network refused (the message says what); 130 stopped with Ctrl-C.
+    try:
+        return command(args)
+    except GitHubError as exc:
+        print(f"{exc}. {_github_hint(exc.status)}".strip(), file=sys.stderr)
+        return 2
+    except requests.RequestException as exc:
+        print(f"Couldn't reach {_host(exc)}: {type(exc).__name__}. Check the network, the URL and any proxy, then try again.", file=sys.stderr)
+        return 2
+    except KeyboardInterrupt:
+        print("Stopped.", file=sys.stderr)
+        return 130
+
+
+def _printable_output() -> None:
+    """A model's text can hold any character; a pipe on Windows may only take
+    cp1252. Print what can be printed and escape the rest, rather than die
+    on the first arrow or emoji."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(errors="backslashreplace")
+            except (ValueError, OSError):  # a closed or exotic stream
+                pass
+
+
+def _github_hint(status: int) -> str:
+    if status == 401:
+        return "The token was refused: check GITHUB_TOKEN, or sign in again with `gh auth login`."
+    if status == 403:
+        return "The token can't do that here, or GitHub's rate limit is reached; try again later."
+    if status == 404:
+        return "Check the repo and PR number, and that the token can see the repo."
+    return ""
+
+
+def _host(exc: BaseException) -> str:
+    request = getattr(exc, "request", None)
+    url = getattr(request, "url", "") or ""
+    return re.sub(r"^(https?://[^/]+).*$", r"\1", url) or "the server"
 
 
 # ── review ───────────────────────────────────────────────────────────────
@@ -87,11 +133,11 @@ def _review(args) -> int:
     from stratum_open.github.api import GitHub
     from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull
 
-    gh = GitHub(_token(), match.group(1))
-    default_branch = gh.repository()["default_branch"]
+    gh = GitHub(_token(), match.group(1), api=_api())
+    default_branch = gh.repository().get("default_branch") or "main"
     policy = load_context_policy(gh, default_branch)
     _policy_notes(policy)
-    bot = os.environ.get("STRATUM_BOT_LOGIN") or (gh.get("/user").get("login") if args.post else "")
+    bot = os.environ.get("STRATUM_BOT_LOGIN") or ((gh.get("/user") or {}).get("login") if args.post else "")
     ctx = Context(
         gh=gh, policy=policy, model=None if args.no_model else model_from_policy(policy), bot=bot or "-",
         checkout=args.checkout, history_ref=checkout_ref(args.checkout, default_branch) if args.checkout else "HEAD",
@@ -166,7 +212,11 @@ def _write_json(path: str | None, findings: list[Finding]) -> None:
 
 
 def _record(args) -> int:
-    records = build_records(args.repo, args.ref)
+    try:
+        records = build_records(args.repo, args.ref)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
+        detail = (getattr(exc, "stderr", "") or "").strip() or str(exc)
+        sys.exit(f"Couldn't read the history of {args.repo} at {args.ref}: {detail[:300] or 'is this a git repo, and does that ref exist?'}")
     record = records.get(author_identity(args.login))
     if record is None:
         print(f"No merged PRs by {args.login} in the last 180 days of {args.ref}. Records match a login only through "
@@ -198,8 +248,8 @@ def _triage(args) -> int:
     from stratum_open.runner import Context, load_context_policy
     from stratum_open.triage_queue import update_queue
 
-    gh = GitHub(_token(), args.repo)
-    policy = load_context_policy(gh, gh.repository()["default_branch"])
+    gh = GitHub(_token(), args.repo, api=_api())
+    policy = load_context_policy(gh, gh.repository().get("default_branch") or "main")
     bot = os.environ.get("STRATUM_BOT_LOGIN") or "github-actions[bot]"
     print(update_queue(Context(gh=gh, policy=policy, model=None, bot=bot), post=args.post))
     return 0
@@ -263,6 +313,11 @@ def _policy_notes(policy: Policy) -> None:
         print(f"policy: {error} Using the defaults.", file=sys.stderr)
     for warning in policy.warnings:
         print(f"policy: {warning}", file=sys.stderr)
+
+
+def _api() -> str:
+    """GitHub's API, or a GitHub Enterprise / test server named in STRATUM_GITHUB_API."""
+    return os.environ.get("STRATUM_GITHUB_API") or API
 
 
 def _token() -> str:

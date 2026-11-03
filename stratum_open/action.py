@@ -10,29 +10,79 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
+import traceback
 from typing import Mapping
 
+import requests
+
 from stratum_open.checks.dependencies import PackageLookup
-from stratum_open.github.api import API, GitHub
+from stratum_open.github import publish
+from stratum_open.github.api import API, GitHub, GitHubError
 from stratum_open.github.commands import NEEDS_MODEL, handle, parse
 from stratum_open.model import model_from_policy
 from stratum_open.triage_queue import update_queue
 from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull
+from stratum_open.storage import redact
 
 REVIEW_ACTIONS = {"opened", "synchronize", "reopened", "ready_for_review"}
 DEFAULT_BOT = "github-actions[bot]"
 
 
 def main(env: Mapping[str, str] = os.environ) -> int:
-    event_name = env["GITHUB_EVENT_NAME"]
-    with open(env["GITHUB_EVENT_PATH"], encoding="utf-8") as handle_file:
-        payload = json.load(handle_file)
+    """Exit 0 when the event was handled, 1 when it couldn't be. A failure is
+    one `::error::` line for the job's log, never a traceback; when the event
+    names a commit, a neutral check run says the review didn't finish, so
+    nothing is left waiting on it."""
+    event_name = env.get("GITHUB_EVENT_NAME", "")
+    try:
+        with open(env["GITHUB_EVENT_PATH"], encoding="utf-8") as handle_file:
+            payload = json.load(handle_file)
+    except (KeyError, OSError, ValueError) as exc:
+        print(f"::error::Stratum couldn't read the event payload: {type(exc).__name__}: {exc}")
+        return 1
+    if not isinstance(payload, dict):
+        print("::error::Stratum couldn't read the event payload: it isn't a JSON object.")
+        return 1
     token = env.get("STRATUM_GITHUB_TOKEN") or env.get("GITHUB_TOKEN")
     if not token:
         print("::error::Stratum needs a GitHub token: pass github-token to the action.")
         return 1
-    gh = GitHub(token, env["GITHUB_REPOSITORY"], api=env.get("GITHUB_API_URL", API))
-    default_branch = (payload.get("repository") or {}).get("default_branch") or gh.repository()["default_branch"]
+    repo = env.get("GITHUB_REPOSITORY") or (payload.get("repository") or {}).get("full_name") or ""
+    gh = GitHub(token, repo, api=env.get("GITHUB_API_URL") or API)
+    try:
+        return _run(env, event_name, payload, gh)
+    except (GitHubError, requests.RequestException) as exc:
+        print(f"::error::Stratum couldn't finish: {_describe(exc)}")
+        _fail_check(gh, payload, _describe(exc))
+        return 1
+    except Exception as exc:  # anything else is a bug: one line for the job, the details in the log
+        print(f"::error::Stratum hit a bug and couldn't finish: {type(exc).__name__}: {exc}")
+        print(redact(traceback.format_exc()), file=sys.stderr)
+        _fail_check(gh, payload, f"Stratum hit a bug ({type(exc).__name__}) and couldn't finish this review.")
+        return 1
+
+
+def _describe(exc: BaseException) -> str:
+    if isinstance(exc, GitHubError):
+        return str(exc)
+    return f"couldn't reach GitHub ({type(exc).__name__})"
+
+
+def _fail_check(gh: GitHub, payload: dict, message: str) -> None:
+    """Best effort: a completed, neutral check run on the PR's head saying the
+    review didn't happen, so nobody waits on a check that never comes."""
+    head = ((payload.get("pull_request") or {}).get("head") or {}).get("sha")
+    if not head or not gh.repo:
+        return
+    try:
+        gh.check_run(head, publish.CHECK_NAME, "neutral", "Stratum couldn't finish", redact(message)[:1000], "", [])
+    except (GitHubError, requests.RequestException) as exc:
+        print(f"::warning::Stratum couldn't post its check run either: {_describe(exc)}")
+
+
+def _run(env: Mapping[str, str], event_name: str, payload: dict, gh: GitHub) -> int:
+    default_branch = (payload.get("repository") or {}).get("default_branch") or gh.repository().get("default_branch") or "main"
     policy = load_context_policy(gh, default_branch)
     for error in policy.errors:
         print(f"::warning::.stratum/policy.yml: {error} Using the defaults.")
@@ -52,7 +102,10 @@ def main(env: Mapping[str, str] = os.environ) -> int:
     )
 
     if event_name in ("pull_request", "pull_request_target"):
-        pull = payload["pull_request"]
+        pull = payload.get("pull_request") or {}
+        if not pull.get("number"):
+            print("::error::The event has no pull request in it.")
+            return 1
         if payload.get("action") not in REVIEW_ACTIONS:
             print(f"Nothing to do for a {payload.get('action')} event.")
         elif pull.get("draft"):
@@ -66,6 +119,8 @@ def main(env: Mapping[str, str] = os.environ) -> int:
     elif event_name == "workflow_run":
         # CI finished: sort the PR again with its result. Same head, so no model call.
         for pull in (payload.get("workflow_run") or {}).get("pull_requests") or []:
+            if not isinstance(pull, dict) or not pull.get("number"):
+                continue
             outcome = review_pull(ctx, pull["number"])
             print(f"PR #{outcome.number}: re-sorted as {outcome.triage.key if outcome.triage else outcome.status}")
     elif event_name in ("schedule", "workflow_dispatch"):

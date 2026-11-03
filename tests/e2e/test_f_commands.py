@@ -1,0 +1,174 @@
+"""F. `@stratum` commands: every command at every permission level, odd
+comments, and spam."""
+
+from __future__ import annotations
+
+import subprocess
+
+import pytest
+
+from stratum_open.github import publish
+from stratum_open.github.commands import HELP, handle, parse
+from stratum_open.runner import review_pull
+
+from conftest import DIFF, SQL_LINE, head_of
+from contract import assert_contract, assert_no_secrets
+from fake_model import Response, finding, json_reply
+
+HEAD = head_of(7)
+WRITERS = {"mona": "write", "max": "maintain", "ada": "admin"}
+READERS = {"erin": "read", "tess": "triage"}
+
+
+def event(body, *, login="erin", kind="User", inline_reply_to=None, action="created", number=7, issue=False):
+    comment = {"id": 555 + hash(body) % 1000, "body": body, "user": {"login": login, "type": kind} if login else None}
+    if inline_reply_to:
+        comment["in_reply_to_id"] = inline_reply_to
+        return "pull_request_review_comment", {"action": action, "comment": comment, "pull_request": {"number": number}}
+    issue_data = {"number": number} if issue else {"number": number, "pull_request": {}}
+    return "issue_comment", {"action": action, "comment": comment, "issue": issue_data}
+
+
+@pytest.fixture
+def reviewed(fake_github, make_context, fake_model, logs):
+    fake_github.add_pull(7, diff=DIFF)
+    fake_github.permissions.update(WRITERS | READERS)
+    fake_model.default = Response.ok(json_reply([finding("app/users.py", SQL_LINE, line=5), finding("app/users.py", 'print("unreachable")', title="Dead code", detail="Never runs.", severity="medium")]))
+    ctx = make_context()
+    review_pull(ctx, 7)
+    return ctx
+
+
+def replies(fake_github):
+    """Every reply Stratum made, oldest first (ids rise with time across both kinds of comment)."""
+    issue = [c for c in fake_github.issue_comments[7] if publish.SUMMARY_MARKER not in c["body"]]
+    inline = [c for c in fake_github.review_comments if c.get("in_reply_to_id")]
+    return [c["body"] for c in sorted(issue + inline, key=lambda c: c["id"])]
+
+
+@pytest.mark.parametrize("command", ["review", "ignore model:dead-code", "mute code/sql", "unmute code/sql"])
+@pytest.mark.parametrize("login", sorted(WRITERS) + sorted(READERS) + ["nobody"])
+def test_write_commands_at_every_permission_level(reviewed, fake_github, fake_model, login, command):
+    before = len(fake_model.chat_calls)
+    done = handle(reviewed, *event(f"@stratum {command}", login=login))
+    name = command.split()[0]
+    if login in WRITERS:
+        assert done == name
+        if name == "review":
+            assert len(fake_model.chat_calls) == before + 1
+        if name in ("mute", "unmute"):
+            assert "needs somewhere to store it" in replies(fake_github)[-1]  # App-only, said plainly
+    else:
+        assert done == "refused" and "only people with write access" in replies(fake_github)[-1]
+        assert len(fake_model.chat_calls) == before
+    assert_contract(fake_github, number=7, head=HEAD)
+
+
+@pytest.mark.parametrize("command", ["explain", "triage", "record", "help", "wat"])
+@pytest.mark.parametrize("login", ["mona", "erin", "nobody"])
+def test_anyone_commands(reviewed, fake_github, login, command):
+    done = handle(reviewed, *event(f"@stratum {command}", login=login))
+    assert done == {"wat": "help", "help": "help"}.get(command, command)
+    last = replies(fake_github)[-1]
+    if command == "explain":
+        assert "Reply `@stratum explain` to one of Stratum's inline comments" in last
+    elif command == "triage":
+        assert "This PR is sorted as" in last
+    elif command == "record":
+        assert "needs the repo's history" in last
+    else:
+        assert last == HELP
+
+
+def test_explain_and_ignore_as_replies_to_an_inline_comment(reviewed, fake_github, fake_model):
+    dead = next(c for c in fake_github.inline_comments(7) if "Dead code" in c["body"])
+    fake_github.files[("app/users.py", HEAD)] = "import sqlite3\n" * 10
+    fake_model.queue(Response.ok("It never runs because the line above returns. Ask @alice."))
+    assert handle(reviewed, *event("@stratum explain", inline_reply_to=dead["id"])) == "explain"
+    explained = replies(fake_github)[-1]
+    assert explained.startswith("It never runs") and "`@alice`" in explained and "Explained by" in explained
+    assert handle(reviewed, *event("@stratum ignore", login="mona", inline_reply_to=dead["id"])) == "ignore"
+    state = publish.State.decode(fake_github.summary_comments(7)[0]["body"])
+    assert len(state.ignored) == 1
+    assert handle(reviewed, *event("@stratum ignore", login="mona")) == "ignore"
+    assert "Reply `@stratum ignore` to one of Stratum's inline comments, or name a rule" in replies(fake_github)[-1]
+
+
+def test_ignore_an_unknown_rule_is_recorded_harmlessly(reviewed, fake_github):
+    assert handle(reviewed, *event("@stratum ignore no/such-rule", login="mona")) == "ignore"
+    assert publish.State.decode(fake_github.summary_comments(7)[0]["body"]).ignored_rules == ["no/such-rule"]
+    assert_contract(fake_github, number=7, head=HEAD)
+
+
+def test_ignore_and_explain_on_a_comment_that_is_not_stratums(reviewed, fake_github):
+    fake_github.review_comments.append({"id": 4242, "pull_request_number": 7, "body": "nice", "path": "app/users.py", "line": 5, "user": {"login": "erin", "type": "User"}})
+    handle(reviewed, *event("@stratum ignore", login="mona", inline_reply_to=4242))
+    assert "isn't one of Stratum's comments" in replies(fake_github)[-1]
+    handle(reviewed, *event("@stratum explain", inline_reply_to=4242))
+    assert "isn't one of Stratum's comments" in replies(fake_github)[-1]
+
+
+@pytest.mark.parametrize("body, kwargs, expected", [
+    ("@stratum review", {"action": "edited"}, None),
+    ("@stratum review", {"action": "deleted"}, None),
+    ("@stratum review", {"login": "dependabot[bot]", "kind": "Bot"}, None),
+    ("@stratum review", {"login": "stratum[bot]"}, None),
+    ("@stratum review", {"login": None}, None),
+    ("@stratum triage", {"issue": True}, None),
+    ("> @stratum review\n\nquoting someone", {}, None),
+    ("thanks\n   @STRATUM    TRIAGE   please, and @stratum record", {"login": "erin"}, "triage"),
+    ("@stratum\ttriage", {}, "triage"),
+    ("email me at hi@stratum.dev", {}, None),
+], ids=["edited", "deleted", "bot", "self", "deleted-user", "issue-not-pr", "quoted", "whitespace-casing-trailing-two-commands", "tab", "email"])
+def test_comments_that_must_not_run_commands(reviewed, fake_github, fake_model, body, kwargs, expected):
+    before = len(replies(fake_github))
+    assert handle(reviewed, *event(body, **kwargs)) == expected
+    assert (len(replies(fake_github)) - before) == (1 if expected else 0)
+    assert len(fake_model.chat_calls) == 1
+
+
+def test_malformed_comment_payloads_do_not_crash(reviewed):
+    assert handle(reviewed, "issue_comment", {"action": "created"}) is None
+    assert handle(reviewed, "issue_comment", {"action": "created", "comment": None}) is None
+    assert handle(reviewed, "issue_comment", {"action": "created", "comment": {"id": 1, "body": None, "user": None}, "issue": {"pull_request": {}}}) is None
+    assert handle(reviewed, "pull_request_review_comment", {"action": "created", "comment": {"id": 1, "body": "@stratum triage", "user": {"login": "e"}}}) is None
+
+
+def test_command_spam_runs_nothing_twice(reviewed, fake_github, fake_model):
+    for n in range(50):
+        handle(reviewed, *event(f"@stratum triage  #{n}", login="erin"))
+    assert len(fake_model.chat_calls) == 1
+    assert sum("This PR is sorted as" in r for r in replies(fake_github)) == 50
+    for _ in range(5):
+        handle(reviewed, *event("@stratum review", login="mona"))
+    assert len(fake_github.summary_comments(7)) == 1, "re-reviews edit the one summary"
+    assert len({(c["path"], c["line"], c["body"].split("\n")[0]) for c in fake_github.inline_comments(7)}) == len(fake_github.inline_comments(7))
+
+
+def test_permission_lookup_failing_refuses_politely(reviewed, fake_github, fake_model):
+    fake_github.fail("GET", r"/collaborators/.*/permission", 502, times=0)
+    assert handle(reviewed, *event("@stratum review", login="mona")) == "refused"
+    assert "couldn't check your access" in replies(fake_github)[-1]
+    assert len(fake_model.chat_calls) == 1
+
+
+def test_record_for_an_author_with_no_history(fake_github, make_context, tmp_path):
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True)
+    fake_github.add_pull(7, diff=DIFF)
+    ctx = make_context(checkout=str(repo), model=None)
+    handle(ctx, *event("@stratum record", login="erin"))
+    last = fake_github.issue_comments[7][-1]["body"]
+    assert "No merged PRs found" in last or "couldn't read this repo's history" in last
+    assert_no_secrets(fake_github)
+    handle(ctx, *event("@stratum record", login="mallory"))
+    ctx.policy = ctx.policy.__class__(**{**ctx.policy.__dict__, "track_record": ctx.policy.track_record.__class__(exclude=("erin",))})
+    handle(ctx, *event("@stratum record", login="erin"))
+    assert "excludes your login" in fake_github.issue_comments[7][-1]["body"]
+
+
+def test_parse_handles_every_spelling():
+    assert parse("@Stratum Re-Review now") == ("re-review", "now")
+    assert parse("") is None and parse(None) is None  # type: ignore[arg-type]
+    assert parse("@stratum") is None

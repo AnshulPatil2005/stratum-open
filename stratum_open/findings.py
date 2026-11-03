@@ -59,8 +59,40 @@ class Finding:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Finding:
-        known = {f.name for f in fields(cls)}
-        return cls(**{k: v for k, v in data.items() if k in known})
+        """A finding from stored data, with each field coerced to its type:
+        the data may come from an older release's state, and a line number
+        written as text must not raise later on."""
+        known = {f.name: f for f in fields(cls)}
+        values: dict[str, Any] = {}
+        for key, value in data.items():
+            if key not in known:
+                continue
+            if key in ("line_start", "line_end"):
+                value = _line(value)
+            elif key == "confidence":
+                value = float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else 0.7
+            elif key == "needs_human":
+                value = bool(value)
+            elif key == "replacement":
+                value = value if isinstance(value, str) else None
+            elif value is None or not isinstance(value, str):
+                value = "" if value is None else str(value)
+            values[key] = value
+        if not values.get("title") or not isinstance(values.get("detail"), str):
+            raise ValueError("a finding needs a title and a detail")
+        return cls(**values)
+
+
+def _line(value: Any) -> int | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, float) and value.is_integer() and value > 0:
+        return int(value)
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip()) or None
+    return None
 
 
 def slug(text: str, limit: int = 48) -> str:

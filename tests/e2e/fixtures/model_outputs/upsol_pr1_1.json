@@ -1,0 +1,8 @@
+{
+ "ok": true,
+ "error": "",
+ "seconds": 12.0,
+ "prompt_tokens": 2706,
+ "output_tokens": 72,
+ "text": "{\n  \"summary\": \"This PR updates the application to persist AI settings and API keys across popup closes, show AI provider errors, recognize open accepted submissions at both Codeforces URL formats, and restrict 'problem page' detection to actual problem URLs.\",\n  \"matches_description\": \"yes\",\n  \"mismatch\": \"\",\n  \"findings\": []\n}"
+}

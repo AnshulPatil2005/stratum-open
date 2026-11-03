@@ -11,7 +11,8 @@ import re
 
 from stratum_open.github import publish
 from stratum_open.github.api import GitHubError
-from stratum_open.runner import Context, record_for, review_pull
+from stratum_open.review import demention
+from stratum_open.runner import Context, excluded, record_for, review_pull
 
 COMMAND = re.compile(r"^\s*@stratum\s+([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
 WRITE = {"admin", "maintain", "write"}
@@ -38,22 +39,26 @@ def handle(ctx: Context, event: str, payload: dict) -> str | None:
     """Run the command in a new comment, if there is one. Returns what was done."""
     if payload.get("action") != "created":
         return None
-    comment = payload["comment"]
-    user = comment.get("user") or {}
-    author = user.get("login", "")
-    if user.get("type") == "Bot" or author.lower() == ctx.bot.lower():
+    comment = payload.get("comment")
+    if not isinstance(comment, dict) or not comment.get("id"):
         return None
-    parsed = parse(comment.get("body", ""))
+    user = comment.get("user") or {}  # None for a deleted account
+    author = user.get("login") or ""
+    if not author or user.get("type") == "Bot" or author.lower() == ctx.bot.lower():
+        return None
+    parsed = parse(comment.get("body") or "")
     if parsed is None:
         return None
     name, arg = parsed
     inline = event == "pull_request_review_comment"
     if inline:
-        number = payload["pull_request"]["number"]
+        number = (payload.get("pull_request") or {}).get("number")
     elif "pull_request" in (payload.get("issue") or {}):
-        number = payload["issue"]["number"]
+        number = payload["issue"].get("number")
     else:
         return None  # a comment on an issue, not a PR
+    if not isinstance(number, int):
+        return None
 
     gh = ctx.gh
     thread_root = comment.get("in_reply_to_id") or comment["id"]
@@ -103,8 +108,12 @@ def handle(ctx: Context, event: str, payload: dict) -> str | None:
 
 
 def _can_write(ctx: Context, login: str, reply) -> bool:
-    if ctx.gh.permission(login) in WRITE:
-        return True
+    try:
+        if ctx.gh.permission(login) in WRITE:
+            return True
+    except GitHubError as exc:  # can't tell: treat as no access, and say why
+        reply(f"@{login}, Stratum couldn't check your access to this repo just now (GitHub answered {exc.status}). Please try again later.")
+        return False
     reply(f"@{login}, only people with write access to this repo can do that.")
     return False
 
@@ -150,8 +159,9 @@ def _explain(ctx: Context, number: int, thread_root: int) -> str:
         body = root.get("body", "")
         finding = {"title": body.split("\n", 1)[0], "detail": body, "path": root.get("path", ""), "line_start": root.get("line")}
     pull = gh.pull(number)
-    text = gh.file_text(finding.get("path", ""), pull["head"]["sha"]) or ""
-    line = int(finding.get("line_start") or 1)
+    text = gh.file_text(str(finding.get("path") or ""), (pull.get("head") or {}).get("sha") or "") or ""
+    raw_line = finding.get("line_start")
+    line = int(raw_line) if isinstance(raw_line, int) or (isinstance(raw_line, str) and raw_line.isdigit()) else 1
     numbered = "\n".join(f"{n:>5}  {t}" for n, t in enumerate(text.splitlines(), 1) if abs(n - line) <= 20)
     reply = ctx.model.complete(
         "You explain one code review finding to the author of a pull request. Be concrete and brief: what goes wrong, "
@@ -163,7 +173,8 @@ def _explain(ctx: Context, number: int, thread_root: int) -> str:
     )
     if not reply.ok or not reply.text.strip():
         return f"The model couldn't answer just now ({reply.error or 'empty reply'}). Try again later."
-    return f"{reply.text.strip()}\n\n<sub>Explained by `{ctx.model.name}`, the model this project runs.</sub>"
+    # The model's words are posted as a comment: an @name in them must not page anyone.
+    return f"{demention(reply.text.strip())[:20000]}\n\n<sub>Explained by `{ctx.model.name}`, the model this project runs.</sub>"
 
 
 def _triage_text(ctx: Context, number: int) -> str:
@@ -187,9 +198,11 @@ def _record_text(ctx: Context, login: str) -> str:
         return "Track records are turned off in this project's policy."
     if ctx.checkout is None:
         return "Stratum needs the repo's history for records; this setup didn't give it a checkout of the default branch."
+    if excluded(ctx, login):
+        return f"@{login}, no record is built for you here: the project's policy excludes your login."
     record = record_for(ctx, login)
     if record is None:
-        return f"@{login}, no record is built for you here: the project's policy excludes your login."
+        return f"@{login}, Stratum couldn't read this repo's history just now, so there's no record to show. Please try again later."
     lines = [f"@{login}, your record in this repo over the last {policy.window_days} days, from its git history:", ""]
     if not record.merged:
         lines.append("No merged PRs found under your login or the emails GitHub links to it.")

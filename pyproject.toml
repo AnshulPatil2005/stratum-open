@@ -31,5 +31,3 @@ bandit = ["bandit>=1.7"]
 [tool.setuptools]
 packages = ["stratum_open", "stratum_open.checks", "stratum_open.repo", "stratum_open.github"]
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]

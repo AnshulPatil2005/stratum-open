@@ -161,11 +161,11 @@ def review(
             call["error"] = call["error"] or "the reply wasn't the JSON asked for"
             continue
         if index == 0 or not result.summary:
-            result.summary = _text(data.get("summary"), 400)
+            result.summary = demention(_text(data.get("summary"), 400))
         answer = _text(data.get("matches_description"), 10).lower()
         if answer in ("yes", "partly", "no") and _worse(answer, result.matches_description):
             result.matches_description = answer
-            result.mismatch = _text(data.get("mismatch"), 400) if answer != "yes" else ""
+            result.mismatch = demention(_text(data.get("mismatch"), 400)) if answer != "yes" else ""
         raw_findings = data.get("findings")
         for raw in raw_findings if isinstance(raw_findings, list) else []:
             finding = _to_finding(raw, by_path)
@@ -217,8 +217,8 @@ def _worse(answer: str, current: str) -> bool:
 def _to_finding(raw: Any, by_path: dict[str, FileDiff]) -> Finding | None:
     if not isinstance(raw, dict):
         return None
-    title = _text(raw.get("title"), 120)
-    detail = _text(raw.get("detail"), 1200)
+    title = demention(_text(raw.get("title"), 120))
+    detail = demention(_text(raw.get("detail"), 1200))
     path = _match_path(_text(raw.get("file"), 300), by_path)
     if not title or not detail or path is None:
         return None
@@ -252,7 +252,7 @@ def _to_finding(raw: Any, by_path: dict[str, FileDiff]) -> Finding | None:
         path=path,
         line_start=start,
         line_end=end if start is not None else None,
-        suggestion=_text(raw.get("fix"), 600),
+        suggestion=demention(_text(raw.get("fix"), 600)),
         replacement=replacement,
         source="model",
         confidence=0.6,
@@ -300,10 +300,24 @@ def _int(value: Any) -> int | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, int):
-        return value if value > 0 else None
+        return value if 0 < value < 10**7 else None
+    if isinstance(value, float) and value.is_integer():
+        return _int(int(value))
     if isinstance(value, str) and value.strip().isdigit():
-        return int(value.strip()) or None
+        return _int(int(value.strip()))
     return None
+
+
+# An @name, as GitHub would link it: not already in code, not part of an email or a path.
+_MENTION = re.compile(r"(?<![\w`/.@-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\b")
+
+
+def demention(text: str) -> str:
+    """The model's words with every @name put in code, so nobody is paged by
+    text a model made up, and `@stratum review` in a reply is never a
+    command. The bot's own comments are skipped by the command parser too;
+    this covers people."""
+    return _MENTION.sub(lambda m: f"`@{m.group(1)}`", text)
 
 
 def _text(value: Any, limit: int) -> str:

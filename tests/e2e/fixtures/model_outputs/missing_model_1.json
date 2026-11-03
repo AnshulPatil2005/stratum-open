@@ -1,0 +1,8 @@
+{
+ "ok": false,
+ "error": "the model server answered 404: {\"error\":\"model 'stratum-e2e-no-such-model:latest' not found\"}",
+ "seconds": 2.1,
+ "prompt_tokens": null,
+ "output_tokens": null,
+ "text": ""
+}

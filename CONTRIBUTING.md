@@ -7,7 +7,10 @@ time, so it holds itself to what it asks of contributors:
   the change before you spend time on it.
 - **Explain the change in the PR:** what it does, why, and how you checked it.
 - **Add or update tests.** Run them with `pytest`; they need no network and no
-  model.
+  model. `tests/e2e/` runs the whole pipeline against a fake model server and
+  a fake GitHub API (`make e2e`); `make e2e-live` runs it against a real model
+  when you have one. Every crash fix comes with a test that failed before it:
+  see `docs/crash-log.md`.
 - **Keep the data page true.** If your change stores something new, or sends
   something new off the maintainers' machines, update [DATA.md](DATA.md) in
   the same PR. `tests/test_data_page.py` fails when a stored field isn't listed.
