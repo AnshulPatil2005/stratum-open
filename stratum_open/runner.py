@@ -13,12 +13,13 @@ from dataclasses import dataclass, field
 from typing import Callable
 
 from stratum_open.diff import FileDiff, parse_diff
-from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank, risk_score
+from stratum_open.engine import analyze, effective_policy, snippet_of  # noqa: F401  (effective_policy: re-exported)
+from stratum_open.findings import Finding
 from stratum_open.github import publish
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
 from stratum_open.policy import Policy, load_policy, matches_any
-from stratum_open.review import ReviewResult, _locate, review, shown
+from stratum_open.review import ReviewResult
 from stratum_open.storage import NullStorage, Storage
 from stratum_open.track_record import AuthorRecord, author_identity, build_records
 from stratum_open.triage import PRFacts, Triage, triage
@@ -83,33 +84,8 @@ def skip_reason(pull: dict, action: str | None, policy: Policy) -> str | None:
     return None
 
 
-def effective_policy(policy: Policy, model: Model | None) -> tuple[Policy, str, str]:
-    """The policy with its profile's defaults filled in for this model, the
-    profile, and a line saying why. The model's context window follows."""
-    from stratum_open.profiles import ModelInfo, apply, choose
-
-    # A model that can't describe itself is treated as small and local,
-    # the cheaper guess; embedders set review.profile to say otherwise.
-    describe = getattr(model, "describe", None)
-    info = describe() if callable(describe) else ModelInfo()
-    profile = choose(policy, info) if model is not None else "small"
-    policy = apply(policy, profile, info)
-    if model is not None:
-        model.context_tokens = policy.review.context_tokens
-    if policy.review.profile != "auto":
-        why = "set in the policy"
-    elif info.billions is not None:
-        why = f"{info.billions:g}B parameters"
-    elif info.context is not None:
-        why = f"a {info.context:,}-token context window"
-    else:
-        why = "runs locally" if info.local else "a hosted model of unknown size"
-    return policy, profile, why
-
-
 def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = True) -> Outcome:
     gh = ctx.gh
-    policy, profile, profile_why = effective_policy(ctx.policy, ctx.model)
     pull = gh.pull(number)
     if pull.get("state") != "open":
         return Outcome(number, "skipped", note="the PR isn't open")
@@ -132,18 +108,21 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             changed = set(since) & set(paths) if since is not None else None
     incremental = changed is not None
 
-    checks = _checks(ctx, policy, files, head)
     notes, hotspots, boundary = _history(ctx, files, pull)
     record = _record(ctx, pull)
-
-    result: ReviewResult | None = None
-    if ctx.model is not None and (changed is None or changed):
-        result = review(
-            title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=policy,
-            model=ctx.model, only_paths=changed, context=notes, hotspots=hotspots,
-            previous=_still_there(state.findings, files) if incremental else None,
-            log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
-        )
+    muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []
+    engine = analyze(
+        title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=ctx.policy, model=ctx.model,
+        contents=_contents(ctx, files, head), lookup=ctx.lookup, only_paths=changed, previous=state.findings,
+        notes=notes, hotspots=hotspots, extra_findings=boundary,
+        exclude_fingerprints=set(state.ignored), exclude_rules=set(state.ignored_rules) | set(muted),
+        log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
+    )
+    policy, findings, result, gone = engine.policy, engine.findings, engine.review, dict(engine.gone)
+    for finding in engine.excluded:
+        if finding.fingerprint in state.ignored:
+            gone.setdefault(finding.fingerprint, "Ignored on this PR.")
+    if result is not None:
         if not result.ran:
             errors = sorted({c["error"] for c in result.calls if c.get("error")})
             problems.append("The model didn't answer, so this review has only the checks" + (f": {errors[0]}" if errors else "."))
@@ -154,27 +133,6 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
                 problems.append(f"{result.salvaged_calls} of the model's replies were cut off; anything it found after the cut is missing.")
     elif ctx.model is None:
         problems.append("No model is configured, so this review has only the checks.")
-
-    model_findings = result.findings if result else []
-    findings = anchor_to_diff(checks + boundary + model_findings, files)
-    assign_fingerprints(findings, files)
-    findings = dedupe(findings)
-
-    # A model finding stays until the code it's on changes; the model not
-    # repeating it on the next push doesn't make it fixed.
-    reviewed_now = set(result.packed.reviewed + result.packed.clipped) if result and result.packed and result.ran else set()
-    carried, gone = _carry(state.findings, files, {f.fingerprint for f in findings}, reviewed_now)
-    for finding in [f for f in carried if not shown(f, policy)]:  # the policy's bar may have risen since
-        carried.remove(finding)
-        gone[finding.fingerprint] = f"Hidden: this project shows the model's findings from {policy.review.min_severity} severity up."
-    findings = dedupe(findings + carried)
-
-    muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []
-    ignored = set(state.ignored)
-    for f in findings:
-        if f.fingerprint in ignored:
-            gone.setdefault(f.fingerprint, "Ignored on this PR.")
-    findings = rank([f for f in findings if f.fingerprint not in ignored and f.rule not in state.ignored_rules and f.rule not in muted])
 
     facts = PRFacts.from_pull(pull, paths)
     try:
@@ -190,7 +148,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
 
     coverage = _coverage(result, incremental, changed, state.head, files)
     if ctx.model is not None:
-        coverage.append(f"Profile: `{profile}` ({profile_why}).")
+        coverage.append(f"Profile: `{engine.profile}` ({engine.profile_why}).")
     summary = publish.Summary(
         findings=findings, inline=set(), policy=policy, model_name=ctx.model.name if ctx.model else None,
         model_summary=(result.summary if result and result.ran else ""),
@@ -199,7 +157,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     )
     new_state = publish.State(
         head=head,
-        findings=[publish.state_finding(f, _snippet(f, files)) for f in findings if f.source == "model"],
+        findings=[publish.state_finding(f, snippet_of(f, files)) for f in findings if f.source == "model"],
         ignored=state.ignored, ignored_rules=state.ignored_rules,
         triage={**sorted_pr.as_dict(), "additions": facts.additions, "deletions": facts.deletions},
     )
@@ -222,29 +180,27 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     summary.inline = (on_lines | set(posted)) & {f.fingerprint for f in findings}
     body = publish.render_summary(summary, new_state)
     publish.upsert_summary(gh, number, existing, body)
-    complete = result.complete if result is not None else True  # no new code to read is a complete review
     try:
-        publish.publish_check(gh, head, findings, body.split("<details>")[0], complete=complete, policy=policy)
+        publish.publish_check(gh, head, findings, body.split("<details>")[0], conclusion=engine.conclusion, name=policy.review.check_name)
     except GitHubError as exc:
         ctx.log(f"couldn't publish the check run: {exc}")
 
     if policy.triage.enabled and not facts.draft:
-        current = [label["name"] for label in pull.get("labels", [])]
-        publish.apply_label(gh, number, policy, sorted_pr.key, current)
+        labels = [label["name"] for label in pull.get("labels", [])]
+        publish.apply_label(gh, number, policy, sorted_pr.key, labels)
         if policy.triage.close_without_issue and policy.triage.require_linked_issue and not facts.linked_issues and sorted_pr.key != "needs_human":
             gh.comment(number, "Closing this PR: this project asks for every PR to link an issue (`Fixes #123`), and this one doesn't. "
                                "Link one and reopen it, or ask a maintainer. Closed by Stratum under the project's `.stratum/policy.yml`.")
             gh.close(number)
 
-    ctx.storage.record_review(gh.repo, number, head, risk_score(findings), result.summary if result else "", findings)
+    ctx.storage.record_review(gh.repo, number, head, engine.score, result.summary if result else "", findings)
     return Outcome(number, "published", findings, sorted_pr, result, body)
 
 
-def _checks(ctx: Context, policy: Policy, files: list[FileDiff], head: str) -> list[Finding]:
-    """The checks, with the full new text of the files where context matters:
+def _contents(ctx: Context, files: list[FileDiff], head: str) -> dict[str, str] | None:
+    """The full new text of the files where the checks need context:
     workflows and manifests always (they're small), Python files for Bandit
     when it's installed."""
-    from stratum_open.checks import run_checks
     from stratum_open.checks.bandit import available
     from stratum_open.checks.dependencies import manifest_kind
 
@@ -266,8 +222,7 @@ def _checks(ctx: Context, policy: Policy, files: list[FileDiff], head: str) -> l
             text = None
         if text is not None:
             contents[file.path] = text
-    lookup = ctx.lookup if policy.dependencies.registry_lookup else None
-    return run_checks(files, policy, lookup=lookup, contents=contents or None)
+    return contents or None
 
 
 def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str], set[str], list[Finding]]:
@@ -344,57 +299,6 @@ def record_for(ctx: Context, login: str) -> AuthorRecord | None:
             merged.strikes += records[identity].strikes
     merged.merged.sort(key=lambda pr: pr.merged_at)
     return merged
-
-
-def _still_there(prior: list[dict], files: list[FileDiff]) -> list[dict]:
-    """The prior model findings `_carry` will keep whatever the model says:
-    anchored ones whose code is still on the new side of the diff. Only
-    these may be named to the model as "already found". One whose code was
-    edited, or one about a whole file, is dropped when its file is reviewed
-    again, so the model must be free to report it again."""
-    by_path = {f.path: f for f in files}
-    kept = []
-    for data in prior:
-        file = by_path.get(data.get("path", ""))
-        if (data.get("source") == "model" and file is not None and data.get("line_start") is not None
-                and data.get("snippet") and _locate(data["snippet"], file, near=data["line_start"]) is not None):
-            kept.append(data)
-    return kept
-
-
-def _carry(prior: list[dict], files: list[FileDiff], current: set[str], reviewed_now: set[str]) -> tuple[list[Finding], dict[str, str]]:
-    """Prior model findings whose code is still there (re-anchored to where it
-    is now), and the fingerprints of those whose code changed."""
-    by_path = {f.path: f for f in files}
-    carried, gone = [], {}
-    for data in prior:
-        if data.get("source") != "model" or not data.get("fingerprint"):
-            continue
-        fp = data["fingerprint"]
-        if fp in current:
-            continue
-        file = by_path.get(data.get("path", ""))
-        if file is None:
-            gone[fp] = "Resolved: this file is no longer changed by the PR."
-            continue
-        finding = Finding.from_dict(data)
-        snippet = data.get("snippet") or ""
-        if finding.line_start is not None:
-            located = _locate(snippet, file, near=finding.line_start) if snippet else None
-            if located is None:
-                gone[fp] = "Resolved: the code this was about has changed."
-                continue
-            finding.line_start, finding.line_end = located
-        elif file.path in reviewed_now:
-            gone[fp] = "Resolved: the model no longer finds this after the latest changes."
-            continue
-        carried.append(finding)
-    return carried, gone
-
-
-def _snippet(finding: Finding, files: list[FileDiff]) -> str:
-    file = next((f for f in files if f.path == finding.path), None)
-    return file.snippet(finding.line_start, finding.line_end) if file and finding.line_start else ""
 
 
 def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] | None, previous_head: str, files: list[FileDiff]) -> list[str]:

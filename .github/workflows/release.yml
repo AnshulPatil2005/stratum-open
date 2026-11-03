@@ -1,0 +1,36 @@
+# Publish to PyPI when a version tag (v0.2.0, ...) is pushed.
+#
+# It uses trusted publishing: PyPI checks this workflow's identity, so no
+# API token is stored anywhere. Set it up once on pypi.org, under the
+# stratum-open project's "Publishing" settings: owner AnshulPatil2005,
+# repository stratum-open, workflow release.yml, environment pypi.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  pypi:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write  # for trusted publishing; nothing else can write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - name: The tag must match the package's version
+        run: |
+          version=$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match version $version in pyproject.toml."
+            exit 1
+          fi
+      - run: python -m pip install --quiet build && python -m build
+      - uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
