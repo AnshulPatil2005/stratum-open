@@ -19,6 +19,9 @@ PYTHON = {".py"}
 JAVASCRIPT = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"}
 SQL_HOSTS = PYTHON | JAVASCRIPT | {".go", ".java", ".kt", ".scala", ".rb", ".php", ".cs", ".rs"}
 DOCS = {".md", ".markdown", ".rst", ".txt", ".adoc"}
+# A line longer than this was generated (a minified bundle, a data URI), not written: only the
+# secret scan runs on it. The other rules' findings there are noise, and their cost grows with it.
+MAX_LINE = 5000
 
 
 def check(files: list[FileDiff], contents: dict[str, str] | None = None) -> list[Finding]:
@@ -33,7 +36,7 @@ def check(files: list[FileDiff], contents: dict[str, str] | None = None) -> list
         child_process = ext in JAVASCRIPT and any("child_process" in line for line in lines.values())
         for number, text in added:
             findings.extend(_secrets(file.path, number, text, lines, test))
-            if is_comment(text):
+            if is_comment(text) or len(text) > MAX_LINE:
                 continue
             if not test:
                 findings.extend(_eval(file.path, number, text, ext))
@@ -239,22 +242,47 @@ def _code_search(pattern: re.Pattern, text: str) -> re.Match | None:
 
 def _in_string(text: str, pos: int) -> bool:
     """Whether `pos` falls inside a string literal opened earlier on the line."""
-    quote, i = None, 0
-    while i < pos:
-        if quote:
-            if text[i] == "\\":
-                i += 2
-            elif text.startswith(quote, i):
-                i, quote = i + len(quote), None
-            else:
-                i += 1
-            continue
-        opener = next((q for q in ('"""', "'''", '"', "'", "`") if text.startswith(q, i)), None)
-        if opener:
-            quote, i = opener, i + len(opener)
-        else:
+    return any(start < pos < end for start, end, _, _ in _strings(text))
+
+
+def _strings(text: str) -> list[tuple[int, int, str, str]]:
+    """Every string literal on a line as (start, end, quote, body), from one
+    left-to-right scan. A regex for this is easy to write and easy to get
+    exponentially wrong: `\\.` and "any character" both match a backslash, and
+    a minified line with thousands of escapes then backtracks for minutes. An
+    unterminated quote is skipped, not matched to the end of the line.
+
+    The checks ask about the same line several times in a row, so the last
+    line's scan is kept."""
+    cached = _STRINGS_CACHE.get(text)
+    if cached is not None:
+        return cached
+    found: list[tuple[int, int, str, str]] = []
+    i, n = 0, len(text)
+    while i < n:
+        char = text[i]
+        if char not in "\"'`":
             i += 1
-    return quote is not None
+            continue
+        quote = text[i:i + 3] if text[i:i + 3] in ('"""', "'''") else char
+        j = i + len(quote)
+        while j < n:
+            if text[j] == "\\":
+                j += 2
+            elif text.startswith(quote, j):
+                found.append((i, j + len(quote), quote, text[i + len(quote):j]))
+                i = j + len(quote)
+                break
+            else:
+                j += 1
+        else:
+            i += 1  # unterminated: not a string
+    _STRINGS_CACHE.clear()
+    _STRINGS_CACHE[text] = found
+    return found
+
+
+_STRINGS_CACHE: dict[str, list[tuple[int, int, str, str]]] = {}
 
 
 def _constant_command(lines: dict[int, str], number: int) -> bool:
@@ -275,7 +303,6 @@ def _constant_command(lines: dict[int, str], number: int) -> bool:
 _SQL = re.compile(r"(?i)\b(?:select\s.+?\sfrom|insert\s+into|update\s+\S+\s+set|delete\s+from)\b")
 _SQL_UPPER = re.compile(r"\b(?:SELECT\s.+?\sFROM|INSERT\s+INTO|UPDATE\s+\S+\s+SET|DELETE\s+FROM)\b")
 _SQL_SIGNS = re.compile(r"(?i)\bwhere\b|\bvalues\b|\*|=")  # tells lowercase SQL from prose
-_STRING = re.compile(r"""(?P<q>\"\"\"|'''|["'`])(?P<body>(?:\\.|(?!(?P=q)).)*?)(?P=q)""")
 _F_PREFIX = re.compile(r"(?<![\w])(?:[rRbB]?[fF]|[fF][rRbB]|\$@?|@\$)$")
 _AFTER = re.compile(r"""^\s*(?:%\s*[\w(\[]|\.\s*format\s*\(|\+\s*[^\s"'`])""")
 _BEFORE = re.compile(r"""[\w)\]]\s*\+\s*$""")
@@ -283,11 +310,10 @@ _FORMAT_CALL = re.compile(r"(?:Sprintf|String\.format|string\.Format|format)\s*\
 
 
 def _sql(path: str, number: int, text: str, ext: str) -> list[Finding]:
-    for match in _STRING.finditer(text):
-        body, quote = match.group("body"), match.group("q")
+    for start, end, quote, body in _strings(text):
         if not _SQL.search(body) or not (_SQL_UPPER.search(body) or _SQL_SIGNS.search(body)):
             continue
-        before, after = text[: match.start()], text[match.end():]
+        before, after = text[:start], text[end:]
         interpolated = (
             (_F_PREFIX.search(before) and "{" in body)
             or (quote in ('"', "`", '"""') and "${" in body)
