@@ -143,6 +143,7 @@ def test_a_reply_cut_off_mid_answer_keeps_the_findings_before_the_cut():
     cut = '{"summary": "Changes the query.", "matches_description": "yes", "findings": [' + finding + ', {"file": "app/users.py", "tit'
     result = run(FakeModel(cut))
     assert result.ran and result.failed_calls == 0 and result.salvaged_calls == 1
+    assert not result.complete  # what came after the cut was never received
     assert [f.title for f in result.findings] == ["SQL injection"]
     assert result.summary == "Changes the query."
     assert result.calls[0]["salvaged"] is True

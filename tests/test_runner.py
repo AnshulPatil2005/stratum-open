@@ -279,3 +279,11 @@ def test_record_command_without_history(gh):
     event, payload = comment_event("@stratum record")
     handle(ctx, event, payload)
     assert "needs the repo's history" in gh.issue_comments_[7][-1]["body"]
+
+
+def test_a_cut_off_reply_never_passes_the_check(gh):
+    cut = '{"summary": "Changes the user query.", "matches_description": "yes", "findings": ['
+    outcome = review_pull(context(gh, FakeModel(cut)), 7)
+    assert outcome.review.salvaged_calls == 1
+    assert gh.checks[-1]["conclusion"] != "success"
+    assert "were cut off; anything it found after the cut is missing" in gh.issue_comments_[7][0]["body"]

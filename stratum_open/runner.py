@@ -96,8 +96,11 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         if not result.ran:
             errors = sorted({c["error"] for c in result.calls if c.get("error")})
             problems.append("The model didn't answer, so this review has only the checks" + (f": {errors[0]}" if errors else "."))
-        elif not result.complete:
-            problems.append(f"{result.failed_calls} of {len(result.calls)} model calls failed; some files weren't reviewed.")
+        else:
+            if result.failed_calls:
+                problems.append(f"{result.failed_calls} of {len(result.calls)} model calls failed; some files weren't reviewed.")
+            if result.salvaged_calls:
+                problems.append(f"{result.salvaged_calls} of the model's replies were cut off; anything it found after the cut is missing.")
     elif ctx.model is None:
         problems.append("No model is configured, so this review has only the checks.")
 
@@ -341,8 +344,6 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
             lines.append("Read in part (too big for one call): " + ", ".join(f"`{p}`" for p in packed.clipped[:10]))
         if packed.omitted:
             lines.append(f"Not read by the model ({_files(len(packed.omitted))} past the review's size limit): " + ", ".join(f"`{p}`" for p in packed.omitted[:10]))
-    if result and result.salvaged_calls:
-        lines.append(f"{result.salvaged_calls} of the model's replies came back incomplete or malformed; the findings Stratum could read from them are kept.")
     lines.append(f"The checks ran on {'the' if len(files) == 1 else 'all'} {_files(len(files))} changed.")
     return lines
 

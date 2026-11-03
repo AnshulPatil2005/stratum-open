@@ -101,8 +101,10 @@ class ReviewResult:
 
     @property
     def complete(self) -> bool:
-        """Every chunk was reviewed and parsed."""
-        return self.failed_calls == 0
+        """Every chunk was reviewed and its reply read in full. A salvaged
+        reply leaves the review incomplete: whatever came after the break
+        was never received, so it mustn't pass for a clean result."""
+        return self.failed_calls == 0 and self.salvaged_calls == 0
 
     @property
     def ran(self) -> bool:
