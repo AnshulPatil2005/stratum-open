@@ -70,10 +70,13 @@ Report at most {max_findings} findings. An empty findings list is the right answ
 USER = """Pull request: {title}
 {description}
 Files changed in this PR: {all_files}
-{note}
+{left_out}{previous}{note}
 The diff. Each line starts with its line number in the new file (blank for removed lines), then + added, - removed or a space for unchanged:
 
 {diff}"""
+
+MAX_PREVIOUS = 10
+MAX_PREVIOUS_CHARS = 1200
 
 # Titles that narrate the change instead of naming a defect.
 _NARRATION = re.compile(r"^(new|added?|adds|updated?|updates|changed?|changes|modified|refactor(?:ed|s)?|renamed?|removed?|moved|improved?|introduc\w*)\b", re.IGNORECASE)
@@ -121,9 +124,13 @@ def review(
     only_paths: set[str] | None = None,
     context: list[str] | None = None,
     hotspots: set[str] | None = None,
+    previous: list[dict[str, Any]] | None = None,
     log: Callable[[str, str], None] | None = None,
 ) -> ReviewResult:
-    """Review `files` (or only `only_paths` of them, on an incremental run)."""
+    """Review `files` (or only `only_paths` of them, on an incremental run).
+    `previous` is the last review's findings on the files being reviewed
+    again; they're listed so the model doesn't report them a second time in
+    new words."""
     result = ReviewResult()
     in_scope = [f for f in files if only_paths is None or f.path in only_paths]
     rules = "".join(f"- {rule}\n" for rule in policy.review.rules)
@@ -138,8 +145,11 @@ def review(
 
     description = (description or "").strip()[:MAX_DESCRIPTION_CHARS] or "(no description)"
     all_files = ", ".join(f.path for f in files[:60]) + (f" and {len(files) - 60} more" if len(files) > 60 else "")
-    skeleton = USER.format(title=title, description=f"Description:\n{description}\n", all_files=all_files, note="", diff="")
-    budget = policy.review.context_tokens - diffs.approx_tokens(system + skeleton) - OUTPUT_RESERVE_TOKENS - 200
+    previous_block = _previous_block(previous or [], {f.path for f in in_scope})
+    skeleton = USER.format(title=title, description=f"Description:\n{description}\n", all_files=all_files,
+                           left_out="", previous=previous_block, note="", diff="")
+    # 250 more for the line naming files left out, known only after packing.
+    budget = policy.review.context_tokens - diffs.approx_tokens(system + skeleton) - OUTPUT_RESERVE_TOKENS - 450
     packed = diffs.pack(
         in_scope, max(1000, budget), policy.review.max_chunks,
         skip=policy.ignored,
@@ -147,12 +157,14 @@ def review(
     )
     result.packed = packed
     by_path = {f.path: f for f in files}
+    left_out = _left_out_block(packed)
 
     for index, chunk in enumerate(packed.chunks):
         note = ""
         if len(packed.chunks) > 1:
-            note = f"This is part {index + 1} of {len(packed.chunks)} of the diff; judge the description against what you can see."
-        user = USER.format(title=title, description=f"Description:\n{description}\n", all_files=all_files, note=note, diff=chunk)
+            note = f"This is part {index + 1} of {len(packed.chunks)} of the diff; judge the description against what you can see.\n"
+        user = USER.format(title=title, description=f"Description:\n{description}\n", all_files=all_files,
+                           left_out=left_out, previous=previous_block, note=note, diff=chunk)
         reply = model.complete(system, user, max_tokens=OUTPUT_RESERVE_TOKENS)
         call = reply.as_dict()
         result.calls.append(call)
@@ -187,6 +199,35 @@ def review(
                 result.findings.append(finding)
     result.findings = _fewer(result.findings)
     return result
+
+
+def _left_out_block(packed: Packed) -> str:
+    """Tell the model which changed files it isn't seeing, so it doesn't
+    report something as missing that's in a file it was never shown."""
+    lines = []
+    if packed.omitted:
+        names = ", ".join(packed.omitted[:20]) + (f" and {len(packed.omitted) - 20} more" if len(packed.omitted) > 20 else "")
+        lines.append(f"Not shown, because the review's size limit was reached: {names}.")
+    if packed.clipped:
+        lines.append("Shown only in part, because they're long: " + ", ".join(packed.clipped[:20]) + ".")
+    return "".join(f"{line}\n" for line in lines)
+
+
+def _previous_block(previous: list[dict[str, Any]], paths: set[str]) -> str:
+    """The last review's findings on the files being reviewed again."""
+    items = []
+    for finding in previous:
+        if finding.get("path") not in paths or not finding.get("title"):
+            continue
+        where = f"`{finding['path']}`" + (f" line {finding['line_start']}" if finding.get("line_start") else "")
+        items.append(f"- {where}: {_text(finding.get('title'), 100)}")
+        if len(items) >= MAX_PREVIOUS:
+            break
+    if not items:
+        return ""
+    block = ("Stratum's last review already found these on the files below. They stay until their code changes, "
+             "so don't report them again; report only problems that aren't on this list:\n" + "\n".join(items))
+    return block[:MAX_PREVIOUS_CHARS] + "\n"
 
 
 def shown(finding: Finding, policy: Policy) -> bool:

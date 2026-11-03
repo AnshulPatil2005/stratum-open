@@ -156,3 +156,17 @@ def test_near_json_and_mojibake_are_read():
     assert parse_json("{'summary': 'ok', findings: []}") == {"summary": "ok", "findings": []}
     assert repair_text("low\u00e2\u20ac\u2018severity \ufffd") == "low\u2011severity "
     assert salvage("nothing useful") is None
+
+
+def test_the_prompt_lists_left_out_files_and_previous_findings():
+    big = "".join(
+        f"diff --git a/f{i}.py b/f{i}.py\n--- a/f{i}.py\n+++ b/f{i}.py\n@@ -1 +1,40 @@\n x\n" + "".join(f"+line {n} " * 20 + "\n" for n in range(40))
+        for i in range(3)
+    )
+    model = FakeModel(answer(findings=[]))
+    previous = [{"path": "f0.py", "line_start": 2, "title": "Unbounded loop"}, {"path": "elsewhere.py", "title": "Not listed"}]
+    review(title="t", description="d", files=parse_diff(big), policy=parse_policy("review:\n  context_tokens: 4000\n  max_chunks: 1\n"),
+           model=model, previous=previous)
+    _, user = model.prompts[0]
+    assert "Not shown, because the review's size limit was reached:" in user
+    assert "`f0.py` line 2: Unbounded loop" in user and "Not listed" not in user

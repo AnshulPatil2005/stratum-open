@@ -182,14 +182,34 @@ def render(file: FileDiff, hunks: Iterable[Hunk] | None = None) -> str:
            41    unchanged
            42 +  added
               -  removed
+
+    A hunk that only removes lines becomes one note, "(3 lines removed after
+    line 41)": the model can't comment on removed lines, and on a small model
+    the deleted text would only use up its budget.
     """
     lines = [f"## {file.path} ({file.status})"]
     for hunk in hunks if hunks is not None else file.hunks:
         lines.append(f"@@ {hunk.header}".rstrip())
+        if not any(line.kind == "+" for line in hunk.lines):
+            lines.append(" " * 7 + "   " + _removal_note(hunk))
+            continue
         for line in hunk.lines:
             number = f"{line.new:>6}" if line.new is not None else " " * 6
             lines.append(f"{number} {line.kind}  {line.text}")
     return "\n".join(lines)
+
+
+def _removal_note(hunk: Hunk) -> str:
+    removed = sum(1 for line in hunk.lines if line.kind == "-")
+    before = None
+    for line in hunk.lines:
+        if line.kind == "-":
+            break
+        before = line.new
+    if before is None:
+        before = hunk.new_start - 1
+    where = f"after line {before}" if before > 0 else "at the start of the file"
+    return f"({removed} line{'' if removed == 1 else 's'} removed {where})"
 
 
 def approx_tokens(text: str) -> int:

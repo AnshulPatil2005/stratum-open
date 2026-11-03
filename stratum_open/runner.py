@@ -91,6 +91,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         result = review(
             title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=policy,
             model=ctx.model, only_paths=changed, context=notes, hotspots=hotspots,
+            previous=state.findings if incremental else None,
             log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
         )
         if not result.ran:
