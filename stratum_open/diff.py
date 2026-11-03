@@ -173,14 +173,25 @@ def _unquote(path: str) -> str:
 # ── what the model sees ──────────────────────────────────────────────────
 
 
-def render(file: FileDiff, hunks: Iterable[Hunk] | None = None) -> str:
+def render(file: FileDiff, hunks: Iterable[Hunk] | None = None, style: str = "interleaved") -> str:
     """A file's diff with each new-side line numbered, so the model can say
-    which line a problem is on:
+    which line a problem is on. `interleaved` (for small models) keeps the
+    lines in order:
 
         ## path/to/file.py (modified)
         @@ def handler
            41    unchanged
            42 +  added
+              -  removed
+
+    `split` (for large ones) shows each hunk's new code, then its old code:
+
+        @@ def handler
+        __new hunk__
+           41    unchanged
+           42 +  added
+        __old hunk__
+                 unchanged
               -  removed
 
     A hunk that only removes lines becomes one note, "(3 lines removed after
@@ -192,6 +203,13 @@ def render(file: FileDiff, hunks: Iterable[Hunk] | None = None) -> str:
         lines.append(f"@@ {hunk.header}".rstrip())
         if not any(line.kind == "+" for line in hunk.lines):
             lines.append(" " * 7 + "   " + _removal_note(hunk))
+            continue
+        if style == "split":
+            lines.append("__new hunk__")
+            lines += [f"{line.new:>6} {line.kind}  {line.text}" for line in hunk.lines if line.kind != "-"]
+            if any(line.kind == "-" for line in hunk.lines):
+                lines.append("__old hunk__")
+                lines += [f"{' ' * 6} {line.kind}  {line.text}" for line in hunk.lines if line.kind != "+"]
             continue
         for line in hunk.lines:
             number = f"{line.new:>6}" if line.new is not None else " " * 6
@@ -235,10 +253,12 @@ def pack(
     skip: Callable[[str], bool] = lambda path: False,
     priority: Callable[[FileDiff], float] | None = None,
     count: Callable[[str], int] = approx_tokens,
+    style: str = "interleaved",
+    large: str = "clip",
 ) -> Packed:
     """Fill up to `max_chunks` chunks of `budget_tokens`, most important files
     first. A file too big for a chunk on its own is clipped to the hunks that
-    fit rather than dropped."""
+    fit (`large="clip"`), or left out and listed (`large="skip"`)."""
     packed = Packed([], [], [], [], [])
     candidates = []
     for file in files:
@@ -252,10 +272,10 @@ def pack(
     chunk: list[str] = []
     used = 0
     for file in candidates:
-        text = render(file)
+        text = render(file, style=style)
         size = count(text) + 1
         if size > budget_tokens:
-            text = _clip(file, budget_tokens, count)
+            text = _clip(file, budget_tokens, count, style) if large == "clip" else ""
             size = count(text) + 1 if text else 0
             if not text:
                 packed.omitted.append(file.path)
@@ -277,23 +297,23 @@ def pack(
     return packed
 
 
-def _clip(file: FileDiff, budget_tokens: int, count: Callable[[str], int]) -> str:
+def _clip(file: FileDiff, budget_tokens: int, count: Callable[[str], int], style: str = "interleaved") -> str:
     """The whole hunks that fit, then as many lines of the next one as fit:
     a new file is a single hunk, and it shouldn't vanish for being long."""
     kept: list[Hunk] = []
     for hunk in file.hunks:
-        if count(render(file, kept + [hunk])) <= budget_tokens:
+        if count(render(file, kept + [hunk], style)) <= budget_tokens:
             kept.append(hunk)
             continue
         low, high = 0, len(hunk.lines)
         while low < high:
             middle = (low + high + 1) // 2
             part = Hunk(hunk.old_start, hunk.new_start, hunk.header, hunk.lines[:middle])
-            if count(render(file, kept + [part])) <= budget_tokens:
+            if count(render(file, kept + [part], style)) <= budget_tokens:
                 low = middle
             else:
                 high = middle - 1
         if low:
             kept.append(Hunk(hunk.old_start, hunk.new_start, hunk.header, hunk.lines[:low]))
         break
-    return render(file, kept) if kept else ""
+    return render(file, kept, style) if kept else ""

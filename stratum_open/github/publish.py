@@ -15,7 +15,7 @@ import re
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
-from stratum_open.findings import Finding, counts
+from stratum_open.findings import Finding, counts, risk_score
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.policy import Policy
 from stratum_open.triage import COLORS, DESCRIPTIONS, KEYS, Triage, label_for
@@ -304,10 +304,17 @@ def _short(text: str, limit: int) -> str:
 _LEVEL = {"critical": "failure", "high": "failure", "medium": "warning", "low": "notice"}
 
 
-def conclusion(findings: list[Finding], complete: bool) -> str:
-    """failure for a critical finding; neutral for a high one or an
-    incomplete review; success otherwise. Make the check required in branch
-    protection to block merging on `failure`."""
+def conclusion(findings: list[Finding], complete: bool, policy: Policy | None = None, score: int | None = None) -> str:
+    """With `review.conclusion: severity` (the default): failure for a
+    critical finding, neutral for a high one or an incomplete review, success
+    otherwise. With `score`: failure at or above `review.fail_at`, neutral at
+    or above `review.warn_at` or when incomplete. Make the check required in
+    branch protection to block merging on `failure`."""
+    if policy is not None and policy.review.conclusion == "score":
+        score = risk_score(findings) if score is None else score
+        if score >= policy.review.fail_at:
+            return "failure"
+        return "neutral" if score >= policy.review.warn_at or not complete else "success"
     if any(f.severity == "critical" for f in findings):
         return "failure"
     if any(f.severity == "high" for f in findings) or not complete:
@@ -315,7 +322,8 @@ def conclusion(findings: list[Finding], complete: bool) -> str:
     return "success"
 
 
-def publish_check(gh: GitHub, head_sha: str, findings: list[Finding], summary_text: str, *, complete: bool) -> None:
+def publish_check(gh: GitHub, head_sha: str, findings: list[Finding], summary_text: str, *, complete: bool,
+                  policy: Policy | None = None, score: int | None = None) -> None:
     tally = counts(findings)
     title = ", ".join(f"{n} {s}" for s, n in tally.items() if n) or "No findings"
     annotations = [
@@ -325,7 +333,8 @@ def publish_check(gh: GitHub, head_sha: str, findings: list[Finding], summary_te
         }
         for f in findings if f.anchored
     ]
-    gh.check_run(head_sha, CHECK_NAME, conclusion(findings, complete), title, summary_text[:2000], "", annotations)
+    name = policy.review.check_name if policy is not None else CHECK_NAME
+    gh.check_run(head_sha, name, conclusion(findings, complete, policy, score), title, summary_text[:2000], "", annotations)
 
 
 def apply_label(gh: GitHub, number: int, policy: Policy, key: str, current: list[str]) -> None:

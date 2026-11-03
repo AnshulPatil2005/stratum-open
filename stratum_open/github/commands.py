@@ -77,12 +77,16 @@ def handle(ctx: Context, event: str, payload: dict) -> str | None:
     except GitHubError:
         pass
 
-    if name in ("review", "re-review", "rereview") and _can_write(ctx, author, reply):
+    command = {"re-review": "review", "rereview": "review", "unmute": "mute"}.get(name, name)
+    if command in ("review", "ignore", "mute", "explain", "triage", "record") and not _allowed(ctx, command, author, number, reply):
+        return "refused"
+
+    if command == "review":
         review_pull(ctx, number, full=True)
         return "review"
-    if name == "ignore" and _can_write(ctx, author, reply):
+    if command == "ignore":
         return _ignore(ctx, number, arg, thread_root if inline else None, reply)
-    if name in ("mute", "unmute") and _can_write(ctx, author, reply):
+    if command == "mute":
         if not ctx.feedback:
             reply("Muting a rule for the whole repo needs somewhere to store it, so it works with the Stratum GitHub App. "
                   "With the Action, use `@stratum ignore <rule>` on this PR or list the paths in `review.ignore_paths`.")
@@ -99,7 +103,7 @@ def handle(ctx: Context, event: str, payload: dict) -> str | None:
         if not inline:
             reply("Reply `@stratum explain` to one of Stratum's inline comments, and it explains that finding.")
             return "explain"
-        refusal = _explain_refusal(ctx, number, author)
+        refusal = _explain_limit(ctx, number, author)
         if refusal:
             reply(refusal)
             return "refused"
@@ -111,18 +115,31 @@ def handle(ctx: Context, event: str, payload: dict) -> str | None:
     if name == "record":
         reply(_record_text(ctx, author))
         return "record"
-    if name not in ("review", "re-review", "rereview", "ignore", "mute", "unmute"):
-        reply(HELP)
-        return "help"
-    return "refused"
+    reply(HELP)
+    return "help"
 
 
-def _explain_refusal(ctx: Context, number: int, login: str) -> str | None:
-    """Why this person can't have an explanation now, or None if they can."""
+def _allowed(ctx: Context, command: str, login: str, number: int, reply) -> bool:
+    """Whether `login` may run `command`, per the policy's `commands`:
+    anyone, author (the PR's author, or anyone with write access) or write."""
+    who = getattr(ctx.policy.commands, command)
+    if who == "anyone":
+        return True
+    if who == "author" and login.lower() == ((ctx.gh.pull(number).get("user") or {}).get("login") or "").lower():
+        return True
+    if ctx.gh.permission(login) in WRITE:
+        return True
+    if who == "author":
+        why = ", since each one runs the project's model" if command == "explain" else ""
+        reply(f"@{login}, that's for this PR's author and people with write access to the repo{why}.")
+    else:
+        reply(f"@{login}, only people with write access to this repo can do that.")
+    return False
+
+
+def _explain_limit(ctx: Context, number: int, login: str) -> str | None:
+    """Why this person can't have another explanation today, or None."""
     gh = ctx.gh
-    author = ((gh.pull(number).get("user") or {}).get("login") or "").lower()
-    if login.lower() != author and gh.permission(login) not in WRITE:
-        return f"@{login}, explanations are for this PR's author and people with write access to the repo, since each one runs the project's model."
     since = datetime.now(timezone.utc) - timedelta(days=1)
     recent = []
     for comment in gh.review_comments(number):
@@ -143,13 +160,6 @@ def _created(comment: dict) -> datetime:
         return datetime.fromisoformat((comment.get("created_at") or "").replace("Z", "+00:00"))
     except ValueError:
         return datetime.now(timezone.utc)
-
-
-def _can_write(ctx: Context, login: str, reply) -> bool:
-    if ctx.gh.permission(login) in WRITE:
-        return True
-    reply(f"@{login}, only people with write access to this repo can do that.")
-    return False
 
 
 def _ignore(ctx: Context, number: int, rule: str, thread_root: int | None, reply) -> str:
