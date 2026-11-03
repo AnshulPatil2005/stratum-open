@@ -16,12 +16,13 @@ from pathlib import Path
 
 from stratum_open import __version__
 from stratum_open.diff import parse_diff
-from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank
+from stratum_open.findings import Finding
 from stratum_open.model import model_from_policy
 from stratum_open.policy import POLICY_PATH, Policy, parse_policy
 from stratum_open.track_record import author_identity, build_records
 
 _PR = re.compile(r"(?:https://github\.com/)?([\w.-]+/[\w.-]+)(?:/pull/|#)(\d+)/?$")
+MAX_LOCAL_CONTENTS = 40  # files whose full text the checks get on a local review
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -109,11 +110,11 @@ def _review(args) -> int:
 
 
 def _review_local(args, base: str) -> int:
-    """Review `git diff BASE...HEAD` here, with the policy as it is on BASE."""
-    from stratum_open.checks import run_checks
+    """Review `git diff BASE...HEAD` here, with the policy as it is on BASE,
+    through the same engine call as a review on GitHub."""
     from stratum_open.checks.dependencies import PackageLookup
+    from stratum_open.engine import analyze
     from stratum_open.repo.boundaries import boundary_findings
-    from stratum_open.review import review
 
     try:
         text = _git(".", "diff", "--no-color", "--find-renames", f"{base}...HEAD")
@@ -123,31 +124,31 @@ def _review_local(args, base: str) -> int:
     if not files:
         print(f"No changes between {base} and HEAD.")
         return 0
-    from stratum_open.runner import effective_policy
-
     policy = parse_policy(_git_or_none(".", "show", f"{base}:{POLICY_PATH}"))
     _policy_notes(policy)
     model = None if args.no_model else model_from_policy(policy)
-    # The same profile choice as on GitHub, so a local review matches the PR's.
-    policy, profile, why = effective_policy(policy, model)
-    findings = run_checks(files, policy, lookup=PackageLookup() if policy.dependencies.registry_lookup else None)
-    findings += boundary_findings(files, policy, ".")
+    # The checks read whole files where the diff isn't enough (workflows,
+    # manifests, Bandit), as they do on GitHub.
+    contents = {}
+    for file in [f for f in files if f.status != "deleted" and not f.binary][:MAX_LOCAL_CONTENTS]:
+        text = _git_or_none(".", "show", f"HEAD:{file.path}")
+        if text is not None:
+            contents[file.path] = text
+    result = analyze(
+        title=_git(".", "log", "-1", "--format=%s").strip(), description=_git(".", "log", "-1", "--format=%b").strip(),
+        files=files, policy=policy, model=model, contents=contents or None,
+        lookup=PackageLookup() if policy.dependencies.registry_lookup else None,
+        extra_findings=boundary_findings(files, policy, "."),
+    )
     if model is not None:
-        print(f"Profile: {profile} ({why}).", file=sys.stderr)
-        subject = _git(".", "log", "-1", "--format=%s").strip()
-        body = _git(".", "log", "-1", "--format=%b").strip()
-        result = review(title=subject, description=body, files=files, policy=policy, model=model)
-        if not result.ran:
-            print("The model didn't answer: " + "; ".join(sorted({c['error'] for c in result.calls if c.get('error')})), file=sys.stderr)
-        elif result.summary:
-            print(f"What this changes: {result.summary}\n")
-        findings += result.findings
-    findings = anchor_to_diff(findings, files)
-    assign_fingerprints(findings, files)
-    findings = rank(dedupe(findings))
-    _print_findings(findings)
-    _write_json(args.json, findings)
-    return 1 if any(f.severity == "critical" for f in findings) else 0
+        print(f"Profile: {result.profile} ({result.profile_why}).", file=sys.stderr)
+        if result.review is not None and not result.review.ran:
+            print("The model didn't answer: " + "; ".join(sorted({c['error'] for c in result.review.calls if c.get('error')})), file=sys.stderr)
+        elif result.review is not None and result.review.summary:
+            print(f"What this changes: {result.review.summary}\n")
+    _print_findings(result.findings)
+    _write_json(args.json, result.findings)
+    return 1 if any(f.severity == "critical" for f in result.findings) else 0
 
 
 def _print_findings(findings: list[Finding]) -> None:

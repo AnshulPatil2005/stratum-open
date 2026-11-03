@@ -10,14 +10,16 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+from dataclasses import replace
 from typing import Mapping
 
 from stratum_open.checks.dependencies import PackageLookup
 from stratum_open.github.api import API, GitHub
 from stratum_open.github.commands import NEEDS_MODEL, handle, parse
 from stratum_open.model import model_from_policy
-from stratum_open.triage_queue import update_queue
+from stratum_open.policy import Policy
 from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull, skip_reason
+from stratum_open.triage_queue import update_queue
 
 DEFAULT_BOT = "github-actions[bot]"
 
@@ -32,7 +34,7 @@ def main(env: Mapping[str, str] = os.environ) -> int:
         return 1
     gh = GitHub(token, env["GITHUB_REPOSITORY"], api=env.get("GITHUB_API_URL", API))
     default_branch = (payload.get("repository") or {}).get("default_branch") or gh.repository()["default_branch"]
-    policy = load_context_policy(gh, default_branch)
+    policy = context_from_env(load_context_policy(gh, default_branch), env)
     for error in policy.errors:
         print(f"::warning::.stratum/policy.yml: {error} Using the defaults.")
     for warning in policy.warnings:
@@ -78,6 +80,17 @@ def main(env: Mapping[str, str] = os.environ) -> int:
     else:
         print(f"Stratum doesn't handle {event_name} events.")
     return 0
+
+
+def context_from_env(policy: Policy, env: Mapping[str, str]) -> Policy:
+    """STRATUM_CONTEXT_TOKENS, which the action sets when Ollama runs on the
+    runner's CPU: a big prompt there takes longer to read than a model call
+    may last, so calls stay small. The policy file's own value wins."""
+    raw = (env.get("STRATUM_CONTEXT_TOKENS") or "").strip()
+    if not raw.isdigit() or "review.context_tokens" in policy.explicit:
+        return policy
+    return replace(policy, review=replace(policy.review, context_tokens=max(2048, int(raw))),
+                   explicit=policy.explicit | {"review.context_tokens"})
 
 
 def needs_model(env: Mapping[str, str] = os.environ) -> bool:

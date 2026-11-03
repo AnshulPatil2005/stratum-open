@@ -312,7 +312,11 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
         packed = result.packed
         if packed.reviewed or packed.clipped:
             calls = len(packed.chunks)
-            lines.append(f"The model read {_files(len(packed.reviewed) + len(packed.clipped))} in {calls} call{'' if calls == 1 else 's'}.")
+            sent = f"{_files(len(packed.reviewed) + len(packed.clipped))} in {calls} call{'' if calls == 1 else 's'}"
+            if result.ran:
+                lines.append(f"The model read {sent}.")
+            else:
+                lines.append(f"Stratum sent the model {sent}, but it didn't answer, so they weren't reviewed.")
         if packed.clipped:
             lines.append("Read in part (too big for one call): " + ", ".join(f"`{p}`" for p in packed.clipped[:10]))
         if packed.omitted:

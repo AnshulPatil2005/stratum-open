@@ -82,6 +82,10 @@ runs:
         STRATUM_GITHUB_TOKEN: ${{ inputs.github-token }}
         STRATUM_MODEL_ENDPOINT: ${{ inputs.ollama-model != '' && 'http://localhost:11434/v1' || inputs.model-endpoint }}
         STRATUM_JOB_NAME: ${{ github.job }}
+        # On the runner's CPU, a 7B model reads ~20 tokens a second, so calls stay at
+        # 8k tokens to finish inside the 15-minute call limit. Your policy file's
+        # review.context_tokens wins over this.
+        STRATUM_CONTEXT_TOKENS: ${{ inputs.ollama-model != '' && '8192' || '' }}
         STRATUM_MODEL_NAME: ${{ inputs.ollama-model != '' && inputs.ollama-model || inputs.model-name }}
         STRATUM_MODEL_API_KEY: ${{ inputs.model-api-key }}
       run: stratum action
