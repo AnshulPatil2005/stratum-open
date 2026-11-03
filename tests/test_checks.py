@@ -513,7 +513,7 @@ def test_needs_human_on_new_dependencies_follows_the_policy():
 @pytest.mark.parametrize(
     "line",
     [
-        '_JS_BARE_EXEC = re.compile(r"(?<![\w.$])exec(?:Sync)?\s*\(")',
+        r'_JS_BARE_EXEC = re.compile(r"(?<![\w.$])exec(?:Sync)?\s*\(")',
         '    hint = "Pass a list of arguments without `shell=True` in Python."',
         '    """Whether the call this `shell=True` belongs to, found up to five lines',
     ],
@@ -526,3 +526,26 @@ def test_code_named_inside_a_string_is_not_code(line):
 def test_cors_in_tests_is_not_flagged():
     diff = 'diff --git a/tests/test_api.py b/tests/test_api.py\n--- a/tests/test_api.py\n+++ b/tests/test_api.py\n@@ -1 +1,2 @@\n x = 1\n+app.add_middleware(CORSMiddleware, allow_origins=["*"])\n'
     assert run_checks(parse_diff(diff), Policy()) == []
+
+
+def test_bandit_runs_as_a_process_with_a_time_limit(monkeypatch):
+    import subprocess
+
+    from stratum_open.checks import bandit
+
+    if not bandit.available():
+        pytest.skip("bandit isn't installed")
+    source = "import subprocess\n\ndef run(cmd):\n    return subprocess.call(cmd, shell=True)\n"
+    diff = "diff --git a/tool.py b/tool.py\nnew file mode 100644\n--- /dev/null\n+++ b/tool.py\n@@ -0,0 +1,4 @@\n" + "".join("+" + line + "\n" for line in source.splitlines())
+    files = parse_diff(diff)
+    found = bandit.check(files, {"tool.py": source})
+    assert any(f.rule == "bandit/B602" and f.line_start == 4 for f in found)
+    assert not any(f.severity == "low" for f in found)
+    assert any(f.severity == "low" for f in bandit.check(files, {"tool.py": source}, keep_low=True))  # B404, importing subprocess
+
+    def too_slow(*args, **kwargs):
+        raise subprocess.TimeoutExpired(args[0], 15)
+
+    monkeypatch.setattr(bandit.subprocess, "run", too_slow)
+    [error] = [f for f in run_checks(files, Policy(), contents={"tool.py": source}) if f.rule == "checks/error"]
+    assert "Bandit took longer than 15 s" in error.detail

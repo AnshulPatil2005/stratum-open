@@ -16,11 +16,12 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 import requests
+import yaml
 
 from stratum_open.policy import Policy
 
 RETRY_STATUSES = {408, 429, 500, 502, 503, 504}
-_FENCE = re.compile(r"^\s*```[a-zA-Z]*\s*\n(.*?)\n\s*```\s*$", re.DOTALL)
+_FENCE_ANYWHERE = re.compile(r"```[a-zA-Z]*[ \t]*\n(.*?)\n[ \t]*```", re.DOTALL)
 _TRAILING_COMMA = re.compile(r",\s*([}\]])")
 
 
@@ -163,21 +164,81 @@ def model_from_policy(policy: Policy, env: Mapping[str, str] = os.environ) -> Mo
     return Model(endpoint, name, api_key=api_key, context_tokens=policy.review.context_tokens)
 
 
+def repair_text(text: str) -> str:
+    """Undo double-encoded UTF-8 ("lowâ€‘severity" for "low‑severity"),
+    which models' replies pick up in transit, and drop U+FFFD, which marks
+    bytes lost for good. ftfy only touches text that shows the signature."""
+    if not text:
+        return text
+    try:
+        import ftfy
+
+        text = ftfy.fix_text(text)
+    except ImportError:  # pragma: no cover  (a dependency; kept optional for embedders)
+        pass
+    return text.replace("�", "")
+
+
 def parse_json(text: str) -> Any | None:
     """The first JSON object in a model's reply. Small models wrap it in
-    fences, add a sentence after it, or leave a trailing comma."""
-    text = text.strip()
-    fenced = _FENCE.match(text)
-    if fenced:
-        text = fenced.group(1)
-    start = text.find("{")
-    if start < 0:
-        return None
+    fences (sometimes with prose around them), add a sentence after it, leave
+    a trailing comma, or write near-JSON (single quotes, unquoted keys) that
+    YAML still reads."""
+    text = repair_text(text).strip()
+    blocks = [m.group(1) for m in _FENCE_ANYWHERE.finditer(text) if "{" in m.group(1)] + [text]
     decoder = json.JSONDecoder()
-    for candidate in (text[start:], _TRAILING_COMMA.sub(r"\1", text[start:])):
-        try:
-            value, _ = decoder.raw_decode(candidate)
-            return value
-        except ValueError:
+    for block in blocks:
+        start = block.find("{")
+        if start < 0:
             continue
+        body = block[start:]
+        for candidate in (body, _TRAILING_COMMA.sub(r"\1", body)):
+            try:
+                value, _ = decoder.raw_decode(candidate)
+                return value
+            except ValueError:
+                continue
+        end = body.rfind("}")
+        if end > 0:
+            try:
+                value = yaml.safe_load(body[: end + 1])
+            except yaml.YAMLError:
+                value = None
+            if isinstance(value, dict):
+                return value
     return None
+
+
+def salvage(text: str) -> dict[str, Any] | None:
+    """What can still be used from a reply that isn't one valid object,
+    usually because the model ran out of tokens mid-answer: the short text
+    fields, and every complete finding before the break. None if there's
+    nothing."""
+    text = repair_text(text or "")
+    out: dict[str, Any] = {}
+    for key in ("summary", "matches_description", "mismatch"):
+        match = re.search(rf'"{key}"\s*:\s*"((?:[^"\\]|\\.)*)"', text)
+        if match:
+            try:
+                out[key] = json.loads(f'"{match.group(1)}"')
+            except ValueError:
+                out[key] = match.group(1)
+    findings: list[dict[str, Any]] = []
+    start = re.search(r'"findings"\s*:\s*\[', text)
+    if start:
+        decoder, index = json.JSONDecoder(), start.end()
+        while True:
+            while index < len(text) and text[index] in " \t\r\n,":
+                index += 1
+            if index >= len(text) or text[index] != "{":
+                break
+            try:
+                item, index = decoder.raw_decode(text, index)
+            except ValueError:
+                break
+            if isinstance(item, dict):
+                findings.append(item)
+    if not out and not findings:
+        return None
+    out["findings"] = findings
+    return out

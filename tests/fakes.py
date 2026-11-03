@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+from datetime import datetime, timezone
 
 from stratum_open.github.api import GitHubError
 from stratum_open.model import Reply
@@ -52,6 +53,7 @@ class FakeGitHub:
         self.closed: list[int] = []
         self.issues: list[dict] = []
         self.reject_review = False
+        self.now = datetime.now(timezone.utc).isoformat()  # created_at for new comments
         self.edited: list[tuple[int, str]] = []
         self.refuse_resolve = False
 
@@ -124,10 +126,13 @@ class FakeGitHub:
 
     def reply(self, number, comment_id, body):
         self.replies.append((number, comment_id, body))
+        reply_id = next(_ids)
         for thread in self.threads:
             if thread["comments"][0]["id"] == comment_id:
-                thread["comments"].append({"id": next(_ids), "body": body, "author": "stratum[bot]"})
-        return {"id": next(_ids)}
+                thread["comments"].append({"id": reply_id, "body": body, "author": "stratum[bot]"})
+        self.review_comments_.append({"id": reply_id, "body": body, "in_reply_to_id": comment_id, "user": {"login": "stratum[bot]"},
+                                      "created_at": self.now, "reactions": {}})
+        return {"id": reply_id}
 
     def react(self, comment_id, content, *, review_comment=False):
         pass

@@ -1,13 +1,16 @@
 """`@stratum` commands in PR comments.
 
-Anyone can ask for help, an explanation, the PR's triage or their own track
-record. Changing what Stratum reports (re-review, ignore, mute) takes write
-access to the repo.
+Anyone can ask for help, the PR's triage or their own track record. An
+explanation calls the model, so on a public repo it would let anyone make the
+maintainers' model server work: it's for the PR's author and people with write
+access, a few a day. Changing what Stratum reports (re-review, ignore, mute)
+takes write access.
 """
 
 from __future__ import annotations
 
 import re
+from datetime import datetime, timedelta, timezone
 
 from stratum_open.github import publish
 from stratum_open.github.api import GitHubError
@@ -17,6 +20,11 @@ COMMAND = re.compile(r"^\s*@stratum\s+([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.
 WRITE = {"admin", "maintain", "write"}
 # Commands that can call the model: explain, and the ones that review again.
 NEEDS_MODEL = {"review", "re-review", "rereview", "ignore", "explain"}
+# Explanations per person and per PR in a day: enough to understand a review,
+# too few to turn the model into someone else's free service.
+EXPLAIN_PER_PERSON = 5
+EXPLAIN_PER_PR = 20
+_EXPLAINED = re.compile(r"<!-- stratum:explained (\S+) -->")
 
 HELP = """Stratum commands, as a comment on this PR:
 
@@ -24,7 +32,7 @@ HELP = """Stratum commands, as a comment on this PR:
 - `@stratum ignore`: as a reply to one of Stratum's inline comments, hide that finding on this PR. *(write access)*
 - `@stratum ignore <rule>`: hide every finding of a rule on this PR, e.g. `@stratum ignore workflow/unpinned-action`. *(write access)*
 - `@stratum mute <rule>` / `@stratum unmute <rule>`: hide a rule on every PR in this repo. Needs the GitHub App, which can store it. *(write access)*
-- `@stratum explain`: as a reply to an inline comment, explain that finding in more detail.
+- `@stratum explain`: as a reply to an inline comment, explain that finding in more detail. *(the PR's author or write access; a few a day)*
 - `@stratum triage`: why this PR got its triage label.
 - `@stratum record`: your own track record in this repo, from its git history."""
 
@@ -88,7 +96,14 @@ def handle(ctx: Context, event: str, payload: dict) -> str | None:
             reply(f"`{arg}` is {'muted' if name == 'mute' else 'unmuted'} for every PR in this repo, from the next review on.")
         return name
     if name == "explain":
-        reply(_explain(ctx, number, thread_root) if inline else "Reply `@stratum explain` to one of Stratum's inline comments, and it explains that finding.")
+        if not inline:
+            reply("Reply `@stratum explain` to one of Stratum's inline comments, and it explains that finding.")
+            return "explain"
+        refusal = _explain_refusal(ctx, number, author)
+        if refusal:
+            reply(refusal)
+            return "refused"
+        reply(f"{_explain(ctx, number, thread_root)}\n<!-- stratum:explained {author.lower()} -->")
         return "explain"
     if name == "triage":
         reply(_triage_text(ctx, number))
@@ -100,6 +115,34 @@ def handle(ctx: Context, event: str, payload: dict) -> str | None:
         reply(HELP)
         return "help"
     return "refused"
+
+
+def _explain_refusal(ctx: Context, number: int, login: str) -> str | None:
+    """Why this person can't have an explanation now, or None if they can."""
+    gh = ctx.gh
+    author = ((gh.pull(number).get("user") or {}).get("login") or "").lower()
+    if login.lower() != author and gh.permission(login) not in WRITE:
+        return f"@{login}, explanations are for this PR's author and people with write access to the repo, since each one runs the project's model."
+    since = datetime.now(timezone.utc) - timedelta(days=1)
+    recent = []
+    for comment in gh.review_comments(number):
+        match = _EXPLAINED.search(comment.get("body") or "")
+        if match and publish._is_bot(comment, ctx.bot) and _created(comment) >= since:
+            recent.append(match.group(1))
+    if recent.count(login.lower()) >= EXPLAIN_PER_PERSON:
+        return f"@{login}, that's {EXPLAIN_PER_PERSON} explanations on this PR today, the most one person can ask for. Try again tomorrow."
+    if len(recent) >= EXPLAIN_PER_PR:
+        return f"This PR has had {EXPLAIN_PER_PR} explanations today, the most Stratum gives one PR in a day. Try again tomorrow."
+    return None
+
+
+def _created(comment: dict) -> datetime:
+    """When GitHub says a comment was made; now if it doesn't say, so an
+    unknown time counts against the limit rather than escaping it."""
+    try:
+        return datetime.fromisoformat((comment.get("created_at") or "").replace("Z", "+00:00"))
+    except ValueError:
+        return datetime.now(timezone.utc)
 
 
 def _can_write(ctx: Context, login: str, reply) -> bool:

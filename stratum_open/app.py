@@ -26,6 +26,7 @@ import shutil
 import subprocess
 import threading
 import time
+from collections import OrderedDict
 import traceback
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Mapping
@@ -41,6 +42,8 @@ from stratum_open.runner import Context, checkout_ref, load_context_policy, revi
 from stratum_open.storage import SQLiteStorage, Storage
 
 MAX_BODY = 25 * 1024 * 1024  # GitHub's own webhook payload limit
+DELIVERY_TTL = 3600.0  # seconds a delivery ID is remembered
+MAX_DELIVERIES = 5000
 REVIEW_ACTIONS = {"opened", "synchronize", "reopened", "ready_for_review"}
 JOBS_DAYS = 14
 PURGE_EVERY = 24 * 3600
@@ -102,6 +105,7 @@ class Server:
         self._pending: dict[tuple, tuple[str, dict]] = {}
         self._busy: set[tuple] = set()
         self._repo_locks: dict[str, threading.Lock] = {}
+        self._deliveries: OrderedDict[str, float] = OrderedDict()
         self._lock = threading.Lock()
         os.makedirs(workdir, exist_ok=True)
         for _ in range(workers):
@@ -126,12 +130,32 @@ class Server:
             payload = json.loads(body)
         except ValueError:
             return _respond(start_response, "400 Bad Request", {"error": "not JSON"})
+        if self.seen(environ.get("HTTP_X_GITHUB_DELIVERY", "")):
+            return _respond(start_response, "202 Accepted", {"queued": False, "duplicate": True})
         accepted = self.dispatch(environ.get("HTTP_X_GITHUB_EVENT", ""), payload)
         return _respond(start_response, "202 Accepted", {"queued": accepted})
 
     def verify(self, body: bytes, signature: str) -> bool:
         expected = "sha256=" + hmac.new(self.secret, body, hashlib.sha256).hexdigest()
         return bool(self.secret) and hmac.compare_digest(expected, signature)
+
+    def seen(self, delivery: str) -> bool:
+        """Whether this delivery came in the last hour. GitHub redelivers a
+        webhook it thinks timed out, and each repeat would start another
+        review (or answer a command twice). Checked after the signature, so
+        a forged ID can't hide a real delivery."""
+        if not delivery:
+            return False
+        now = time.monotonic()
+        with self._lock:
+            while self._deliveries and now - next(iter(self._deliveries.values())) > DELIVERY_TTL:
+                self._deliveries.popitem(last=False)
+            if delivery in self._deliveries:
+                return True
+            self._deliveries[delivery] = now
+            if len(self._deliveries) > MAX_DELIVERIES:
+                self._deliveries.popitem(last=False)
+            return False
 
     # ── events ───────────────────────────────────────────────────────────
 

@@ -341,6 +341,8 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
             lines.append("Read in part (too big for one call): " + ", ".join(f"`{p}`" for p in packed.clipped[:10]))
         if packed.omitted:
             lines.append(f"Not read by the model ({_files(len(packed.omitted))} past the review's size limit): " + ", ".join(f"`{p}`" for p in packed.omitted[:10]))
+    if result and result.salvaged_calls:
+        lines.append(f"{result.salvaged_calls} of the model's replies came back incomplete or malformed; the findings Stratum could read from them are kept.")
     lines.append(f"The checks ran on {'the' if len(files) == 1 else 'all'} {_files(len(files))} changed.")
     return lines
 

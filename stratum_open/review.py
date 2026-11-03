@@ -18,7 +18,7 @@ from typing import Any, Callable
 from stratum_open import diff as diffs
 from stratum_open.diff import FileDiff, Packed
 from stratum_open.findings import CATEGORIES, SEVERITIES, Finding
-from stratum_open.model import Model, parse_json
+from stratum_open.model import Model, parse_json, salvage
 from stratum_open.policy import Policy
 
 OUTPUT_RESERVE_TOKENS = 2048
@@ -96,6 +96,7 @@ class ReviewResult:
     packed: Packed | None = None
     calls: list[dict[str, Any]] = field(default_factory=list)
     failed_calls: int = 0
+    salvaged_calls: int = 0  # replies that weren't valid JSON, read in part
     dropped: int = 0  # findings the model returned that couldn't be used
 
     @property
@@ -156,6 +157,13 @@ def review(
         if log and policy.review.log_prompts:
             log(system + "\n\n" + user, reply.text)
         data = parse_json(reply.text) if reply.ok else None
+        if not isinstance(data, dict) and reply.ok:
+            # Usually cut off mid-answer: keep every finding before the break
+            # rather than losing the whole chunk.
+            data = salvage(reply.text)
+            if data is not None:
+                result.salvaged_calls += 1
+                call["salvaged"] = True
         if not isinstance(data, dict):
             result.failed_calls += 1
             call["error"] = call["error"] or "the reply wasn't the JSON asked for"

@@ -135,3 +135,23 @@ def test_narration_and_low_findings_are_not_shown_by_default():
     assert result.findings == [] and result.dropped == 2
     shown_low = run(FakeModel(answer(findings=[narrated, low])), parse_policy("review:\n  min_severity: low\n"))
     assert [f.title for f in shown_low.findings] == ["Unused import"]
+
+
+def test_a_reply_cut_off_mid_answer_keeps_the_findings_before_the_cut():
+    full = json.loads(answer())
+    finding = json.dumps(full["findings"][0])
+    cut = '{"summary": "Changes the query.", "matches_description": "yes", "findings": [' + finding + ', {"file": "app/users.py", "tit'
+    result = run(FakeModel(cut))
+    assert result.ran and result.failed_calls == 0 and result.salvaged_calls == 1
+    assert [f.title for f in result.findings] == ["SQL injection"]
+    assert result.summary == "Changes the query."
+    assert result.calls[0]["salvaged"] is True
+
+
+def test_near_json_and_mojibake_are_read():
+    from stratum_open.model import parse_json, repair_text, salvage
+
+    assert parse_json("Sure! Here is the review:\n```json\n{\"a\": 1}\n```\nLet me know.") == {"a": 1}
+    assert parse_json("{'summary': 'ok', findings: []}") == {"summary": "ok", "findings": []}
+    assert repair_text("low\u00e2\u20ac\u2018severity \ufffd") == "low\u2011severity "
+    assert salvage("nothing useful") is None
