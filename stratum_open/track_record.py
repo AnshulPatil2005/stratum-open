@@ -94,8 +94,11 @@ def build_records(
     """A record for every author with a PR landed on `ref` in the last
     `window_days`, keyed by `author_identity`."""
     since = (now or datetime.now(timezone.utc)) - timedelta(days=window_days)
+    try:
+        tip = _git(repo_dir, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}").strip()
+    except subprocess.CalledProcessError:
+        return {}  # an empty repo, or a ref that isn't there: nobody has a record yet
     by_sha = _history(repo_dir, ref, since)
-    tip = _git(repo_dir, "rev-parse", f"{ref}^{{commit}}").strip()
     if tip not in by_sha:
         return {}
 

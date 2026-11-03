@@ -20,7 +20,7 @@ from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
 from stratum_open.policy import Policy, load_policy, matches_any
 from stratum_open.review import ReviewResult
-from stratum_open.storage import NullStorage, Storage
+from stratum_open.storage import NullStorage, Storage, redact
 from stratum_open.track_record import AuthorRecord, author_identity, build_records
 from stratum_open.triage import PRFacts, Triage, triage
 
@@ -125,6 +125,9 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             gone.setdefault(finding.fingerprint, "Ignored on this PR.")
         elif finding.rule in muted:
             gone.setdefault(finding.fingerprint, "Muted in this repository.")
+    for call in (result.calls if result else []):
+        if call.get("traceback"):  # the model step raised: the summary gets the one-line error, the log the rest
+            ctx.log(redact(f"model review failed: {call.get('error', '')}\n{call['traceback']}"))
     if result is not None:
         if not result.ran:
             errors = sorted({c["error"] for c in result.calls if c.get("error")})
@@ -171,32 +174,50 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     if gh.pull(number)["head"]["sha"] != head:
         return Outcome(number, "superseded", findings, sorted_pr, result, note="a newer commit arrived")
 
-    threads = gh.review_threads(number)
-    current = {f.fingerprint for f in findings}
-    for thread in threads:  # checks run on every push, so a check's finding that's gone is fixed
-        marker = publish.thread_marker(thread, ctx.bot)
-        if marker and not marker[1].startswith("model:") and marker[0] not in current:
-            gone.setdefault(marker[0], "Fixed: the check no longer finds this.")
-    publish.resolve_threads(gh, number, threads, gone, bot=ctx.bot, log=ctx.log)
+    # Each publishing step is its own attempt: GitHub refusing one (a token
+    # that lost a permission, a 5xx) must not stop the others, and the check
+    # run is always posted after the comments so it reports whatever got through.
+    threads: list[dict] = []
+    posted: list[str] = []
+    try:
+        threads = gh.review_threads(number)
+        current = {f.fingerprint for f in findings}
+        for thread in threads:  # checks run on every push, so a check's finding that's gone is fixed
+            marker = publish.thread_marker(thread, ctx.bot)
+            if marker and not marker[1].startswith("model:") and marker[0] not in current:
+                gone.setdefault(marker[0], "Fixed: the check no longer finds this.")
+        publish.resolve_threads(gh, number, threads, gone, bot=ctx.bot, log=ctx.log)
+        posted = publish.publish_inline(gh, number, head, findings, threads, bot=ctx.bot, limit=policy.review.max_inline_comments, feedback=ctx.feedback)
+    except GitHubError as exc:
+        ctx.log(f"couldn't post inline comments: {exc}")
+        problems.append(f"Couldn't post inline comments (GitHub answered {exc.status}), so every finding is listed here instead.")
     on_lines = {publish.thread_fingerprint(t, ctx.bot) for t in threads if publish.is_open(t, ctx.bot)}
-    posted = publish.publish_inline(gh, number, head, findings, threads, bot=ctx.bot, limit=policy.review.max_inline_comments, feedback=ctx.feedback)
     summary.inline = (on_lines | set(posted)) & {f.fingerprint for f in findings}
     body = publish.render_summary(summary, new_state)
-    publish.upsert_summary(gh, number, existing, body)
+    try:
+        publish.upsert_summary(gh, number, existing, body)
+    except GitHubError as exc:
+        ctx.log(f"couldn't post the summary comment: {exc}")
     try:
         publish.publish_check(gh, head, findings, body.split("<details>")[0], conclusion=engine.conclusion, name=policy.review.check_name)
     except GitHubError as exc:
         ctx.log(f"couldn't publish the check run: {exc}")
 
     if policy.triage.enabled and not facts.draft:
-        labels = [label["name"] for label in pull.get("labels", [])]
-        publish.apply_label(gh, number, policy, sorted_pr.key, labels)
-        if policy.triage.close_without_issue and policy.triage.require_linked_issue and not facts.linked_issues and sorted_pr.key != "needs_human":
-            gh.comment(number, "Closing this PR: this project asks for every PR to link an issue (`Fixes #123`), and this one doesn't. "
-                               "Link one and reopen it, or ask a maintainer. Closed by Stratum under the project's `.stratum/policy.yml`.")
-            gh.close(number)
+        try:
+            labels = [label.get("name", "") for label in pull.get("labels") or [] if isinstance(label, dict)]
+            publish.apply_label(gh, number, policy, sorted_pr.key, labels)
+            if policy.triage.close_without_issue and policy.triage.require_linked_issue and not facts.linked_issues and sorted_pr.key != "needs_human":
+                gh.comment(number, "Closing this PR: this project asks for every PR to link an issue (`Fixes #123`), and this one doesn't. "
+                                   "Link one and reopen it, or ask a maintainer. Closed by Stratum under the project's `.stratum/policy.yml`.")
+                gh.close(number)
+        except GitHubError as exc:
+            ctx.log(f"couldn't apply the triage label: {exc}")
 
-    ctx.storage.record_review(gh.repo, number, head, engine.score, result.summary if result else "", findings)
+    try:
+        ctx.storage.record_review(gh.repo, number, head, engine.score, result.summary if result else "", findings)
+    except Exception as exc:  # the review is on GitHub already; a broken database loses only the App's copy
+        ctx.log(redact(f"couldn't store the review: {type(exc).__name__}: {exc}"))
     return Outcome(number, "published", findings, sorted_pr, result, body)
 
 
@@ -291,9 +312,16 @@ def record_for(ctx: Context, login: str) -> AuthorRecord | None:
     """A login's record. Commits carry emails, not logins, so the emails
     GitHub links to the login are matched too."""
     policy = ctx.policy.track_record
-    if not ctx.checkout or not login or author_identity(login) in {author_identity(e) for e in policy.exclude}:
+    if not ctx.checkout or not login or excluded(ctx, login):
         return None
-    records = build_records(ctx.checkout, ctx.history_ref, window_days=policy.window_days, followup_days=policy.followup_days, exclude=policy.exclude)
+    try:
+        records = build_records(ctx.checkout, ctx.history_ref, window_days=policy.window_days, followup_days=policy.followup_days, exclude=policy.exclude)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
+        # No history (an empty or shallow clone, a missing ref, git not installed, a huge log past its
+        # time limit) means no record, never a failed review.
+        detail = str(exc) if isinstance(exc, OSError) else (getattr(exc, "stderr", "") or "").strip()[:200]
+        ctx.log(f"track record: couldn't read the history of {ctx.checkout} at {ctx.history_ref}: {type(exc).__name__} {detail}".rstrip())
+        return None
     identities = {author_identity(name) for name in _identities(ctx, login)}
     merged = AuthorRecord(author_identity(login))
     for identity in identities:
@@ -302,6 +330,11 @@ def record_for(ctx: Context, login: str) -> AuthorRecord | None:
             merged.strikes += records[identity].strikes
     merged.merged.sort(key=lambda pr: pr.merged_at)
     return merged
+
+
+def excluded(ctx: Context, login: str) -> bool:
+    """Whether the policy keeps this login out of track records."""
+    return author_identity(login) in {author_identity(e) for e in ctx.policy.track_record.exclude}
 
 
 def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] | None, previous_head: str, files: list[FileDiff]) -> list[str]:
