@@ -23,6 +23,7 @@ import os
 import queue
 import re
 import shutil
+import sqlite3
 import subprocess
 import threading
 import time
@@ -40,7 +41,7 @@ from stratum_open.github.feedback import collect_votes
 from stratum_open.model import model_from_policy
 from stratum_open.policy import REVIEW_EVENTS
 from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull, skip_reason
-from stratum_open.storage import SQLiteStorage, Storage
+from stratum_open.storage import SQLiteStorage, Storage, redact
 
 MAX_BODY = 25 * 1024 * 1024  # GitHub's own webhook payload limit
 DELIVERY_TTL = 3600.0  # seconds a delivery ID is remembered
@@ -120,7 +121,10 @@ class Server:
             return _respond(start_response, "200 OK", {"ok": True})
         if path != "/webhook" or method != "POST":
             return _respond(start_response, "404 Not Found", {"error": "not found"})
-        length = int(environ.get("CONTENT_LENGTH") or 0)
+        try:
+            length = int(environ.get("CONTENT_LENGTH") or 0)
+        except ValueError:
+            return _respond(start_response, "400 Bad Request", {"error": "bad Content-Length"})
         if length <= 0 or length > MAX_BODY:
             return _respond(start_response, "413 Payload Too Large", {"error": "bad size"})
         body = environ["wsgi.input"].read(length)
@@ -130,9 +134,15 @@ class Server:
             payload = json.loads(body)
         except ValueError:
             return _respond(start_response, "400 Bad Request", {"error": "not JSON"})
+        if not isinstance(payload, dict):
+            return _respond(start_response, "400 Bad Request", {"error": "not a JSON object"})
         if self.seen(environ.get("HTTP_X_GITHUB_DELIVERY", "")):
             return _respond(start_response, "202 Accepted", {"queued": False, "duplicate": True})
-        accepted = self.dispatch(environ.get("HTTP_X_GITHUB_EVENT", ""), payload)
+        try:
+            accepted = self.dispatch(environ.get("HTTP_X_GITHUB_EVENT", ""), payload)
+        except (KeyError, TypeError, AttributeError) as exc:  # a field GitHub always sends is missing, or of another type
+            self.log(f"webhook: a {environ.get('HTTP_X_GITHUB_EVENT', '')!r} payload isn't shaped as expected: {type(exc).__name__}: {exc}")
+            return _respond(start_response, "400 Bad Request", {"error": "unexpected payload shape"})
         return _respond(start_response, "202 Accepted", {"queued": accepted})
 
     def verify(self, body: bytes, signature: str) -> bool:
@@ -160,27 +170,31 @@ class Server:
     # ── events ───────────────────────────────────────────────────────────
 
     def dispatch(self, event: str, payload: dict) -> bool:
-        installation = (payload.get("installation") or {}).get("id")
+        installation = _dict(payload.get("installation")).get("id")
         if event == "installation" and payload.get("action") == "deleted":
             for repo in payload.get("repositories") or []:
-                self.forget(repo["full_name"])
+                if _dict(repo).get("full_name"):
+                    self.forget(repo["full_name"])
             return False
         if event == "installation_repositories" and payload.get("action") == "removed":
             for repo in payload.get("repositories_removed") or []:
-                self.forget(repo["full_name"])
+                if _dict(repo).get("full_name"):
+                    self.forget(repo["full_name"])
             return False
-        repo = (payload.get("repository") or {}).get("full_name")
+        repo = _dict(payload.get("repository")).get("full_name")
         if not installation or not repo:
             return False
         # Drafts, review.events and the review.skip_* settings are the repo's
         # own policy, so they're checked when the job runs and the policy's loaded.
-        if event == "pull_request" and payload.get("action") in REVIEW_EVENTS:
-            self.enqueue((repo, payload["pull_request"]["number"], "review"), event, payload)
+        pull = _dict(payload.get("pull_request"))
+        if event == "pull_request" and payload.get("action") in REVIEW_EVENTS and pull.get("number"):
+            self.enqueue((repo, pull["number"], "review"), event, payload)
             return True
         if event in ("issue_comment", "pull_request_review_comment") and payload.get("action") == "created":
-            if "@stratum" in (payload.get("comment") or {}).get("body", "").lower():
-                number = (payload.get("issue") or payload.get("pull_request") or {}).get("number")
-                self.enqueue((repo, number, "comment", payload["comment"]["id"]), event, payload)
+            comment = _dict(payload.get("comment"))
+            number = (_dict(payload.get("issue")) or pull).get("number")
+            if "@stratum" in (comment.get("body") or "").lower() and comment.get("id") and number:
+                self.enqueue((repo, number, "comment", comment["id"]), event, payload)
                 return True
         return False
 
@@ -215,8 +229,11 @@ class Server:
             try:
                 self.run(event, payload)
             except Exception as exc:
-                self.log(f"{key[0]}#{key[1]}: {type(exc).__name__}: {exc}\n{traceback.format_exc()[-1500:]}")
-                self.storage.record_job(key[0], key[1], event, "error", f"{type(exc).__name__}: {exc}"[:500])
+                self.log(redact(f"{key[0]}#{key[1]}: {type(exc).__name__}: {exc}\n{traceback.format_exc()[-1500:]}"))
+                try:
+                    self.storage.record_job(key[0], key[1], event, "error", f"{type(exc).__name__}: {exc}"[:500])
+                except Exception as failed:  # the job log is best effort: a broken database must not kill the worker
+                    self.log(redact(f"{key[0]}#{key[1]}: couldn't record the failed job either: {type(failed).__name__}: {failed}"))
             finally:
                 with self._lock:
                     self._busy.discard(key)
@@ -276,8 +293,9 @@ class Server:
                 else:
                     _git(["-c", f"http.extraHeader={header}", "clone", "--quiet", "--single-branch", "--branch", branch, f"--shallow-since={since}", url, path])
                 return path
-            except subprocess.CalledProcessError as exc:
-                self.log(f"{repo}: couldn't update the clone ({(exc.stderr or '').strip()[:200]}); reviewing without history")
+            except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
+                detail = str(exc) if isinstance(exc, OSError) else (getattr(exc, "stderr", None) or "").strip()[:200]
+                self.log(redact(f"{repo}: couldn't update the clone ({type(exc).__name__} {detail}); reviewing without history"))
                 return None
 
     # ── retention ────────────────────────────────────────────────────────
@@ -306,7 +324,11 @@ class Server:
 
 
 def _git(args: list[str]) -> None:
-    subprocess.run(["git", *args], check=True, capture_output=True, text=True, timeout=600)
+    subprocess.run(["git", *args], check=True, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
+
+
+def _dict(value: Any) -> dict:
+    return value if isinstance(value, dict) else {}
 
 
 def _respond(start_response, status: str, body: dict) -> list[bytes]:
@@ -316,22 +338,39 @@ def _respond(start_response, status: str, body: dict) -> list[bytes]:
 
 
 def from_env(env: Mapping[str, str] = os.environ) -> Server:
+    """The server from its environment. Anything missing or malformed stops
+    the start with one readable line, not a traceback on the first webhook."""
     missing = [k for k in ("STRATUM_APP_ID", "STRATUM_WEBHOOK_SECRET") if not env.get(k)]
     key = env.get("STRATUM_APP_PRIVATE_KEY")
     if not key and env.get("STRATUM_APP_PRIVATE_KEY_FILE"):
-        with open(env["STRATUM_APP_PRIVATE_KEY_FILE"], encoding="utf-8") as handle_file:
-            key = handle_file.read()
+        try:
+            with open(env["STRATUM_APP_PRIVATE_KEY_FILE"], encoding="utf-8") as handle_file:
+                key = handle_file.read()
+        except OSError as exc:
+            raise SystemExit(f"Couldn't read STRATUM_APP_PRIVATE_KEY_FILE ({env['STRATUM_APP_PRIVATE_KEY_FILE']}): {exc.strerror or exc}.") from None
     if not key:
         missing.append("STRATUM_APP_PRIVATE_KEY")
     if missing:
         raise SystemExit("Missing settings: " + ", ".join(missing) + ". See the README's GitHub App section.")
+    if "PRIVATE KEY-----" not in key:
+        raise SystemExit("STRATUM_APP_PRIVATE_KEY doesn't look like a PEM private key (it should start with -----BEGIN RSA PRIVATE KEY-----). "
+                         "Download the App's private key from GitHub and point STRATUM_APP_PRIVATE_KEY_FILE at it.")
+    try:
+        workers = int(env.get("STRATUM_WORKERS", "2"))
+    except ValueError:
+        raise SystemExit(f"STRATUM_WORKERS must be a whole number, not {env.get('STRATUM_WORKERS')!r}.") from None
+    db_path = env.get("STRATUM_DB", "stratum.db")
+    try:
+        storage = SQLiteStorage(db_path)
+    except (sqlite3.Error, RuntimeError, OSError) as exc:
+        raise SystemExit(f"Couldn't open the database at {db_path}: {exc}") from None
     return Server(
         AppAuth(env["STRATUM_APP_ID"], key, api=env.get("STRATUM_GITHUB_API", API)),
         env["STRATUM_WEBHOOK_SECRET"],
-        SQLiteStorage(env.get("STRATUM_DB", "stratum.db")),
+        storage,
         env.get("STRATUM_WORKDIR", "repos"),
         env=env,
-        workers=int(env.get("STRATUM_WORKERS", "2")),
+        workers=max(1, workers),
     )
 
 
