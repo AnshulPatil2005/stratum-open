@@ -358,8 +358,13 @@ def _repo(repo: str) -> str:
     return repo.strip().lower()
 
 
-def _clean(text: str) -> str:
-    return _SECRET.sub(REDACTED, text)
+def redact(text: str) -> str:
+    """`text` with anything shaped like a credential replaced, for anything
+    that's written down: the database, a log line, an error message."""
+    return _SECRET.sub(REDACTED, text or "")
+
+
+_clean = redact
 
 
 def _stamp(moment: datetime | None = None) -> str:
