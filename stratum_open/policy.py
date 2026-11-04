@@ -64,6 +64,7 @@ class Review:
 @dataclass(frozen=True)
 class Checks:
     bandit_low: bool = False  # keep Bandit's low-severity and low-confidence results
+    heuristics: bool = False  # a finding per file in a risky area (auth, migrations, CI...), and for weakened tests
 
 
 @dataclass(frozen=True)

@@ -214,5 +214,5 @@ def test_a_failed_walkthrough_still_publishes_its_fallbacks():
                         model=model, bot="stratum[bot]", log=lambda line: None), 7)
     body = gh.issue_comments_[7][0]["body"]
     assert "**What this PR does:** Adds token checks." in body  # the chunked review's, not the fallback's generic sentence
-    assert "**Check first:**\n- Signature not verified in app/auth/session.py" in body
+    assert "**Check first:**" in body and "\n- Signature not verified in app/auth/session.py" in body
     assert "<details><summary>Walkthrough</summary>\n\nThis PR touches:\n- app/auth/session.py: Adds check()." in body

@@ -89,7 +89,7 @@ def analyze(
 
     policy, profile, profile_why = effective_policy(policy, model)
     registry = lookup if policy.dependencies.registry_lookup else None
-    checks = run_checks(files, policy, lookup=registry, contents=contents)
+    checks = run_checks(files, policy, lookup=registry, contents=contents, pr_text=f"{title}\n{description or ''}")
 
     result: ReviewResult | None = None
     large: LargeReview | None = None
