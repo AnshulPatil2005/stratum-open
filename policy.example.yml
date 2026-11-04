@@ -15,6 +15,11 @@ review:
   max_chunks: 3                # model calls per review at most
   diff_format: interleaved     # profile: interleaved | split (large: split)
   large_patch: clip            # clip | skip a file too big for one model call
+  mode: general                # general | security | performance | maintainability: what the per-file passes put first
+  file_reviews: 0              # profile: files reviewed one at a time before the chunked review (large: 15)
+  lens_files: 0                # profile: of those, how many get a focused pass per lens of the mode (large: 5)
+  walkthrough: false           # profile: one more call for a summary, priorities and a walkthrough (large: true)
+  parallel_calls: 1            # profile: model calls at once in the per-file passes (large: 4)
   max_inline_comments: 12
   min_severity: medium         # the model's findings below this aren't shown (low | medium | high | critical); the checks' always are
   rules: []                    # your own review rules in plain words, e.g. "Every SQL query is parameterized."
