@@ -103,10 +103,8 @@ def test_without_a_checkout_the_import_text_is_used(tmp_path):
     js = change("web/api/client.ts", "+import { save } from '../db/store'", new=True)
 
     findings = boundary_findings([diff, js], POLICY, None)
-    assert [(f.path, f.line_start, f.confidence) for f in findings] == [
-        ("server/api/views.py", 2, 0.6), ("server/api/views.py", 3, 0.6), ("web/api/client.ts", 1, 0.6),
-    ]
-    assert findings[0].detail.endswith("This line imports `server.db.models`, which is in `db`.")
+    assert [(f.path, f.line_start, f.confidence) for f in findings] == [("server/api/views.py", 2, 0.6), ("web/api/client.ts", 1, 0.6)]
+    assert findings[0].detail.endswith("This line imports `server.db.models`, which is in `db`. So does line 3.")  # one per module
 
 
 def test_only_files_in_a_module_with_a_rule_are_checked(tmp_path):
@@ -118,3 +116,73 @@ def test_only_files_in_a_module_with_a_rule_are_checked(tmp_path):
 
     assert boundary_findings([from_db, from_core, outside, within], POLICY, repo) == []
     assert boundary_findings([within], Policy(), "/no/such/checkout") == []
+
+
+def policy(extra):
+    return parse_policy("""
+boundaries:
+  modules:
+    api: ["server/api/**"]
+    db: ["server/db/**"]
+    core: ["server/core/**"]
+""" + extra)
+
+
+def test_either_side_of_a_rule_may_be_any_module(tmp_path):
+    repo = write(tmp_path, CHECKOUT)
+    from_core = change("server/core/config.py", "+from server.db import models", new=True)
+    from_db = change("server/db/session.py", "+from server.db import models", new=True)  # a module may import itself
+    into_db = policy('  forbid: ["* -> db: Only the repository layer talks to the database."]\n  severity: high\n')
+    [finding] = boundary_findings([from_core, from_db], into_db, repo)
+    assert (finding.path, finding.severity) == ("server/core/config.py", "high")
+    assert finding.detail.startswith("`core` must not import `db` (rule `* -> db` in .stratum/policy.yml). "
+                                     "Why: Only the repository layer talks to the database. This line imports")
+
+    from_api = change("server/api/views.py", " import os", "+from server.core import config", "+from server.db import models")
+    assert [f.title for f in boundary_findings([from_api], policy('  forbid: ["api -> *"]\n'), repo)] == [
+        "`api` must not import `core`", "`api` must not import `db`"]
+
+
+def test_an_import_the_pr_only_reformats_is_not_new(tmp_path):
+    repo = write(tmp_path, CHECKOUT)
+    diff = change("server/api/views.py", " import os", "-from server.db.models import User,Team", "+from server.db.models import Team, User")
+    assert boundary_findings([diff], POLICY, repo) == []
+
+
+def test_new_edges_are_measured_against_the_default_branch(tmp_path):
+    repo = write(tmp_path, {**CHECKOUT, "server/api/views.py": "from server.core import config\n"})
+    diff = change("server/api/views.py", " from server.core import config", "+from server.core.config import X",
+                  "+from server.db import models", "+from server.db import session")
+    [warn] = boundary_findings([diff], policy("  new_edges: warn\n"), repo)
+    assert (warn.rule, warn.severity, warn.line_start, warn.needs_human) == ("boundaries/new-edge", "low", 3, False)
+    assert warn.title == "New dependency: `api` now imports `db`" and "So does line 4." in warn.detail  # api -> core was there already
+    [fail] = boundary_findings([diff], policy("  new_edges: fail\n"), repo)
+    assert (fail.severity, fail.needs_human) == ("high", True)  # a maintainer's call, not the author's to fix
+    assert boundary_findings([diff], policy("  new_edges: warn\n"), None) == []  # nothing to compare with
+
+
+def test_without_modules_each_top_folder_is_one(tmp_path):
+    repo = write(tmp_path, {"src/app/__init__.py": "", "src/app/main.py": "", "src/billing/__init__.py": "",
+                            "src/billing/pay.py": "", "tools/run.py": "from src.app import main\n"})
+    diff = change("src/app/main.py", "+from src.billing import pay", new=True)
+    [finding] = boundary_findings([diff], parse_policy("boundaries:\n  new_edges: warn\n"), repo)
+    assert finding.title == "New dependency: `src/app` now imports `src/billing`"
+
+
+def test_rules_can_be_written_three_ways():
+    parsed = parse_policy("""
+boundaries:
+  modules: {api: ["a/**"], db: ["d/**"]}
+  forbid:
+    - api -> db: Go through the service layer.
+    - "* -> db"
+    - {from: api, to: "*", reason: Keep api thin.}
+  new_edges: off
+""")
+    assert parsed.errors == ()
+    assert parsed.boundaries.forbid == ("api -> db: Go through the service layer.", "* -> db", "api -> *: Keep api thin.")
+    assert parsed.boundaries.new_edges == "off"  # unquoted, YAML reads it as false
+    assert parse_policy("boundaries:\n  forbid: [{to: db}]\n").errors == (
+        'boundaries.forbid entry "to: db" must look like "a -> b", or "a -> b: why".',)
+    assert parse_policy("boundaries:\n  forbid: [[api, db]]\n").errors == (
+        'boundaries.forbid must be a list of rules like "a -> b" or "a -> b: why".',)

@@ -79,7 +79,9 @@ dependencies:
 
 boundaries:                    # module rules; a PR that breaks one gets a finding
   modules: {}                  # e.g. {api: ["server/api/**"], db: ["server/db/**"]}
-  forbid: []                   # e.g. ["api -> db"]: code in api must not import db
+  forbid: []                   # e.g. ["api -> db: Go through the service layer."]: code in api must not import db; "*" is any module
+  severity: medium             # a forbidden import's finding: low | medium | high | critical
+  new_edges: off               # off | warn | fail: flag a module importing one it didn't on the default branch (low | high)
 
 data:                          # GitHub App only
   findings_retention_days: 180

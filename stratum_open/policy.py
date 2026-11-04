@@ -121,8 +121,10 @@ class Dependencies:
 class Boundaries:
     # module name -> path globs, e.g. {"api": ("server/api/**",)}
     modules: tuple[tuple[str, tuple[str, ...]], ...] = ()
-    # "a -> b": code in module a must not import module b
+    # "a -> b", or "a -> b: why": code in module a must not import module b. "*" is any module.
     forbid: tuple[str, ...] = ()
+    severity: str = "medium"  # a forbidden import's finding
+    new_edges: str = "off"  # off | warn | fail: a module importing one it didn't import on the default branch
 
 
 @dataclass(frozen=True)
@@ -174,6 +176,8 @@ _CHOICES = {
     ("review", "large_patch"): ("clip", "skip"),
     ("review", "mode"): ("general", "security", "performance", "maintainability"),
     ("review", "conclusion"): ("severity", "score"),
+    ("boundaries", "severity"): ("low", "medium", "high", "critical"),
+    ("boundaries", "new_edges"): ("off", "warn", "fail"),
     **{("commands", name): _WHO for name in ("review", "ignore", "mute", "explain", "triage", "record")},
 }
 _MINIMUMS = {
@@ -230,11 +234,37 @@ def load_policy(read_default_branch_file: Callable[[str], str | None]) -> Policy
     return parse_policy(read_default_branch_file(POLICY_PATH))
 
 
-_FORBID = re.compile(r"^\s*([\w.-]+)\s*->\s*([\w.-]+)\s*$")
+_FORBID = re.compile(r"^\s*([\w.-]+|\*)\s*->\s*([\w.-]+|\*)\s*(?::\s*(.*?))?\s*$", re.S)
 
 
 def forbidden_pairs(boundaries: Boundaries) -> list[tuple[str, str]]:
-    return [(m.group(1), m.group(2)) for m in map(_FORBID.match, boundaries.forbid) if m]
+    return [(source, target) for source, target, _ in forbid_rules(boundaries)]
+
+
+def forbid_rules(boundaries: Boundaries) -> list[tuple[str, str, str]]:
+    """(from, to, why) for each forbid entry; either module may be "*"."""
+    return [(m.group(1), m.group(2), m.group(3) or "") for m in map(_FORBID.match, boundaries.forbid) if m]
+
+
+def _forbid_entries(value: Any) -> tuple[str, ...] | None:
+    """The forbid list as "a -> b: why" text. YAML turns an unquoted
+    `- a -> b: why` into a mapping, and `{from, to, reason}` is a mapping
+    too; both come back as text. None when an entry is neither."""
+    if not isinstance(value, list):
+        return None
+    entries = []
+    for item in value:
+        if isinstance(item, str):
+            entries.append(item)
+        elif isinstance(item, dict) and {"from", "to"} <= set(item) and set(item) <= {"from", "to", "reason"} \
+                and all(isinstance(v, str) for v in item.values()):
+            entries.append(f"{item['from']} -> {item['to']}" + (f": {item['reason']}" if item.get("reason") else ""))
+        elif isinstance(item, dict) and len(item) == 1 and all(isinstance(k, str) and isinstance(v, str) for k, v in item.items()):
+            [(rule, why)] = item.items()
+            entries.append(f"{rule}: {why}")
+        else:
+            return None
+    return tuple(entries)
 
 
 def _boundary_errors(boundaries: Boundaries) -> list[str]:
@@ -243,10 +273,10 @@ def _boundary_errors(boundaries: Boundaries) -> list[str]:
     for rule in boundaries.forbid:
         match = _FORBID.match(rule)
         if not match:
-            errors.append(f'boundaries.forbid entry "{rule}" must look like "a -> b".')
+            errors.append(f'boundaries.forbid entry "{rule}" must look like "a -> b", or "a -> b: why".')
             continue
-        for name in match.groups():
-            if name not in names:
+        for name in match.groups()[:2]:
+            if name != "*" and name not in names:
                 errors.append(f"boundaries.forbid entry \"{rule}\" names {name}, which boundaries.modules doesn't define.")
     return errors
 
@@ -286,6 +316,14 @@ _INVALID = object()
 
 def _check(path: tuple[str, ...], value: Any, default: Any, errors: list[str]) -> Any:
     name = _dotted(path)
+    if path == ("boundaries", "new_edges") and value is False:
+        return "off"  # YAML reads an unquoted `off` as false
+    if path == ("boundaries", "forbid"):
+        entries = _forbid_entries(value)
+        if entries is None:
+            errors.append(f'{name} must be a list of rules like "a -> b" or "a -> b: why".')
+            return _INVALID
+        return entries
     if path in _MAPPINGS:
         if isinstance(value, dict) and all(
             isinstance(k, str) and isinstance(v, list) and all(isinstance(i, str) for i in v) for k, v in value.items()

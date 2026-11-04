@@ -102,7 +102,7 @@ def test_boundaries():
     assert policy.boundaries.modules == (("api", ("server/api/**",)), ("db", ("server/db/**",)))
     assert forbidden_pairs(policy.boundaries) == [("api", "db")]
 
-    assert parse_policy("boundaries:\n  forbid: ['api to db']\n").errors == ('boundaries.forbid entry "api to db" must look like "a -> b".',)
+    assert parse_policy("boundaries:\n  forbid: ['api to db']\n").errors == ('boundaries.forbid entry "api to db" must look like "a -> b", or "a -> b: why".',)
     assert parse_policy("boundaries:\n  modules: {api: ['x/**']}\n  forbid: ['api -> db']\n").errors == (
         "boundaries.forbid entry \"api -> db\" names db, which boundaries.modules doesn't define.",
     )
