@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import subprocess
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable
 
 from stratum_open.diff import FileDiff, parse_diff
 from stratum_open.engine import analyze, effective_policy, snippet_of  # noqa: F401  (effective_policy: re-exported)
@@ -166,8 +166,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         model_summary=(large.summary if large and large.synthesized else result.summary if result and result.ran else ""),
         matches_description=result.matches_description if result else "", mismatch=result.mismatch if result else "",
         triage=sorted_pr, notes=notes, coverage=coverage, problems=problems, muted=muted,
-        priorities=large.top_priorities if large and large.synthesized else [],
-        walkthrough=large.walkthrough if large and large.synthesized else "",
+        **_walkthrough(large, findings),
     )
     new_state = publish.State(
         head=head,
@@ -337,6 +336,20 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
             lines.append(f"Not read by the model ({_files(len(packed.omitted))} past the review's size limit): " + ", ".join(f"`{p}`" for p in packed.omitted[:10]))
     lines.append(f"The checks ran on {'the' if len(files) == 1 else 'all'} {_files(len(files))} changed.")
     return lines
+
+
+def _walkthrough(large: LargeReview | None, findings: list[Finding]) -> dict[str, Any]:
+    """The walkthrough's priorities and text for the summary. When its call
+    failed, the fallbacks worked out from the findings still help, except as
+    filler: no priorities without findings, no walkthrough without a file
+    reviewed one at a time. (The summary sentence keeps the chunked review's,
+    which beats the fallback's generic one.)"""
+    if large is None:
+        return {"priorities": [], "walkthrough": ""}
+    return {
+        "priorities": large.top_priorities if large.synthesized or findings else [],
+        "walkthrough": large.walkthrough if large.synthesized or large.reviewed else "",
+    }
 
 
 def _large_coverage(large: LargeReview | None) -> list[str]:

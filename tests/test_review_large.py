@@ -199,3 +199,20 @@ def test_the_summary_shows_priorities_and_a_walkthrough():
     body = publish.render_summary(summary, publish.State())
     assert "**Check first:**\n- The signature check" in body
     assert "<details><summary>Walkthrough</summary>\n\n- session.py: adds check()." in body
+
+
+def test_a_failed_walkthrough_still_publishes_its_fallbacks():
+    from fakes import FakeGitHub
+
+    from stratum_open.runner import Context, review_pull
+
+    code = '    return jwt.decode(token, options={"verify_signature": False})'
+    gh = FakeGitHub(diff=DIFF)
+    model = FakeModel(file_answer([finding("app/auth/session.py", code)], summary="Adds check()."), file_answer(), file_answer(),
+                      json.dumps({"summary": "Adds token checks.", "matches_description": "yes", "findings": []}), "not json")
+    review_pull(Context(gh=gh, policy=parse_policy("review:\n  profile: large\n  parallel_calls: 1\n  lens_files: 0\n"),
+                        model=model, bot="stratum[bot]", log=lambda line: None), 7)
+    body = gh.issue_comments_[7][0]["body"]
+    assert "**What this PR does:** Adds token checks." in body  # the chunked review's, not the fallback's generic sentence
+    assert "**Check first:**\n- Signature not verified in app/auth/session.py" in body
+    assert "<details><summary>Walkthrough</summary>\n\nThis PR touches:\n- app/auth/session.py: Adds check()." in body
