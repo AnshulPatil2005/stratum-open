@@ -39,6 +39,11 @@ class Review:
     max_chunks: int = 3  # model calls per review at most; files past that are listed as not reviewed
     diff_format: str = "interleaved"  # interleaved | split (new and old hunks apart)
     large_patch: str = "clip"  # clip | skip a file too big for one call
+    mode: str = "general"  # general | security | performance | maintainability: what the per-file passes put first
+    file_reviews: int = 0  # files the model reviews one at a time before the chunked review (large: 15)
+    lens_files: int = 0  # of those, how many get a focused pass per lens of the mode (large: 5)
+    walkthrough: bool = False  # one more call for a summary, priorities and a walkthrough (large: on)
+    parallel_calls: int = 1  # model calls at once in the per-file passes (large: 4)
     max_inline_comments: int = 12
     min_severity: str = "medium"  # the model's findings below this aren't shown; the checks' always are
     rules: tuple[str, ...] = ()  # the project's own review rules, in plain words, added to the prompt
@@ -166,6 +171,7 @@ _CHOICES = {
     ("review", "profile"): ("auto", "small", "large"),
     ("review", "diff_format"): ("interleaved", "split"),
     ("review", "large_patch"): ("clip", "skip"),
+    ("review", "mode"): ("general", "security", "performance", "maintainability"),
     ("review", "conclusion"): ("severity", "score"),
     **{("commands", name): _WHO for name in ("review", "ignore", "mute", "explain", "triage", "record")},
 }
@@ -173,6 +179,9 @@ _MINIMUMS = {
     ("review", "max_inline_comments"): 0,
     ("review", "context_tokens"): 2048,
     ("review", "max_chunks"): 1,
+    ("review", "file_reviews"): 0,
+    ("review", "lens_files"): 0,
+    ("review", "parallel_calls"): 1,
     ("review", "fail_at"): 0,
     ("review", "warn_at"): 0,
     ("track_record", "window_days"): 1,

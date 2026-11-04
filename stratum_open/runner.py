@@ -20,6 +20,7 @@ from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
 from stratum_open.policy import Policy, load_policy, matches_any
 from stratum_open.review import ReviewResult
+from stratum_open.review_large import LargeReview
 from stratum_open.storage import NullStorage, Storage
 from stratum_open.track_record import AuthorRecord, author_identity, build_records
 from stratum_open.triage import PRFacts, Triage, triage
@@ -136,6 +137,14 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
                 problems.append(f"{result.salvaged_calls} of the model's replies were cut off; anything it found after the cut is missing.")
     elif ctx.model is None:
         problems.append("No model is configured, so this review has only the checks.")
+    large = engine.large
+    if large is not None:
+        file_calls = [c for c in large.calls if c.get("pass") != "synthesis"]
+        if large.failed_calls:
+            problems.append(f"{large.failed_calls} of {len(file_calls)} per-file model calls failed; "
+                            "the chunked review still covered those files.")
+        if large.salvaged_calls:
+            problems.append(f"{large.salvaged_calls} of the per-file replies were cut off; anything found after the cut is missing.")
 
     facts = PRFacts.from_pull(pull, paths)
     try:
@@ -149,14 +158,16 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         record=record,
     )
 
-    coverage = _coverage(result, incremental, changed, state.head, files)
+    coverage = _large_coverage(large) + _coverage(result, incremental, changed, state.head, files)
     if ctx.model is not None:
         coverage.append(f"Profile: `{engine.profile}` ({engine.profile_why}).")
     summary = publish.Summary(
         findings=findings, inline=set(), policy=policy, model_name=ctx.model.name if ctx.model else None,
-        model_summary=(result.summary if result and result.ran else ""),
+        model_summary=(large.summary if large and large.synthesized else result.summary if result and result.ran else ""),
         matches_description=result.matches_description if result else "", mismatch=result.mismatch if result else "",
         triage=sorted_pr, notes=notes, coverage=coverage, problems=problems, muted=muted,
+        priorities=large.top_priorities if large and large.synthesized else [],
+        walkthrough=large.walkthrough if large and large.synthesized else "",
     )
     new_state = publish.State(
         head=head,
@@ -326,6 +337,27 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
             lines.append(f"Not read by the model ({_files(len(packed.omitted))} past the review's size limit): " + ", ".join(f"`{p}`" for p in packed.omitted[:10]))
     lines.append(f"The checks ran on {'the' if len(files) == 1 else 'all'} {_files(len(files))} changed.")
     return lines
+
+
+def _large_coverage(large: LargeReview | None) -> list[str]:
+    """What the large profile's per-file passes covered."""
+    if large is None:
+        return []
+    reviewed = [f for f in large.files if f.status == "reviewed"]
+    lines = []
+    if reviewed:
+        focused = [f for f in reviewed if f.lenses]
+        lenses = sorted({lens for f in focused for lens in f.lenses})
+        lines.append(f"The model reviewed {_files(len(reviewed))} one at a time"
+                     + (f", {len(focused)} of them again for {_and(lenses)}." if focused else "."))
+    failed = [f.path for f in large.files if f.status == "failed"]
+    if failed:
+        lines.append("Per-file review failed for: " + ", ".join(f"`{p}`" for p in failed[:10]))
+    return lines
+
+
+def _and(words: list[str]) -> str:
+    return words[0] if len(words) == 1 else ", ".join(words[:-1]) + " and " + words[-1]
 
 
 def _files(n: int) -> str:
