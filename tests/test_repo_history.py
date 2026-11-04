@@ -259,6 +259,7 @@ def test_reverts_and_hotfixes_make_a_hotspot_however_simple(repo):
 def test_decision_points_skip_optional_chaining_and_count_ruby():
     assert decision_points("x.ts", "const a = b?.c ?? d;\ntype T = { x?: number };\nconst e = f ? g : h;\n") == 2  # ?? and the ternary
     assert decision_points("x.rb", "if a\nelsif b\nend\nx unless y\nuntil z do end\ncase w\nwhen 1\nend\nrescue\n") == 7
+    assert decision_points("x.rb", "x = ready ? 1 : 2\ny = list.empty? ? 0 : list.first\nz = obj.nil?\n") == 2  # not nil? or empty?
 
 
 def test_generated_files_are_not_hotspots():

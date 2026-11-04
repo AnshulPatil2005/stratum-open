@@ -62,6 +62,7 @@ _KEYWORDS = re.compile(r"\b(?:if|elif|elsif|for|foreach|while|until|unless|case|
 _OPERATORS = re.compile(r"&&|\|\||\?\?")
 _WORDS = re.compile(r"\b(?:and|or)\b")  # Python's and Ruby's
 _TERNARY = re.compile(r"(?<![?.])\?(?![?.:])")  # not ?. or ?? or TypeScript's optional x?:
+_SPACED_TERNARY = re.compile(r"(?<=\s)\?(?=\s)")
 _FIX = re.compile(r"^revert\b|\bhot[ -]?fix", re.IGNORECASE)
 
 
@@ -193,7 +194,9 @@ def _code(path: str, text: str) -> str:
 
 def _count(hash_family: bool, code: str) -> int:
     points = len(_KEYWORDS.findall(code)) + len(_OPERATORS.findall(code))
-    return points + len(_WORDS.findall(code) if hash_family else _TERNARY.findall(code))
+    if hash_family:  # Ruby's `nil?` is a name, not a ternary; its ternary has a space either side
+        return points + len(_WORDS.findall(code)) + len(_SPACED_TERNARY.findall(code))
+    return points + len(_TERNARY.findall(code))
 
 
 def _churn(commits: list[Commit]) -> tuple[Counter, Counter]:
