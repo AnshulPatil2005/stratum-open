@@ -82,12 +82,15 @@ class Import:
 class Importers:
     count: int
     examples: list[str] = field(default_factory=list)
+    imports: list[str] = field(default_factory=list)  # the repo files this one imports, the first few
 
 
 def importers(repo_dir: str, paths: Iterable[str], *, limit: int = 5) -> dict[str, Importers]:
     """For each path, how many files in the checkout import it and the first
-    `limit` of them, alphabetically. A path nothing imports has a count of 0."""
+    `limit` of them, alphabetically, and the first `limit` repo files it
+    imports. A path nothing imports has a count of 0."""
     found: dict[str, set[str]] = {path: set() for path in paths}
+    outgoing: dict[str, set[str]] = {path: set() for path in found}
     if not any(path.endswith(PY_EXTENSIONS + JS_EXTENSIONS) for path in found):
         return {path: Importers(0) for path in found}
     files = code_files(repo_dir)
@@ -104,7 +107,9 @@ def importers(repo_dir: str, paths: Iterable[str], *, limit: int = 5) -> dict[st
                     for target in resolver.resolve(path, imp):
                         if target in found:
                             found[target].add(path)
-    return {path: Importers(len(by), sorted(by)[:limit]) for path, by in found.items()}
+                        if path in outgoing and target != path:
+                            outgoing[path].add(target)
+    return {path: Importers(len(by), sorted(by)[:limit], sorted(outgoing[path])[:limit]) for path, by in found.items()}
 
 
 def reach_note(importers_by_path: dict[str, Importers]) -> list[str]:
@@ -115,6 +120,19 @@ def reach_note(importers_by_path: dict[str, Importers]) -> list[str]:
             shown = ", ".join(f"`{example}`" for example in found.examples[:_SHOWN])
             notes.append(f"`{path}` is imported by {found.count} files" + (f" (e.g. {shown})." if shown else "."))
     return notes
+
+
+def related_note(found: Importers) -> str:
+    """For one file's own prompt: who imports it and what it imports, so the
+    model knows which callers a change can break."""
+    parts = []
+    if found.count:
+        shown = ", ".join(f"`{example}`" for example in found.examples)
+        parts.append(f"Imported by {found.count} file{'' if found.count == 1 else 's'}: {shown}"
+                     + (" and others." if found.count > len(found.examples) else "."))
+    if found.imports:
+        parts.append("It imports " + ", ".join(f"`{target}`" for target in found.imports) + ".")
+    return " ".join(parts)
 
 
 def code_files(repo_dir: str) -> list[str]:
