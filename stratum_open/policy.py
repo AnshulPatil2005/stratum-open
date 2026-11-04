@@ -39,6 +39,7 @@ class Review:
     max_chunks: int = 3  # model calls per review at most; files past that are listed as not reviewed
     diff_format: str = "interleaved"  # interleaved | split (new and old hunks apart)
     large_patch: str = "clip"  # clip | skip a file too big for one call
+    context_lines: int = 0  # unchanged lines shown around each hunk, from the file (large: 10)
     mode: str = "general"  # general | security | performance | maintainability: what the per-file passes put first
     file_reviews: int = 0  # files the model reviews one at a time before the chunked review (large: 15)
     lens_files: int = 0  # of those, how many get a focused pass per lens of the mode (large: 5)
@@ -185,6 +186,7 @@ _MINIMUMS = {
     ("review", "context_tokens"): 2048,
     ("review", "max_chunks"): 1,
     ("review", "file_reviews"): 0,
+    ("review", "context_lines"): 0,
     ("review", "lens_files"): 0,
     ("review", "parallel_calls"): 1,
     ("review", "fail_at"): 0,

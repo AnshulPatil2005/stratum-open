@@ -74,6 +74,9 @@ def analyze(
     - `model`: anything with `.name` and `.complete(system, user, *,
       max_tokens, json_mode) -> Reply`; `.describe()` too for `profile: auto`.
       None runs the checks only.
+    - `contents`: a path's full new text, where the caller has it: the checks
+      read past the diff with it, and `review.context_lines` shows the code
+      around each hunk from it.
     - `only_paths`: on an incremental review, the files changed since the last
       one; an empty set means nothing new for the model to read.
     - `previous`: the last review's findings (as saved by `state_finding`, with
@@ -97,11 +100,11 @@ def analyze(
         if policy.review.file_reviews > 0:
             large = review_files(
                 title=title, description=description, files=files, policy=policy, model=model, only_paths=only_paths,
-                notes=notes, hotspots=hotspots, guidance=guidance, file_notes=file_notes, log=log,
+                notes=notes, hotspots=hotspots, guidance=guidance, file_notes=file_notes, contents=contents, log=log,
             )
         result = review(
             title=title, description=description, files=files, policy=policy, model=model, only_paths=only_paths,
-            context=list(notes), hotspots=set(hotspots), guidance=guidance, log=log,
+            context=list(notes), hotspots=set(hotspots), guidance=guidance, contents=contents, log=log,
             previous=still_there(previous or [], files) if only_paths is not None else None,
         )
 
