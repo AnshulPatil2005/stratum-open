@@ -93,6 +93,8 @@ def test_redact_covers_every_credential_shape():
     cleaned = redact(text)
     for shape in ("ghp_AAAA", "sk-BBBB", "eyJhbGci", "abcdefghijklmnop", "hunter2", "MIIE"):
         assert shape not in cleaned
+    prose = "This skips the basic responsibilities of the handler; the basic implementations differ."
+    assert redact(prose) == prose, "the word basic before a long word is not a credential"
     assert cleaned.count("[redacted]") >= 6
 
 

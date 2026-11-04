@@ -86,6 +86,35 @@ def test_extra_findings_guidance_and_exclusions():
     assert [f.rule for f in result.excluded] == ["code/sql"]
 
 
+def test_a_model_that_raises_is_an_outage_or_a_bug_by_its_exception():
+    class Raising(FakeModel):
+        failure_types = ()
+
+        def __init__(self, exc):
+            super().__init__()
+            self.exc = exc
+
+        def complete(self, system, user, *, max_tokens=2048, json_mode=True):
+            raise self.exc
+
+    class OtherClientError(Exception):  # an embedder's HTTP library, which derives from neither OSError nor requests
+        pass
+
+    def error_of(model):
+        result = run(model)
+        [call] = result.review.calls
+        assert not result.review.ran and "Traceback" in call["traceback"]
+        return call["error"]
+
+    assert error_of(Raising(ConnectionResetError("peer closed"))).startswith("the model step failed (ConnectionResetError)")
+    assert error_of(Raising(TimeoutError("slow"))).startswith("the model step failed (TimeoutError)")
+    assert error_of(Raising(OtherClientError("boom"))).startswith("Stratum hit a bug during the model step (OtherClientError)")
+    assert error_of(Raising(KeyError("file"))).startswith("Stratum hit a bug during the model step (KeyError)")
+    declared = Raising(OtherClientError("boom"))
+    declared.failure_types = (OtherClientError,)
+    assert error_of(declared).startswith("the model step failed (OtherClientError)")
+
+
 def test_previous_findings_carry_over_on_an_incremental_review():
     first = run(FakeModel(reply(UNKNOWN_ID)))
     prior = [state_finding(f, snippet_of(f, FILES)) for f in first.findings if f.source == "model"]

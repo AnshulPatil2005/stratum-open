@@ -20,12 +20,10 @@ import traceback
 from dataclasses import dataclass
 from typing import Any, Callable, Sequence
 
-import requests
-
 from stratum_open import __version__
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank, risk_score
-from stratum_open.model import ModelError
+from stratum_open.model import is_model_failure
 from stratum_open.policy import Policy
 from stratum_open.review import ReviewResult, _locate, review, shown
 
@@ -70,8 +68,9 @@ def analyze(
     """Review a diff.
 
     - `model`: anything with `.name` and `.complete(system, user, *,
-      max_tokens, json_mode) -> Reply`; `.describe()` too for `profile: auto`.
-      None runs the checks only.
+      max_tokens, json_mode) -> Reply`; `.describe()` too for `profile: auto`;
+      `.failure_types`, optionally, for the exception types that mean the model
+      or the network failed rather than Stratum. None runs the checks only.
     - `only_paths`: on an incremental review, the files changed since the last
       one; an empty set means nothing new for the model to read.
     - `previous`: the last review's findings (as saved by `state_finding`, with
@@ -101,7 +100,7 @@ def analyze(
             # rides along for the caller's log and never reaches a comment. `Model.complete` already turns
             # its own connection errors into failed calls, so what lands here from a model is an embedder's
             # model raising; anything else is a bug of ours, and is named as one rather than as an outage.
-            if isinstance(exc, (requests.RequestException, ModelError)):
+            if is_model_failure(exc, model):
                 error = f"the model step failed ({type(exc).__name__}): {exc}"
             else:
                 error = f"Stratum hit a bug during the model step ({type(exc).__name__}): {exc}"

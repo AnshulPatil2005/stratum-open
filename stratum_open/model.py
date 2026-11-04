@@ -198,6 +198,16 @@ class ModelError(Exception):
         self.status = status
 
 
+def is_model_failure(exc: BaseException, model: Any = None) -> bool:
+    """Whether an exception raised by a model object means the model or the
+    network failed, as opposed to a bug in Stratum: a `ModelError`, a
+    `requests` error, any `OSError` (sockets, urllib, aiohttp), or a type the
+    model lists in `failure_types` (a client built on another library, httpx
+    say, names its own there)."""
+    declared = tuple(t for t in getattr(model, "failure_types", ()) or () if isinstance(t, type))
+    return isinstance(exc, (ModelError, requests.RequestException, OSError) + declared)
+
+
 def _count(value: Any) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) else None
 

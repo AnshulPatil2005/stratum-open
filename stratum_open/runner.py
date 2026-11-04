@@ -131,11 +131,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             ctx.log(redact(f"model review failed: {call.get('error', '')}\n{call['traceback']}"))
     if result is not None:
         if not result.ran:
-            errors = sorted({c["error"] for c in result.calls if c.get("error")})
-            if errors and errors[0].startswith("Stratum hit a bug"):  # ours, not the model's: say so, as the Action does
-                problems.append(f"{errors[0].split(':', 1)[0]}, so this review has only the checks.")
-            else:
-                problems.append("The model didn't answer, so this review has only the checks" + (f": {errors[0]}" if errors else "."))
+            problems.extend(model_problems(sorted({c["error"] for c in result.calls if c.get("error")})))
         else:
             if result.failed_calls:
                 problems.append(f"{result.failed_calls} of {len(result.calls)} model calls failed; some files weren't reviewed.")
@@ -366,6 +362,21 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
 
 def _files(n: int) -> str:
     return f"{n} file" if n == 1 else f"{n} files"
+
+
+def model_problems(errors: list[str]) -> list[str]:
+    """The summary's lines for a model step that produced nothing: a bug of
+    ours is named as one (as the Action does), the model not answering as an
+    outage, and when the calls failed for both reasons, both are said."""
+    bugs = [e for e in errors if e.startswith("Stratum hit a bug")]
+    outages = [e for e in errors if not e.startswith("Stratum hit a bug")]
+    lines = []
+    if bugs:
+        lines.append(f"{bugs[0].split(':', 1)[0]}, so this review has only the checks.")
+    if outages or not bugs:
+        lead = "The model also didn't answer" if bugs else "The model didn't answer, so this review has only the checks"
+        lines.append(lead + (f": {outages[0]}" if outages else "."))
+    return lines
 
 
 def checkout_ref(checkout: str, default_branch: str) -> str:

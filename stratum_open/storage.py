@@ -20,7 +20,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Iterator, Protocol
 
 from stratum_open.findings import Finding
-from stratum_open.util import REDACTED, redact  # noqa: F401  (REDACTED: what a redacted value reads as, for the tests)
+from stratum_open.util import redact
 
 SCHEMA_VERSION = 1  # kept in `PRAGMA user_version`, so it needs no table
 TABLES = ("reviews", "findings", "jobs", "votes", "mutes")

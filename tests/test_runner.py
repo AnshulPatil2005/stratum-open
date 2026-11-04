@@ -145,6 +145,21 @@ def test_model_down_still_publishes_the_checks(gh):
     assert all(f.source == "check" for f in outcome.findings)
 
 
+def test_model_problems_name_a_bug_and_an_outage_each_as_what_it_was():
+    from stratum_open.runner import model_problems
+
+    bug = "Stratum hit a bug during the model step (KeyError): 'file'"
+    outage = "the model step failed (ReadTimeout): read timed out"
+    assert model_problems([]) == ["The model didn't answer, so this review has only the checks."]
+    assert model_problems([outage]) == [f"The model didn't answer, so this review has only the checks: {outage}"]
+    assert model_problems([bug]) == ["Stratum hit a bug during the model step (KeyError), so this review has only the checks."]
+    # Both at once: neither hides the other, whatever order the errors sort in.
+    assert model_problems(sorted([outage, bug])) == model_problems([outage, bug]) == [
+        "Stratum hit a bug during the model step (KeyError), so this review has only the checks.",
+        f"The model also didn't answer: {outage}",
+    ]
+
+
 def test_forged_state_from_someone_else_is_ignored(gh):
     forged = publish.State(head="a" * 40, ignored=["deadbeef0000"]).encode()
     gh.issue_comments_[7].append({"id": 1, "body": publish.SUMMARY_MARKER + forged, "user": {"login": "mallory"}})
