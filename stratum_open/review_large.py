@@ -186,9 +186,12 @@ def review_files(
     hotspots: set[str] | frozenset[str] = frozenset(),
     guidance: str = "",
     file_notes: dict[str, str] | None = None,
+    contents: dict[str, str] | None = None,
     log: Callable[[str, str], None] | None = None,
 ) -> LargeReview:
-    """The per-file and lens passes over `files` (or only `only_paths`)."""
+    """The per-file and lens passes over `files` (or only `only_paths`).
+    `contents` (a path's new text) gives `review.context_lines` of unchanged
+    code around each hunk."""
     result = LargeReview()
     targets = _rank(files, policy, only_paths, hotspots, result)
     lens_paths = {f.path for f, _ in targets[:policy.review.lens_files]}
@@ -213,9 +216,10 @@ def review_files(
                                       guidance=guidance_block, path=file.path, max_findings=MAX_FINDINGS_PER_FILE_CALL) for lens in lenses]
         budget = min(MAX_FILE_TOKENS, policy.review.context_tokens - OUTPUT_RESERVE_TOKENS - 200
                      - diffs.approx_tokens(max(systems, key=len) + FILE_USER.format(**parts, clipped="", diff="")))
-        rendered = diffs.render(file, style=style)
+        shown_file = diffs.with_context(file, (contents or {}).get(file.path), policy.review.context_lines)
+        rendered = diffs.render(shown_file, style=style)
         if diffs.approx_tokens(rendered) > budget:
-            rendered = diffs._clip(file, max(500, budget), diffs.approx_tokens, style)
+            rendered = diffs._clip(shown_file, max(500, budget), diffs.approx_tokens, style)
             review.clipped = True
         clipped = "This file is long, so only its first part is shown.\n" if review.clipped else ""
         user = FILE_USER.format(**parts, clipped=clipped, diff=rendered)

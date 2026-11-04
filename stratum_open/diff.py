@@ -10,7 +10,7 @@ from __future__ import annotations
 import codecs
 import math
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable, Iterable
 
 _HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@ ?(.*)$")
@@ -81,7 +81,7 @@ def parse_diff(text: str) -> list[FileDiff]:
     files: list[FileDiff] = []
     current: FileDiff | None = None
     hunk: Hunk | None = None
-    old_no = new_no = 0
+    old_no = new_no = old_left = new_left = 0
     # Only \n ends a line in a diff. str.splitlines() also splits on
     # U+2028, U+0085 and friends, which would shift every later line number,
     # and let a crafted line look like an added one.
@@ -97,22 +97,30 @@ def parse_diff(text: str) -> list[FileDiff]:
         match = _HUNK.match(raw) if raw.startswith("@@") else None
         if match:
             old_no, new_no = int(match.group(1)), int(match.group(3))
+            # The header's counts say where the hunk ends (1 when left out).
+            old_left, new_left = int(match.group(2) or 1), int(match.group(4) or 1)
             hunk = Hunk(old_no, new_no, match.group(5).strip())
             current.hunks.append(hunk)
             continue
         if hunk is None:
             _header_line(current, raw)
             continue
+        if old_left <= 0 and new_left <= 0:
+            continue  # past the hunk: the "" after the diff's last newline isn't a line of code
         if raw.startswith("+"):
             hunk.lines.append(Line("+", raw[1:], None, new_no))
             new_no += 1
+            new_left -= 1
         elif raw.startswith("-"):
             hunk.lines.append(Line("-", raw[1:], old_no, None))
             old_no += 1
-        elif raw.startswith(" ") or raw == "":
+            old_left -= 1
+        elif raw.startswith(" ") or raw == "":  # some tools drop the space of a blank unchanged line
             hunk.lines.append(Line(" ", raw[1:], old_no, new_no))
             old_no += 1
             new_no += 1
+            old_left -= 1
+            new_left -= 1
         # "\ No newline at end of file" and anything else: not a line of code
     return files
 
@@ -215,6 +223,38 @@ def render(file: FileDiff, hunks: Iterable[Hunk] | None = None, style: str = "in
             number = f"{line.new:>6}" if line.new is not None else " " * 6
             lines.append(f"{number} {line.kind}  {line.text}")
     return "\n".join(lines)
+
+
+def with_context(file: FileDiff, text: str | None, lines: int) -> FileDiff:
+    """A copy of `file` with up to `lines` more unchanged lines from its new
+    text before and after each hunk, for the model to read around the change.
+    Findings are placed against the diff itself, never this copy: GitHub only
+    takes comments on the lines its own diff shows. The text must agree with
+    the diff's new lines, so a stale copy changes nothing."""
+    if not text or lines <= 0 or file.binary or not file.hunks:
+        return file
+    source = text.splitlines()
+    if any(line.new is not None and (line.new > len(source) or source[line.new - 1] != line.text)
+           for hunk in file.hunks for line in hunk.lines):
+        return file
+    hunks, covered = [], 0  # covered: the last new line already shown
+    for index, hunk in enumerate(file.hunks):
+        news = [line.new for line in hunk.lines if line.new is not None]
+        if not news or not any(line.kind == "+" for line in hunk.lines):
+            hunks.append(hunk)  # removed lines only: rendered as a note, nothing to read around
+            covered = max([covered, *news])
+            continue
+        olds = [line.old for line in hunk.lines if line.old is not None]
+        upcoming = [line.new for later in file.hunks[index + 1:] for line in later.lines if line.new is not None]
+        stop = min(upcoming, default=len(source) + 1)
+        before_shift = hunk.new_start - hunk.old_start  # new - old for the unchanged lines before the hunk
+        after_shift = (hunk.new_start + len(news)) - (hunk.old_start + len(olds))
+        first, last = min(news), max(news)
+        pre = [Line(" ", source[n - 1], n - before_shift, n) for n in range(max(covered + 1, first - lines, 1), first)]
+        post = [Line(" ", source[n - 1], n - after_shift, n) for n in range(last + 1, min(stop - 1, last + lines) + 1)]
+        hunks.append(Hunk(hunk.old_start - len(pre), hunk.new_start - len(pre), hunk.header, pre + hunk.lines + post))
+        covered = post[-1].new if post else last
+    return replace(file, hunks=hunks)
 
 
 def _removal_note(hunk: Hunk) -> str:

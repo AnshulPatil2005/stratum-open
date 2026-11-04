@@ -15,6 +15,7 @@ review:
   max_chunks: 3                # model calls per review at most
   diff_format: interleaved     # profile: interleaved | split (large: split)
   large_patch: clip            # clip | skip a file too big for one model call
+  context_lines: 0             # profile: unchanged lines shown around each hunk, read from the file (large: 10)
   mode: general                # general | security | performance | maintainability: what the per-file passes put first
   file_reviews: 0              # profile: files reviewed one at a time before the chunked review (large: 15)
   lens_files: 0                # profile: of those, how many get a focused pass per lens of the mode (large: 5)

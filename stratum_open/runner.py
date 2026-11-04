@@ -27,6 +27,7 @@ from stratum_open.triage import PRFacts, Triage, triage
 
 MAX_BANDIT_FILES = 20
 MAX_CONTEXT_FILES = 20
+MAX_REVIEW_TEXT_FILES = 20  # files whose text is fetched for review.context_lines
 
 
 @dataclass
@@ -112,9 +113,11 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     notes, hotspots, boundary, file_notes = _history(ctx, files, pull)
     record = _record(ctx, pull)
     muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []
+    # Whether the profile shows code around each hunk, so the files' text is worth fetching.
+    around = ctx.model is not None and effective_policy(ctx.policy, ctx.model)[0].review.context_lines > 0
     engine = analyze(
         title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=ctx.policy, model=ctx.model,
-        contents=_contents(ctx, files, head), lookup=ctx.lookup, only_paths=changed, previous=state.findings,
+        contents=_contents(ctx, files, head, around=around), lookup=ctx.lookup, only_paths=changed, previous=state.findings,
         notes=notes, hotspots=hotspots, file_notes=file_notes, extra_findings=boundary,
         exclude_fingerprints=set(state.ignored), exclude_rules=set(state.ignored_rules) | set(muted),
         log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
@@ -210,10 +213,11 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     return Outcome(number, "published", findings, sorted_pr, result, body)
 
 
-def _contents(ctx: Context, files: list[FileDiff], head: str) -> dict[str, str] | None:
+def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = False) -> dict[str, str] | None:
     """The full new text of the files where the checks need context:
     workflows and manifests always (they're small), Python files for Bandit
-    when it's installed."""
+    when it's installed. With `around` (the profile shows code around each
+    hunk), the biggest changes the model will read too."""
     from stratum_open.checks.bandit import available
     from stratum_open.checks.dependencies import manifest_kind
 
@@ -227,6 +231,9 @@ def _contents(ctx: Context, files: list[FileDiff], head: str) -> dict[str, str] 
     if available():
         python = sorted((f for f in live if f.path.endswith(".py")), key=lambda f: -f.additions)
         fetch += python[:MAX_BANDIT_FILES]
+    if around:
+        reviewed = sorted((f for f in live if not ctx.policy.ignored(f.path) and f not in fetch), key=lambda f: -(f.additions + f.deletions))
+        fetch += reviewed[:MAX_REVIEW_TEXT_FILES]
     contents: dict[str, str] = {}
     for file in fetch:
         try:
