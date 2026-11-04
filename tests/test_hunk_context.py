@@ -68,7 +68,8 @@ def test_a_finding_on_a_context_line_is_about_the_whole_file():
 
 
 def test_the_runner_fetches_the_text_when_the_profile_shows_context():
-    gh = FakeGitHub(diff=DIFF, files={("x.py", "a" * 40): TEXT})
+    # A .ts file: the checks alone would fetch a Python one, for Bandit.
+    gh = FakeGitHub(diff=DIFF.replace("x.py", "x.ts"), files={("x.ts", "a" * 40): TEXT})
     model = FakeModel(json.dumps({"risk_score": 10, "change_summary": "Adds A and B.", "findings": []}),
                       json.dumps({"summary": "Adds two lines.", "matches_description": "yes", "findings": []}), "{}")
     policy = parse_policy("review:\n  profile: large\n  parallel_calls: 1\n  lens_files: 0\n")
