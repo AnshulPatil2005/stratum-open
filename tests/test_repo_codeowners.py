@@ -39,6 +39,8 @@ def test_folders_anchors_and_globs_follow_github():
     assert owners("web/apps/a.ts", "apps/ @octocat\n") == ("@octocat",)  # apps/ anywhere
     assert owners("web/build/logs/a.txt", "/build/logs/ @doctocat\n") == ()  # anchored to the root
     assert owners("tools/apps", "apps/ @octocat\n") == ()  # a trailing slash is a folder, not a file
+    assert owners("src/pkg/file.py", "* @default\nsrc/*/ @src\n") == ("@src",)  # every folder in src, and what's in it
+    assert owners("src/file.py", "* @default\nsrc/*/ @src\n") == ("@default",)  # but not src's own files
 
 
 def test_a_pattern_without_owners_takes_ownership_away():

@@ -91,7 +91,7 @@ def _compile(pattern: str) -> re.Pattern:
     anchored = pattern.startswith("/") or "/" in pattern.rstrip("/")
     folder = pattern.endswith("/")
     body = pattern.strip("/")
-    direct = body.endswith("/*") and not body.endswith("/**")
+    direct = not folder and body.endswith("/*") and not body.endswith("/**")  # src/*/ names folders, so it covers their contents
     out, i = [], 0
     while i < len(body):
         if body.startswith("**/", i):
