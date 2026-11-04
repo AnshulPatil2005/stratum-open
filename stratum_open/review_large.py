@@ -218,6 +218,8 @@ def review_files(
                      - diffs.approx_tokens(max(systems, key=len) + FILE_USER.format(**parts, clipped="", diff="")))
         shown_file = diffs.with_context(file, (contents or {}).get(file.path), policy.review.context_lines)
         rendered = diffs.render(shown_file, style=style)
+        if shown_file is not file and diffs.approx_tokens(rendered) > budget:
+            shown_file, rendered = file, diffs.render(file, style=style)  # the code around mustn't crowd out the change
         if diffs.approx_tokens(rendered) > budget:
             rendered = diffs._clip(shown_file, max(500, budget), diffs.approx_tokens, style)
             review.clipped = True

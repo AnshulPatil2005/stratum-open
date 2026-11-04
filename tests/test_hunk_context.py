@@ -89,3 +89,27 @@ def test_describe_asks_the_server_once():
                         ("POST", "http://localhost:11434/api/show"): {"details": {"parameter_size": "7B"}}})
     model = Model("http://localhost:11434/v1", "m", session=session)
     assert model.describe() == model.describe() and Counting.calls == 1
+
+
+def test_lines_are_split_as_git_splits_them():
+    text = "first\r\nadded\r\nvalue = 'a\u2028b'\r\nnext_line\r\n"  # U+2028 is inside line 3, not a line break
+    [file] = parse_diff("diff --git a/z.py b/z.py\n--- a/z.py\n+++ b/z.py\n@@ -1,1 +1,2 @@\n first\n+added\n")
+    [hunk] = with_context(file, text, 5).hunks
+    assert [(line.new, line.text) for line in hunk.lines][-2:] == [(3, "value = 'a\u2028b'"), (4, "next_line")]
+
+
+def test_the_code_around_never_crowds_out_the_change():
+    from stratum_open.review_large import review_files
+
+    huge = "x = '" + "y" * 60000 + "'"  # more than a whole chunk of the small profile
+    text = huge + "\nadded = 1\nend = 2\n"
+    [file] = parse_diff("diff --git a/w.ts b/w.ts\n--- a/w.ts\n+++ b/w.ts\n@@ -2,1 +2,2 @@\n+added = 1\n end = 2\n")
+    policy = apply(parse_policy("review:\n  context_lines: 3\n  file_reviews: 1\n  lens_files: 0\n  parallel_calls: 1\n"), "large")
+    model = FakeModel(json.dumps({"risk_score": 1, "change_summary": "Adds a line.", "findings": []}))
+    review_files(title="t", description="", files=[file], policy=policy, model=model, contents={"w.ts": text})
+    assert "added = 1" in model.prompts[0][1] and "yyyy" not in model.prompts[0][1]  # the plain diff, not the clipped context
+
+    model = FakeModel(json.dumps({"summary": "", "findings": []}))
+    review(title="t", description="", files=[file], policy=apply(parse_policy("review:\n  context_lines: 3\n"), "small"),
+           model=model, contents={"w.ts": text})
+    assert "added = 1" in model.prompts[0][1] and "yyyy" not in model.prompts[0][1]

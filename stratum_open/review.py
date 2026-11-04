@@ -169,7 +169,13 @@ def review(
                            left_out="", previous=previous_block, note="", legend=legend, diff="")
     # 250 more for the line naming files left out, known only after packing.
     budget = policy.review.context_tokens - diffs.approx_tokens(system + skeleton) - OUTPUT_RESERVE_TOKENS - 450
-    shown_files = [diffs.with_context(f, (contents or {}).get(f.path), policy.review.context_lines) for f in in_scope]
+    def widened(file: FileDiff) -> FileDiff:
+        """The file with the code around its hunks, if that still fits a call:
+        the code around mustn't crowd out the change itself."""
+        wide = diffs.with_context(file, (contents or {}).get(file.path), policy.review.context_lines)
+        return wide if wide is file or diffs.approx_tokens(diffs.render(wide, style=style)) < max(1000, budget) else file
+
+    shown_files = [widened(f) for f in in_scope]
     packed = diffs.pack(
         shown_files, max(1000, budget), policy.review.max_chunks,
         skip=policy.ignored,

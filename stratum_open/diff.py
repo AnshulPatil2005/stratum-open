@@ -233,7 +233,11 @@ def with_context(file: FileDiff, text: str | None, lines: int) -> FileDiff:
     the diff's new lines, so a stale copy changes nothing."""
     if not text or lines <= 0 or file.binary or not file.hunks:
         return file
-    source = text.splitlines()
+    # Split on "\n" only, as parse_diff does: str.splitlines() also breaks on
+    # U+2028 and the like, which would shift every later line number.
+    source = [line.removesuffix("\r") for line in text.split("\n")]
+    if source and source[-1] == "":
+        source.pop()  # what follows the file's last newline isn't a line
     if any(line.new is not None and (line.new > len(source) or source[line.new - 1] != line.text)
            for hunk in file.hunks for line in hunk.lines):
         return file
