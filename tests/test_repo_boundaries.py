@@ -206,3 +206,15 @@ def test_a_local_review_reads_the_baseline_at_its_base(tmp_path):
     warn = policy("  new_edges: warn\n")
     assert [f.rule for f in boundary_findings([diff], warn, repo.path, ref=base)] == ["boundaries/new-edge"]
     assert boundary_findings([diff], warn, repo.path) == []  # the working tree already has the change, so it looks old
+
+
+def test_no_baseline_when_git_cannot_list_the_ref(tmp_path):
+    from test_repo_history import Repo
+
+    repo = Repo(tmp_path)
+    repo.commit({**CHECKOUT, "server/api/views.py": "from server.db import models\n"}, day=1)  # api -> db already
+    added = change("server/db/fresh.py", "+x = 1", new=True)
+    diff = change("server/api/views.py", " from server.db import models", "+from server.db.fresh import x")
+    warn = policy("  new_edges: warn\n")
+    assert boundary_findings([added, diff], warn, repo.path, ref="HEAD") == []  # not new: api imported db already
+    assert boundary_findings([added, diff], warn, repo.path, ref="no-such-ref") == []  # nothing listed, so nothing to call new

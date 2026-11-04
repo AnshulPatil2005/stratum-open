@@ -78,7 +78,8 @@ def boundary_findings(files: list[FileDiff], policy: Policy, repo_dir: str | Non
         gone = {f.path for f in files if f.status == "deleted"} | {f.old_path for f in files if f.status == "renamed" and f.old_path}
         checkout = _code_files_at(repo_dir, ref) if ref else code_files(repo_dir)
         resolver = Resolver((set(checkout) - gone) | present)
-        if new_edges and len(checkout) < MAX_FILES:  # a checkout read only in part can't say what's new
+        # A checkout read only in part, or not at all (a ref git couldn't list), can't say what's new.
+        if new_edges and 0 < len(checkout) < MAX_FILES:
             baseline = _edges(repo_dir, checkout, module_of, ref)
     else:
         resolver = Resolver(present, roots={path.partition("/")[0] for path in present if "/" in path})
