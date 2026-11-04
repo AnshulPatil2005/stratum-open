@@ -186,3 +186,23 @@ boundaries:
         'boundaries.forbid entry "to: db" must look like "a -> b", or "a -> b: why".',)
     assert parse_policy("boundaries:\n  forbid: [[api, db]]\n").errors == (
         'boundaries.forbid must be a list of rules like "a -> b" or "a -> b: why".',)
+
+
+def test_an_import_changed_to_another_module_is_checked(tmp_path):
+    repo = write(tmp_path, CHECKOUT)
+    diff = change("server/api/views.py", " import os", "-from server import core", "+from server import db")
+    [finding] = boundary_findings([diff], POLICY, repo)  # same `from server`, but it now loads db
+    assert finding.title == "`api` must not import `db`"
+
+
+def test_a_local_review_reads_the_baseline_at_its_base(tmp_path):
+    from test_repo_history import Repo
+
+    repo = Repo(tmp_path)
+    repo.commit({**CHECKOUT, "server/api/views.py": "from server.core import config\n"}, day=1)
+    base = repo.git("rev-parse", "HEAD")
+    repo.commit({"server/api/views.py": "from server.core import config\nfrom server.db import models\n"}, day=2)
+    diff = change("server/api/views.py", " from server.core import config", "+from server.db import models")
+    warn = policy("  new_edges: warn\n")
+    assert [f.rule for f in boundary_findings([diff], warn, repo.path, ref=base)] == ["boundaries/new-edge"]
+    assert boundary_findings([diff], warn, repo.path) == []  # the working tree already has the change, so it looks old

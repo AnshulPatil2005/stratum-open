@@ -138,7 +138,8 @@ def _review_local(args, base: str) -> int:
         title=_git(".", "log", "-1", "--format=%s").strip(), description=_git(".", "log", "-1", "--format=%b").strip(),
         files=files, policy=policy, model=model, contents=contents or None,
         lookup=PackageLookup() if policy.dependencies.registry_lookup else None,
-        extra_findings=boundary_findings(files, policy, "."),
+        # The working tree is HEAD, the change itself: the module baseline comes from where it branched off.
+        extra_findings=boundary_findings(files, policy, ".", ref=(_git_or_none(".", "merge-base", base, "HEAD") or base).strip()),
     )
     if model is not None:
         print(f"Profile: {result.profile} ({result.profile_why}).", file=sys.stderr)

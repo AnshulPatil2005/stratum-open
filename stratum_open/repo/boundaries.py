@@ -27,12 +27,13 @@ fool it.
 
 Only the line that names the module is checked, and only if the PR adds it:
 an import that was already there isn't this PR's doing, and neither is one
-the PR only reformats (removed and added back). One finding per module a file
+the PR only reformats (removed and added back, loading the same file). One finding per module a file
 newly imports, naming the other lines that import it.
 """
 
 from __future__ import annotations
 
+import subprocess
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from typing import Callable, Iterator
@@ -40,7 +41,10 @@ from typing import Callable, Iterator
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
 from stratum_open.policy import POLICY_PATH, Policy, forbid_rules, matches_any
-from stratum_open.repo.graph import MAX_FILES, Import, Resolver, _minified, _read, code_files, parse_imports
+from stratum_open.repo.graph import (
+    JS_EXTENSIONS, MAX_FILES, PY_EXTENSIONS, SKIP_DIRS, Import, Resolver, _minified, _read, code_files, parse_imports,
+)
+from stratum_open.repo.hotspots import _read_at
 
 RULE = "boundaries/forbidden"
 NEW_EDGE_RULE = "boundaries/new-edge"
@@ -48,7 +52,10 @@ NESTED_ROOTS = ("src", "lib", "packages", "apps", "services")  # folders whose c
 Modules = tuple[tuple[str, tuple[str, ...]], ...]
 
 
-def boundary_findings(files: list[FileDiff], policy: Policy, repo_dir: str | None) -> list[Finding]:
+def boundary_findings(files: list[FileDiff], policy: Policy, repo_dir: str | None, *, ref: str | None = None) -> list[Finding]:
+    """`repo_dir`: the default branch's checkout. `ref`: read that side from
+    this commit in `repo_dir` instead of its working tree, for a local review,
+    where the working tree is the change itself."""
     settings = policy.boundaries
     rules = forbid_rules(settings)
     new_edges = settings.new_edges != "off" and repo_dir is not None
@@ -69,23 +76,22 @@ def boundary_findings(files: list[FileDiff], policy: Policy, repo_dir: str | Non
     baseline: set[tuple[str, str]] | None = None
     if repo_dir:
         gone = {f.path for f in files if f.status == "deleted"} | {f.old_path for f in files if f.status == "renamed" and f.old_path}
-        checkout = code_files(repo_dir)
+        checkout = _code_files_at(repo_dir, ref) if ref else code_files(repo_dir)
         resolver = Resolver((set(checkout) - gone) | present)
         if new_edges and len(checkout) < MAX_FILES:  # a checkout read only in part can't say what's new
-            baseline = _edges(repo_dir, checkout, module_of)
+            baseline = _edges(repo_dir, checkout, module_of, ref)
     else:
         resolver = Resolver(present, roots={path.partition("/")[0] for path in present if "/" in path})
 
     findings = []
     for file in checked:
         source = module_of(file.path)
-        before = _removed_imports(file)
+        # What the removed lines loaded: adding back an import of the same file only reformats it.
+        before = {what for imp in _removed_imports(file) for _, what, _ in _targets(resolver, file.path, imp, module_of, guess=not repo_dir)}
         by_target: dict[str, list[tuple[int, str, bool]]] = {}
         for imp in added_imports(file):
-            if (imp.module, imp.level) in before:
-                continue  # the PR only reformatted it
             for target, what, guessed in _targets(resolver, file.path, imp, module_of, guess=not repo_dir):
-                if target != source:
+                if target != source and what not in before:
                     by_target.setdefault(target, []).append((imp.line, what, guessed))
         for target, hits in by_target.items():
             line, what, guessed = hits[0]
@@ -163,28 +169,34 @@ def added_imports(file: FileDiff) -> list[Import]:
     return found
 
 
-def _removed_imports(file: FileDiff) -> set[tuple[str, int]]:
-    """(module, level) of each import named on a line the PR removes."""
+def _removed_imports(file: FileDiff) -> list[Import]:
+    """The imports named on lines the PR removes."""
     old_side = {line.old: line.text for hunk in file.hunks for line in hunk.lines if line.old is not None}
     removed = {line.old for hunk in file.hunks for line in hunk.lines if line.kind == "-"}
     if not removed:
-        return set()
-    found = set()
+        return []
+    found = []
     for start, lines in _stretches(old_side):
         for imp in parse_imports(file.path, "\n".join(lines)):
             if start + imp.line - 1 in removed:
-                found.add((imp.module, imp.level))
+                found.append(imp)
     return found
 
 
-def _edges(repo_dir: str, files: list[str], module_of: Callable[[str], str | None]) -> set[tuple[str, str]]:
-    """Every (module, module it imports) on the default branch."""
+def _edges(repo_dir: str, files: list[str], module_of: Callable[[str], str | None], ref: str | None = None) -> set[tuple[str, str]]:
+    """Every (module, module it imports) on the default branch: its working
+    tree, or `ref` in it."""
     resolver = Resolver(files)
     edges: set[tuple[str, str]] = set()
     with ThreadPoolExecutor(max_workers=8) as pool:
         for at in range(0, len(files), 256):
             batch = files[at:at + 256]
-            for path, text in zip(batch, pool.map(lambda p: _read(repo_dir, p), batch)):
+            if ref:
+                found = _read_at(repo_dir, ref, batch)
+                texts = [found.get(path) for path in batch]
+            else:
+                texts = list(pool.map(lambda p: _read(repo_dir, p), batch))
+            for path, text in zip(batch, texts):
                 source = module_of(path)
                 if source is None or text is None or _minified(text):
                     continue
@@ -207,6 +219,23 @@ def _targets(resolver: Resolver, importer: str, imp: Import, module_of: Callable
         landing = {module_of(path) for path in group} - {None}
         if len(landing) == 1:
             found.append((landing.pop(), f"`{'.' * imp.level}{imp.module}`", True))
+    return found
+
+
+def _code_files_at(repo_dir: str, ref: str) -> list[str]:
+    """`graph.code_files`, at a commit instead of the working tree."""
+    try:
+        out = subprocess.run(["git", "-C", repo_dir, "ls-tree", "-r", "-z", "--name-only", ref],
+                             capture_output=True, timeout=120, check=True).stdout.decode("utf-8", errors="replace")
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError):
+        return []
+    found = []
+    for path in sorted(filter(None, out.split("\0"))):
+        folders = path.split("/")[:-1]
+        if path.endswith(PY_EXTENSIONS + JS_EXTENSIONS) and not any(f in SKIP_DIRS or f.startswith(".") for f in folders):
+            found.append(path)
+            if len(found) >= MAX_FILES:
+                break
     return found
 
 
