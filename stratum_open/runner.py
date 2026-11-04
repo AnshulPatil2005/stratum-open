@@ -20,9 +20,10 @@ from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
 from stratum_open.policy import Policy, load_policy, matches_any
 from stratum_open.review import ReviewResult
-from stratum_open.storage import NullStorage, Storage, redact
+from stratum_open.storage import NullStorage, Storage
 from stratum_open.track_record import AuthorRecord, author_identity, build_records, describe_subprocess_error
 from stratum_open.triage import PRFacts, Triage, triage
+from stratum_open.util import redact
 
 MAX_BANDIT_FILES = 20
 MAX_CONTEXT_FILES = 20
@@ -131,7 +132,10 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     if result is not None:
         if not result.ran:
             errors = sorted({c["error"] for c in result.calls if c.get("error")})
-            problems.append("The model didn't answer, so this review has only the checks" + (f": {errors[0]}" if errors else "."))
+            if errors and errors[0].startswith("Stratum hit a bug"):  # ours, not the model's: say so, as the Action does
+                problems.append(f"{errors[0].split(':', 1)[0]}, so this review has only the checks.")
+            else:
+                problems.append("The model didn't answer, so this review has only the checks" + (f": {errors[0]}" if errors else "."))
         else:
             if result.failed_calls:
                 problems.append(f"{result.failed_calls} of {len(result.calls)} model calls failed; some files weren't reviewed.")

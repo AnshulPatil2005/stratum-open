@@ -19,9 +19,8 @@ from urllib.parse import urlparse
 import requests
 import yaml
 
-from stratum_open.github.api import retry_after
 from stratum_open.policy import Policy
-from stratum_open.storage import redact
+from stratum_open.util import redact, retry_after
 
 RETRY_STATUSES = {408, 429, 500, 502, 503, 504}
 _FENCE_ANYWHERE = re.compile(r"```[a-zA-Z]*[ \t]*\n(.*?)\n[ \t]*```", re.DOTALL)

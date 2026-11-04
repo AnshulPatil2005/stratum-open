@@ -9,11 +9,11 @@ from __future__ import annotations
 import base64
 import re
 import time
-from datetime import datetime, timezone
-from email.utils import parsedate_to_datetime
 from typing import Any, Iterator
 
 import requests
+
+from stratum_open.util import retry_after
 
 API = "https://api.github.com"
 TIMEOUT = 30  # seconds, per call
@@ -315,25 +315,6 @@ def _secondary_limit(response: requests.Response) -> bool:
     return response.status_code in (403, 429) and (
         "Retry-After" in response.headers or response.headers.get("X-RateLimit-Remaining") == "0"
     )
-
-
-def retry_after(header: str | None, default: float) -> float:
-    """Seconds to wait from a `Retry-After` header, which is either a number
-    of seconds or an HTTP date. Anything unreadable means `default`."""
-    if not header:
-        return default
-    header = header.strip()
-    try:
-        return max(0.0, float(header))
-    except ValueError:
-        pass
-    try:
-        when = parsedate_to_datetime(header)
-    except (TypeError, ValueError, IndexError):
-        return default
-    if when.tzinfo is None:
-        when = when.replace(tzinfo=timezone.utc)
-    return max(0.0, (when - datetime.now(timezone.utc)).total_seconds())
 
 
 def _json(response: requests.Response) -> Any:

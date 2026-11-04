@@ -20,9 +20,12 @@ import traceback
 from dataclasses import dataclass
 from typing import Any, Callable, Sequence
 
+import requests
+
 from stratum_open import __version__
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank, risk_score
+from stratum_open.model import ModelError
 from stratum_open.policy import Policy
 from stratum_open.review import ReviewResult, _locate, review, shown
 
@@ -94,11 +97,17 @@ def analyze(
                 previous=still_there(previous or [], files) if only_paths is not None else None,
             )
         except Exception as exc:  # the model step is the one part of a review that may never stop the rest
-            # Reported like any other failed call, so the summary says the model didn't answer and why;
-            # the traceback rides along for the caller's log and never reaches a comment.
+            # Reported like any other failed call, so the review still says what happened; the traceback
+            # rides along for the caller's log and never reaches a comment. `Model.complete` already turns
+            # its own connection errors into failed calls, so what lands here from a model is an embedder's
+            # model raising; anything else is a bug of ours, and is named as one rather than as an outage.
+            if isinstance(exc, (requests.RequestException, ModelError)):
+                error = f"the model step failed ({type(exc).__name__}): {exc}"
+            else:
+                error = f"Stratum hit a bug during the model step ({type(exc).__name__}): {exc}"
             result = ReviewResult(failed_calls=1, calls=[{
                 "model": str(getattr(model, "name", "")), "seconds": 0, "ok": False, "prompt_tokens": None, "output_tokens": None,
-                "error": f"the model step failed ({type(exc).__name__}): {exc}", "traceback": traceback.format_exc(),
+                "error": error, "traceback": traceback.format_exc(),
             }])
 
     found = anchor_to_diff(checks + list(extra_findings) + (result.findings if result else []), files)

@@ -24,8 +24,8 @@ from stratum_open.github.commands import NEEDS_MODEL, handle, parse
 from stratum_open.model import model_from_policy
 from stratum_open.policy import Policy
 from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull, skip_reason
-from stratum_open.storage import redact
 from stratum_open.triage_queue import update_queue
+from stratum_open.util import redact
 
 DEFAULT_BOT = "github-actions[bot]"
 

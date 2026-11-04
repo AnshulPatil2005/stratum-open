@@ -41,8 +41,9 @@ from stratum_open.github.feedback import collect_votes
 from stratum_open.model import model_from_policy
 from stratum_open.policy import REVIEW_EVENTS
 from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull, skip_reason
-from stratum_open.storage import SQLiteStorage, Storage, redact
+from stratum_open.storage import SQLiteStorage, Storage
 from stratum_open.track_record import describe_subprocess_error
+from stratum_open.util import redact
 
 MAX_BODY = 25 * 1024 * 1024  # GitHub's own webhook payload limit
 DELIVERY_TTL = 3600.0  # seconds a delivery ID is remembered

@@ -13,7 +13,6 @@ UTC ISO strings, which sort in time order.
 
 from __future__ import annotations
 
-import re
 import sqlite3
 import threading
 from contextlib import contextmanager
@@ -21,6 +20,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Iterator, Protocol
 
 from stratum_open.findings import Finding
+from stratum_open.util import REDACTED, redact  # noqa: F401  (REDACTED: what a redacted value reads as, for the tests)
 
 SCHEMA_VERSION = 1  # kept in `PRAGMA user_version`, so it needs no table
 TABLES = ("reviews", "findings", "jobs", "votes", "mutes")
@@ -86,22 +86,9 @@ CREATE TABLE IF NOT EXISTS mutes (
 );
 """
 
-# Credentials that must never reach the database, even quoted inside an error
-# message or a finding about a diff. Matches are replaced, not rejected, so a
-# job still gets logged.
-_SECRET = re.compile(
-    r"""
-    -----BEGIN[A-Z ]*PRIVATE\ KEY-----.*?(?:-----END[A-Z ]*PRIVATE\ KEY-----|\Z)
-    | \b(?:gh[pousr]_|github_pat_)\w{20,}
-    | \bsk-[\w-]{20,}
-    | \beyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{8,}
-    | (?i:\bbearer\s+)\S{16,}
-    | (?i:\bbasic\s+)[A-Za-z0-9+/=]{16,}
-    | (?i:\b(?:access_token|api[_-]?key|client_secret|password)=)[^\s&"']+
-    """,
-    re.VERBOSE | re.DOTALL,
-)
-REDACTED = "[redacted]"
+# Credentials must never reach the database, even quoted inside an error
+# message or a finding about a diff: every text column goes through
+# `util.redact`, which replaces them rather than rejecting the row.
 
 
 class Storage(Protocol):
@@ -359,13 +346,7 @@ def _repo(repo: str) -> str:
     return repo.strip().lower()
 
 
-def redact(text: str) -> str:
-    """`text` with anything shaped like a credential replaced, for anything
-    that's written down: the database, a log line, an error message."""
-    return _SECRET.sub(REDACTED, text or "")
-
-
-_clean = redact
+_clean = redact  # every text column goes through it before it's written
 
 
 def _stamp(moment: datetime | None = None) -> str:

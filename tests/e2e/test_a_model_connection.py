@@ -215,7 +215,8 @@ def test_model_object_survives_any_exception_from_the_transport(pr, make_context
     monkeypatch.setattr(model, "_ollama_base", lambda: (_ for _ in ()).throw(TypeError("unexpected None in transport")))
     outcome = review_pull(make_context(model=model), 7)
     assert outcome.status == "published"
-    assert "the model step failed (TypeError)" in summary_text(pr)
+    assert "Stratum hit a bug during the model step (TypeError), so this review has only the checks." in summary_text(pr)
+    assert "didn't answer" not in summary_text(pr), "a bug of ours must not be dressed up as a model outage"
     assert any("model review failed" in line and "Traceback" in line for line in logs), "the traceback belongs in the log"
     assert "Traceback" not in pr.posted_text()
     assert_contract(pr, number=7, head=HEAD, logs=[])  # logs hold the traceback on purpose; posted text must not

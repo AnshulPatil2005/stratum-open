@@ -12,7 +12,7 @@ from stratum_open import cli
 from stratum_open.github.api import GitHub
 from stratum_open.model import Model
 from stratum_open.runner import review_pull
-from stratum_open.storage import redact
+from stratum_open.util import redact
 
 import diffs
 from conftest import DIFF, head_of

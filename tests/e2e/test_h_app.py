@@ -238,7 +238,8 @@ def test_the_whole_app_flow_over_http_against_the_fakes(fake_github, fake_model,
     status, data = call(server, pr_event(action="opened"))
     assert (status, data) == ("202 Accepted", {"queued": True})
     deadline = time.monotonic() + 30
-    while not fake_github.check_runs and time.monotonic() < deadline:
+    # The job row is written after review_pull returns, which is after the check run; waiting for it covers every assert below.
+    while not any(job["event"] == "review" for job in server.storage.export("acme/widget")["jobs"]) and time.monotonic() < deadline:
         time.sleep(0.05)
     assert_contract(fake_github, number=7, head=HEAD, logs=logs)
     assert {f["title"] for f in server.storage.latest_findings("acme/widget", 7)} >= {"Unknown id"}
