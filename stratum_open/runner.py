@@ -109,13 +109,13 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             changed = set(since) & set(paths) if since is not None else None
     incremental = changed is not None
 
-    notes, hotspots, boundary = _history(ctx, files, pull)
+    notes, hotspots, boundary, file_notes = _history(ctx, files, pull)
     record = _record(ctx, pull)
     muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []
     engine = analyze(
         title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=ctx.policy, model=ctx.model,
         contents=_contents(ctx, files, head), lookup=ctx.lookup, only_paths=changed, previous=state.findings,
-        notes=notes, hotspots=hotspots, extra_findings=boundary,
+        notes=notes, hotspots=hotspots, file_notes=file_notes, extra_findings=boundary,
         exclude_fingerprints=set(state.ignored), exclude_rules=set(state.ignored_rules) | set(muted),
         log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
     )
@@ -238,24 +238,37 @@ def _contents(ctx: Context, files: list[FileDiff], head: str) -> dict[str, str] 
     return contents or None
 
 
-def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str], set[str], list[Finding]]:
-    """Notes, hotspot paths and boundary findings from the default branch's
-    checkout. Without one (the CLI on a PR URL), boundaries still work from
-    the diff alone."""
+def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str], set[str], list[Finding], dict[str, str]]:
+    """Notes, hotspot paths, boundary findings and per-file notes from the
+    default branch's checkout. Without one (the CLI on a PR URL), boundaries
+    still work from the diff alone."""
     from stratum_open.repo.boundaries import boundary_findings
 
     notes: list[str] = []
     hot: set[str] = set()
-    # The default branch knows a renamed file by its old path.
-    changed = [f.path for f in files if f.status != "deleted"] + [f.old_path for f in files if f.old_path]
+    file_notes: dict[str, str] = {}
+    # The default branch knows a renamed file by its old path; the review, by its new one.
+    current = [f.path for f in files if f.status != "deleted"]
+    changed = current + [f.old_path for f in files if f.old_path]
+    new_path = {f.old_path: f.path for f in files if f.old_path} | {path: path for path in current}
     if ctx.checkout:
-        from stratum_open.repo.graph import importers, reach_note
+        from stratum_open.repo import codeowners
+        from stratum_open.repo.graph import importers, reach_note, related_note
         from stratum_open.repo.hotspots import hotspot_note, hotspot_paths, hotspots
         from stratum_open.repo.ownership import bus_factor_notes, owners
 
+        def imports() -> None:
+            found = importers(ctx.checkout, changed)
+            notes.extend(reach_note(found))
+            for path, importers_of in found.items():
+                note = related_note(importers_of)
+                if note and path in new_path:
+                    file_notes[new_path[path]] = note
+
         window = ctx.policy.track_record.window_days
         for name, step in (
-            ("imports", lambda: notes.extend(reach_note(importers(ctx.checkout, changed)))),
+            ("imports", imports),
+            ("codeowners", lambda: notes.extend(codeowners.owners_note(codeowners.parse(codeowners.read(ctx.checkout) or ""), current))),
             ("ownership", lambda: notes.extend(bus_factor_notes(
                 owners(ctx.checkout, ctx.history_ref, window_days=window, exclude=ctx.policy.track_record.exclude),
                 changed, _identities(ctx, (pull.get("user") or {}).get("login", ""))))),
@@ -267,6 +280,7 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
         try:
             found = hotspots(ctx.checkout, ctx.history_ref, window_days=window)
             hot = {path for path in hotspot_paths(found) if not ctx.policy.ignored(path)}
+            hot |= {new_path[path] for path in hot if path in new_path}  # a hotspot the PR renames stays one
             notes.extend(hotspot_note(found, changed))
         except Exception as exc:
             ctx.log(f"hotspots: {type(exc).__name__}: {exc}")
@@ -275,7 +289,7 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
     except Exception as exc:
         ctx.log(f"boundaries: {type(exc).__name__}: {exc}")
         boundary = []
-    return notes, hot, boundary
+    return notes, hot, boundary, file_notes
 
 
 def _record(ctx: Context, pull: dict) -> AuthorRecord | None:
