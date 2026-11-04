@@ -25,7 +25,7 @@ repo. Nothing is sent to Stratum: no account, no telemetry, no license check.
 - **Context from the history:**
   - files that a lot of the code imports;
   - code that only one person has changed lately;
-  - hotspots that change often and are complex, which get a stricter review;
+  - hotspots that change often and are complex, or keep needing reverts and hotfixes, which get a stricter review;
   - who owns the changed files, from CODEOWNERS.
 - **One triage label:** `ready`, `needs work`, `low effort` or `needs a maintainer`, with the reasons spelled out. It judges what's in front of it: CI, tests, a linked issue, size, and whether the change matches its description. It doesn't try to guess whether AI wrote the PR, because detectors for that aren't reliable. Labels are off until your policy turns them on, and it closes nothing unless your policy says so.
 - **A check run** that fails on a critical finding and is neutral on a high one. Make it required in branch protection if you want it to block merging.
