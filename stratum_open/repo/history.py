@@ -28,6 +28,7 @@ class Commit:
     sha: str
     author: str  # author_identity of the .mailmap'd email
     changes: tuple[Change, ...]
+    subject: str = ""
 
 
 def recent_commits(repo_dir: str, ref: str = "HEAD", *, window_days: int = 180, now: datetime | None = None) -> list[Commit]:
@@ -38,16 +39,16 @@ def recent_commits(repo_dir: str, ref: str = "HEAD", *, window_days: int = 180, 
     since = (now or datetime.now(timezone.utc)) - timedelta(days=window_days)
     out = git(
         repo_dir, "log", "--no-merges", "-M", "--name-status", "-z",
-        f"--since={int(since.timestamp())}", "--format=%x1e%H%x1f%P%x1f%aE", ref,
+        f"--since={int(since.timestamp())}", "--format=%x1e%H%x1f%P%x1f%aE%x1f%s", ref,
     )
     commits = []
     for record in out.split("\x1e"):
         header, _, body = record.partition("\0")
         if not header:
             continue
-        sha, parents, email = header.split("\x1f", 2)
+        sha, parents, email, subject = (header.split("\x1f", 3) + [""])[:4]
         if parents.strip():
-            commits.append(Commit(sha, author_identity(email), _changes(body.strip("\n").split("\0"))))
+            commits.append(Commit(sha, author_identity(email), _changes(body.strip("\n").split("\0")), subject.strip()))
     return commits
 
 

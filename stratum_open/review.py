@@ -136,12 +136,14 @@ def review(
     hotspots: set[str] | None = None,
     previous: list[dict[str, Any]] | None = None,
     guidance: str = "",
+    contents: dict[str, str] | None = None,
     log: Callable[[str, str], None] | None = None,
 ) -> ReviewResult:
     """Review `files` (or only `only_paths` of them, on an incremental run).
     `previous` is the last review's findings on the files being reviewed
     again; they're listed so the model doesn't report them a second time in
-    new words."""
+    new words. `contents` (a path's new text) gives `review.context_lines`
+    of unchanged code around each hunk."""
     result = ReviewResult()
     in_scope = [f for f in files if only_paths is None or f.path in only_paths]
     rules = "".join(f"- {rule}\n" for rule in policy.review.rules)
@@ -167,8 +169,15 @@ def review(
                            left_out="", previous=previous_block, note="", legend=legend, diff="")
     # 250 more for the line naming files left out, known only after packing.
     budget = policy.review.context_tokens - diffs.approx_tokens(system + skeleton) - OUTPUT_RESERVE_TOKENS - 450
+    def widened(file: FileDiff) -> FileDiff:
+        """The file with the code around its hunks, if that still fits a call:
+        the code around mustn't crowd out the change itself."""
+        wide = diffs.with_context(file, (contents or {}).get(file.path), policy.review.context_lines)
+        return wide if wide is file or diffs.approx_tokens(diffs.render(wide, style=style)) < max(1000, budget) else file
+
+    shown_files = [widened(f) for f in in_scope]
     packed = diffs.pack(
-        in_scope, max(1000, budget), policy.review.max_chunks,
+        shown_files, max(1000, budget), policy.review.max_chunks,
         skip=policy.ignored,
         priority=lambda f: (f.path in (hotspots or set())) * 1000 + f.additions + f.deletions,
         style=style, large=policy.review.large_patch,

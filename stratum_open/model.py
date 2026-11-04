@@ -67,6 +67,7 @@ class Model:
         self.retries = retries
         self.session = session or requests.Session()
         self._ollama: str | None | bool = False  # False = not checked yet
+        self._info = None  # what describe() learned; a model doesn't change during a run
 
     def complete(self, system: str, user: str, *, max_tokens: int = 2048, json_mode: bool = True) -> Reply:
         started = time.monotonic()
@@ -89,6 +90,8 @@ class Model:
         for `review.profile: auto`. Never fails: what it can't learn is None."""
         from stratum_open.profiles import ModelInfo, size_from_name
 
+        if self._info is not None:
+            return self._info
         billions = context = None
         base = self._ollama_base()
         local = base is not None or (urlparse(self.endpoint).hostname or "") in LOCAL_HOSTS
@@ -106,7 +109,8 @@ class Model:
                 context = int(found) if isinstance(found, (int, float)) else None
         except (requests.RequestException, ValueError, TypeError, AttributeError):
             pass
-        return ModelInfo(billions if billions is not None else size_from_name(self.name), context, local)
+        self._info = ModelInfo(billions if billions is not None else size_from_name(self.name), context, local)
+        return self._info
 
     def _ollama_base(self) -> str | None:
         if self._ollama is False:

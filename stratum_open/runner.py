@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import subprocess
 from dataclasses import dataclass, field
-from typing import Callable
+from typing import Any, Callable
 
 from stratum_open.diff import FileDiff, parse_diff
 from stratum_open.engine import analyze, effective_policy, snippet_of  # noqa: F401  (effective_policy: re-exported)
@@ -20,6 +20,7 @@ from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
 from stratum_open.policy import Policy, load_policy, matches_any
 from stratum_open.review import ReviewResult
+from stratum_open.review_large import LargeReview
 from stratum_open.storage import NullStorage, Storage
 from stratum_open.track_record import AuthorRecord, author_identity, build_records, describe_subprocess_error
 from stratum_open.triage import PRFacts, Triage, triage
@@ -27,6 +28,7 @@ from stratum_open.util import redact
 
 MAX_BANDIT_FILES = 20
 MAX_CONTEXT_FILES = 20
+MAX_REVIEW_TEXT_FILES = 20  # files whose text is fetched for review.context_lines
 
 
 @dataclass
@@ -109,13 +111,15 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             changed = set(since) & set(paths) if since is not None else None
     incremental = changed is not None
 
-    notes, hotspots, boundary = _history(ctx, files, pull)
+    notes, hotspots, boundary, file_notes = _history(ctx, files, pull)
     record = _record(ctx, pull)
     muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []
+    # Whether the profile shows code around each hunk, so the files' text is worth fetching.
+    around = ctx.model is not None and effective_policy(ctx.policy, ctx.model)[0].review.context_lines > 0
     engine = analyze(
         title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=ctx.policy, model=ctx.model,
-        contents=_contents(ctx, files, head), lookup=ctx.lookup, only_paths=changed, previous=state.findings,
-        notes=notes, hotspots=hotspots, extra_findings=boundary,
+        contents=_contents(ctx, files, head, around=around), lookup=ctx.lookup, only_paths=changed, previous=state.findings,
+        notes=notes, hotspots=hotspots, file_notes=file_notes, extra_findings=boundary,
         exclude_fingerprints=set(state.ignored), exclude_rules=set(state.ignored_rules) | set(muted),
         log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
     )
@@ -139,6 +143,14 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
                 problems.append(f"{result.salvaged_calls} of the model's replies were cut off; anything it found after the cut is missing.")
     elif ctx.model is None:
         problems.append("No model is configured, so this review has only the checks.")
+    large = engine.large
+    if large is not None:
+        file_calls = [c for c in large.calls if c.get("pass") != "synthesis"]
+        if large.failed_calls:
+            problems.append(f"{large.failed_calls} of {len(file_calls)} per-file model calls failed; "
+                            "the chunked review still covered those files.")
+        if large.salvaged_calls:
+            problems.append(f"{large.salvaged_calls} of the per-file replies were cut off; anything found after the cut is missing.")
 
     facts = PRFacts.from_pull(pull, paths)
     try:
@@ -152,14 +164,15 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         record=record,
     )
 
-    coverage = _coverage(result, incremental, changed, state.head, files)
+    coverage = _large_coverage(large) + _coverage(result, incremental, changed, state.head, files)
     if ctx.model is not None:
         coverage.append(f"Profile: `{engine.profile}` ({engine.profile_why}).")
     summary = publish.Summary(
         findings=findings, inline=set(), policy=policy, model_name=ctx.model.name if ctx.model else None,
-        model_summary=(result.summary if result and result.ran else ""),
+        model_summary=(large.summary if large and large.synthesized else result.summary if result and result.ran else ""),
         matches_description=result.matches_description if result else "", mismatch=result.mismatch if result else "",
         triage=sorted_pr, notes=notes, coverage=coverage, problems=problems, muted=muted,
+        **_walkthrough(large, findings),
     )
     new_state = publish.State(
         head=head,
@@ -221,10 +234,11 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     return Outcome(number, "published", findings, sorted_pr, result, body)
 
 
-def _contents(ctx: Context, files: list[FileDiff], head: str) -> dict[str, str] | None:
+def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = False) -> dict[str, str] | None:
     """The full new text of the files where the checks need context:
     workflows and manifests always (they're small), Python files for Bandit
-    when it's installed."""
+    when it's installed. With `around` (the profile shows code around each
+    hunk), the biggest changes the model will read too."""
     from stratum_open.checks.bandit import available
     from stratum_open.checks.dependencies import manifest_kind
 
@@ -238,6 +252,9 @@ def _contents(ctx: Context, files: list[FileDiff], head: str) -> dict[str, str] 
     if available():
         python = sorted((f for f in live if f.path.endswith(".py")), key=lambda f: -f.additions)
         fetch += python[:MAX_BANDIT_FILES]
+    if around:
+        reviewed = sorted((f for f in live if not ctx.policy.ignored(f.path) and f not in fetch), key=lambda f: -(f.additions + f.deletions))
+        fetch += reviewed[:MAX_REVIEW_TEXT_FILES]
     contents: dict[str, str] = {}
     for file in fetch:
         try:
@@ -249,24 +266,37 @@ def _contents(ctx: Context, files: list[FileDiff], head: str) -> dict[str, str] 
     return contents or None
 
 
-def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str], set[str], list[Finding]]:
-    """Notes, hotspot paths and boundary findings from the default branch's
-    checkout. Without one (the CLI on a PR URL), boundaries still work from
-    the diff alone."""
+def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str], set[str], list[Finding], dict[str, str]]:
+    """Notes, hotspot paths, boundary findings and per-file notes from the
+    default branch's checkout. Without one (the CLI on a PR URL), boundaries
+    still work from the diff alone."""
     from stratum_open.repo.boundaries import boundary_findings
 
     notes: list[str] = []
     hot: set[str] = set()
-    # The default branch knows a renamed file by its old path.
-    changed = [f.path for f in files if f.status != "deleted"] + [f.old_path for f in files if f.old_path]
+    file_notes: dict[str, str] = {}
+    # The default branch knows a renamed file by its old path; the review, by its new one.
+    current = [f.path for f in files if f.status != "deleted"]
+    changed = current + [f.old_path for f in files if f.old_path]
+    new_path = {f.old_path: f.path for f in files if f.old_path} | {path: path for path in current}
     if ctx.checkout:
-        from stratum_open.repo.graph import importers, reach_note
+        from stratum_open.repo import codeowners
+        from stratum_open.repo.graph import importers, reach_note, related_note
         from stratum_open.repo.hotspots import hotspot_note, hotspot_paths, hotspots
         from stratum_open.repo.ownership import bus_factor_notes, owners
 
+        def imports() -> None:
+            found = importers(ctx.checkout, changed)
+            notes.extend(reach_note(found))
+            for path, importers_of in found.items():
+                note = related_note(importers_of)
+                if note and path in new_path:
+                    file_notes[new_path[path]] = note
+
         window = ctx.policy.track_record.window_days
         for name, step in (
-            ("imports", lambda: notes.extend(reach_note(importers(ctx.checkout, changed)))),
+            ("imports", imports),
+            ("codeowners", lambda: notes.extend(codeowners.owners_note(codeowners.parse(codeowners.read(ctx.checkout) or ""), current))),
             ("ownership", lambda: notes.extend(bus_factor_notes(
                 owners(ctx.checkout, ctx.history_ref, window_days=window, exclude=ctx.policy.track_record.exclude),
                 changed, _identities(ctx, (pull.get("user") or {}).get("login", ""))))),
@@ -278,6 +308,7 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
         try:
             found = hotspots(ctx.checkout, ctx.history_ref, window_days=window)
             hot = {path for path in hotspot_paths(found) if not ctx.policy.ignored(path)}
+            hot |= {new_path[path] for path in hot if path in new_path}  # a hotspot the PR renames stays one
             notes.extend(hotspot_note(found, changed))
         except Exception as exc:
             ctx.log(f"hotspots: {type(exc).__name__}: {exc}")
@@ -286,7 +317,7 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
     except Exception as exc:
         ctx.log(f"boundaries: {type(exc).__name__}: {exc}")
         boundary = []
-    return notes, hot, boundary
+    return notes, hot, boundary, file_notes
 
 
 def _record(ctx: Context, pull: dict) -> AuthorRecord | None:
@@ -358,6 +389,41 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
             lines.append(f"Not read by the model ({_files(len(packed.omitted))} past the review's size limit): " + ", ".join(f"`{p}`" for p in packed.omitted[:10]))
     lines.append(f"The checks ran on {'the' if len(files) == 1 else 'all'} {_files(len(files))} changed.")
     return lines
+
+
+def _walkthrough(large: LargeReview | None, findings: list[Finding]) -> dict[str, Any]:
+    """The walkthrough's priorities and text for the summary. When its call
+    failed, the fallbacks worked out from the findings still help, except as
+    filler: no priorities without findings, no walkthrough without a file
+    reviewed one at a time. (The summary sentence keeps the chunked review's,
+    which beats the fallback's generic one.)"""
+    if large is None:
+        return {"priorities": [], "walkthrough": ""}
+    return {
+        "priorities": large.top_priorities if large.synthesized or findings else [],
+        "walkthrough": large.walkthrough if large.synthesized or large.reviewed else "",
+    }
+
+
+def _large_coverage(large: LargeReview | None) -> list[str]:
+    """What the large profile's per-file passes covered."""
+    if large is None:
+        return []
+    reviewed = [f for f in large.files if f.status == "reviewed"]
+    lines = []
+    if reviewed:
+        focused = [f for f in reviewed if f.lenses]
+        lenses = sorted({lens for f in focused for lens in f.lenses})
+        lines.append(f"The model reviewed {_files(len(reviewed))} one at a time"
+                     + (f", {len(focused)} of them again for {_and(lenses)}." if focused else "."))
+    failed = [f.path for f in large.files if f.status == "failed"]
+    if failed:
+        lines.append("Per-file review failed for: " + ", ".join(f"`{p}`" for p in failed[:10]))
+    return lines
+
+
+def _and(words: list[str]) -> str:
+    return words[0] if len(words) == 1 else ", ".join(words[:-1]) + " and " + words[-1]
 
 
 def _files(n: int) -> str:

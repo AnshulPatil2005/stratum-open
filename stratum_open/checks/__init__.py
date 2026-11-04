@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from stratum_open.checks import agents, bandit, dependencies, paths, patterns, workflows
+from stratum_open.checks import agents, bandit, dependencies, heuristics, paths, patterns, workflows
 from stratum_open.checks.dependencies import PackageInfo, PackageLookup
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
@@ -25,11 +25,13 @@ def run_checks(
     *,
     lookup: PackageLookup | None = None,
     contents: dict[str, str] | None = None,
+    pr_text: str = "",
 ) -> list[Finding]:
     """Every check over the PR's files. `lookup` asks package registries
     about new dependencies (only when `dependencies.registry_lookup` is on);
     `contents` maps a path to its full new text, when the caller has it, and
-    lets the checks see past the diff's context.
+    lets the checks see past the diff's context. `pr_text` is the PR's title
+    and description, for the heuristics.
 
     One check failing never stops the others: it becomes a low finding
     saying which check didn't run."""
@@ -44,6 +46,8 @@ def run_checks(
         ("dependency", lambda: dependencies.check(files, policy, lookup=registry, contents=contents)),
         ("Bandit", lambda: bandit.check(files, contents, keep_low=policy.checks.bandit_low)),
     ]
+    if policy.checks.heuristics:
+        checks.append(("heuristics", lambda: heuristics.check(files, pr_text)))
     findings: list[Finding] = []
     for name, run in checks:
         try:

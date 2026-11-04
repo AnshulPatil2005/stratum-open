@@ -4,11 +4,14 @@ calls it directly, passing its own settings and hooks.
 
 `analyze()` does, in order:
 1. the profile: the policy's defaults filled in for the model (`profiles`);
-2. the checks, then the model's review of the files in scope;
+2. the checks, then the model's review of the files in scope: in `large`,
+   the per-file and lens passes first (`review_large`), then the chunked
+   review every profile gets;
 3. placing findings on the diff's lines, fingerprinting and de-duplicating;
 4. carrying over the last review's findings whose code is still there;
 5. dropping excluded findings, then the caller's `weigh`, ranking,
-   the score and the conclusion.
+   the score and the conclusion;
+6. in `large`, the walkthrough and summary, written from the findings kept.
 
 Everything an embedder needs to change is an argument; nothing here reads
 the environment or calls GitHub.
@@ -26,6 +29,7 @@ from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, 
 from stratum_open.model import is_model_failure
 from stratum_open.policy import Policy
 from stratum_open.review import ReviewResult, _locate, review, shown
+from stratum_open.review_large import LargeReview, review_files, synthesize
 
 
 @dataclass
@@ -41,6 +45,7 @@ class EngineResult:
     conclusion: str  # success | neutral | failure, for the check run
     complete: bool  # every model call was read in full
     engine_version: str = __version__
+    large: LargeReview | None = None  # the per-file passes and walkthrough, when the profile ran them
 
 
 def analyze(
@@ -57,6 +62,7 @@ def analyze(
     notes: Sequence[str] = (),
     hotspots: set[str] | frozenset[str] = frozenset(),
     guidance: str = "",
+    file_notes: dict[str, str] | None = None,
     extra_findings: Sequence[Finding] = (),
     exclude_fingerprints: set[str] | frozenset[str] = frozenset(),
     exclude_rules: set[str] | frozenset[str] = frozenset(),
@@ -71,12 +77,16 @@ def analyze(
       max_tokens, json_mode) -> Reply`; `.describe()` too for `profile: auto`;
       `.failure_types`, optionally, for the exception types that mean the model
       or the network failed rather than Stratum. None runs the checks only.
+    - `contents`: a path's full new text, where the caller has it: the checks
+      read past the diff with it, and `review.context_lines` shows the code
+      around each hunk from it.
     - `only_paths`: on an incremental review, the files changed since the last
       one; an empty set means nothing new for the model to read.
     - `previous`: the last review's findings (as saved by `state_finding`, with
       their `snippet`); those whose code is still there are carried over.
     - `notes`, `guidance`: context for the prompt (history notes; the team's
-      own docs and examples).
+      own docs and examples). `file_notes`: notes for one file's own call in
+      the per-file passes, by path.
     - `extra_findings`: the caller's own findings, merged before de-duplication.
     - `weigh(findings) -> (findings, risk_bonus)`, `score(findings, risk_bonus)`,
       `conclusion(findings, score, complete)`: replace the defaults.
@@ -85,14 +95,20 @@ def analyze(
 
     policy, profile, profile_why = effective_policy(policy, model)
     registry = lookup if policy.dependencies.registry_lookup else None
-    checks = run_checks(files, policy, lookup=registry, contents=contents)
+    checks = run_checks(files, policy, lookup=registry, contents=contents, pr_text=f"{title}\n{description or ''}")
 
     result: ReviewResult | None = None
+    large: LargeReview | None = None
     if model is not None and (only_paths is None or only_paths):
         try:
+            if policy.review.file_reviews > 0:
+                large = review_files(
+                    title=title, description=description, files=files, policy=policy, model=model, only_paths=only_paths,
+                    notes=notes, hotspots=hotspots, guidance=guidance, file_notes=file_notes, contents=contents, log=log,
+                )
             result = review(
                 title=title, description=description, files=files, policy=policy, model=model, only_paths=only_paths,
-                context=list(notes), hotspots=set(hotspots), guidance=guidance, log=log,
+                context=list(notes), hotspots=set(hotspots), guidance=guidance, contents=contents, log=log,
                 previous=still_there(previous or [], files) if only_paths is not None else None,
             )
         except Exception as exc:  # the model step is the one part of a review that may never stop the rest
@@ -109,13 +125,14 @@ def analyze(
                 "error": error, "traceback": traceback.format_exc(),
             }])
 
-    found = anchor_to_diff(checks + list(extra_findings) + (result.findings if result else []), files)
+    found = anchor_to_diff(checks + list(extra_findings) + (large.findings if large else []) + (result.findings if result else []), files)
     assign_fingerprints(found, files)
     found = dedupe(found)
 
     # A model finding stays until the code it's on changes; the model not
     # repeating it on the next push doesn't make it fixed.
     reviewed_now = set(result.packed.reviewed + result.packed.clipped) if result and result.packed and result.ran else set()
+    reviewed_now |= set(large.reviewed) if large else set()
     carried, gone = carry(previous or [], files, {f.fingerprint for f in found}, reviewed_now)
     for finding in [f for f in carried if not shown(f, policy)]:  # the policy's bar may have risen since
         carried.remove(finding)
@@ -130,10 +147,14 @@ def analyze(
         kept, bonus = weigh(kept)
     kept = rank(kept)
 
-    complete = result.complete if result is not None else True  # no new code to read is a complete review
+    if large is not None and policy.review.walkthrough:
+        synthesize(large, kept, title=title, description=description, policy=policy, model=model, log=log)
+
+    # No new code to read is a complete review.
+    complete = (result.complete if result is not None else True) and (large.complete if large is not None else True)
     total = score(kept, bonus) if score is not None else max(0, min(100, risk_score(kept) + bonus))
     verdict = conclusion(kept, total, complete) if conclusion is not None else default_conclusion(kept, complete, policy, total)
-    return EngineResult(kept, gone, excluded, result, policy, profile, profile_why, total, verdict, complete)
+    return EngineResult(kept, gone, excluded, result, policy, profile, profile_why, total, verdict, complete, large=large)
 
 
 def effective_policy(policy: Policy, model: Any | None) -> tuple[Policy, str, str]:

@@ -126,7 +126,7 @@ def test_non_ascii_and_hidden_unicode_in_added_lines(fake_github, make_context, 
 
 
 def test_mixed_and_crlf_line_endings_keep_their_numbers(fake_github, make_context, fake_model, logs):
-    diff = "diff --git a/w.py b/w.py\r\n--- a/w.py\r\n+++ b/w.py\r\n@@ -1,2 +1,3 @@\r\n a = 1\r\n+b = 2\r\n c = 3\n+d = eval(x)\r\n"
+    diff = "diff --git a/w.py b/w.py\r\n--- a/w.py\r\n+++ b/w.py\r\n@@ -1,2 +1,4 @@\r\n a = 1\r\n+b = 2\r\n c = 3\n+d = eval(x)\r\n"
     fake_github.add_pull(7, diff=diff)
     outcome, _ = published(fake_github, make_context, logs)
     assert [(f.rule, f.line_start) for f in outcome.findings if f.rule == "code/eval"] == [("code/eval", 4)]

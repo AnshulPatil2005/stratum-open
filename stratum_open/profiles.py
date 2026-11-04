@@ -27,12 +27,26 @@ PRESETS: dict[str, dict[str, Any]] = {
     "small": {
         "review.diff_format": "interleaved",
         "review.context_tokens": 16384,
+        "review.context_lines": 0,
         "checks.bandit_low": False,
+        "checks.heuristics": False,
+        "review.file_reviews": 0,
+        "review.lens_files": 0,
+        "review.walkthrough": False,
+        "review.parallel_calls": 1,
     },
     "large": {
         "review.diff_format": "split",
         "review.context_tokens": 32768,
+        "review.context_lines": 10,
         "checks.bandit_low": True,
+        "checks.heuristics": True,
+        # About 29 calls a PR: 15 files one at a time, 5 of them again per
+        # lens, one synthesis, then the chunked review.
+        "review.file_reviews": 15,
+        "review.lens_files": 5,
+        "review.walkthrough": True,
+        "review.parallel_calls": 4,
     },
 }
 

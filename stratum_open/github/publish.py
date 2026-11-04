@@ -230,6 +230,8 @@ class Summary:
     coverage: list[str] = field(default_factory=list)  # what was and wasn't reviewed
     problems: list[str] = field(default_factory=list)  # the model failed, the policy was broken...
     muted: list[str] = field(default_factory=list)
+    priorities: list[str] = field(default_factory=list)  # what to check first (the large profile's walkthrough call)
+    walkthrough: str = ""
 
 
 def render_summary(summary: Summary, state: State) -> str:
@@ -239,6 +241,8 @@ def render_summary(summary: Summary, state: State) -> str:
     if summary.matches_description in ("partly", "no"):
         word = "Partly" if summary.matches_description == "partly" else "No"
         lines.append(f"**Matches its description:** {word}" + (f". {summary.mismatch}" if summary.mismatch else "."))
+    if summary.priorities:
+        lines += ["", "**Check first:**"] + [f"- {p}" for p in summary.priorities]
     if lines[-1] != "":
         lines.append("")
 
@@ -268,6 +272,8 @@ def render_summary(summary: Summary, state: State) -> str:
 
     if summary.notes:
         lines += ["**From the project's history:**"] + [f"- {note}" for note in summary.notes] + [""]
+    if summary.walkthrough:
+        lines += ["<details><summary>Walkthrough</summary>", "", summary.walkthrough, "", "</details>", ""]
     if summary.problems:
         lines += ["**Couldn't do everything:**"] + [f"- {p}" for p in summary.problems] + [""]
 

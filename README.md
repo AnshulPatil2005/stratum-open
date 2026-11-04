@@ -25,7 +25,8 @@ repo. Nothing is sent to Stratum: no account, no telemetry, no license check.
 - **Context from the history:**
   - files that a lot of the code imports;
   - code that only one person has changed lately;
-  - hotspots that change often and are complex, which get a stricter review.
+  - hotspots that change often and are complex, or keep needing reverts and hotfixes, which get a stricter review;
+  - who owns the changed files, from CODEOWNERS.
 - **One triage label:** `ready`, `needs work`, `low effort` or `needs a maintainer`, with the reasons spelled out. It judges what's in front of it: CI, tests, a linked issue, size, and whether the change matches its description. It doesn't try to guess whether AI wrote the PR, because detectors for that aren't reliable. Labels are off until your policy turns them on, and it closes nothing unless your policy says so.
 - **A check run** that fails on a critical finding and is neutral on a high one. Make it required in branch protection if you want it to block merging.
 - **A triage queue:** one issue listing every open PR, cheapest to review and best supported first.
@@ -93,9 +94,9 @@ The target is a 7–14B open coding model. Defaults:
 
 How much a review asks of the model depends on the model. `review.profile: auto` asks the model's server for its size:
 - **`small`**, for models up to about 20B: a compact diff, 1–3 model calls.
-- **`large`**, for bigger ones: the new and old code shown apart, a bigger context window, and Bandit's low-severity results too.
+- **`large`**, for bigger ones: the new and old code shown apart, a bigger context window, and Bandit's low-severity results too. It also reviews the 15 most important files one at a time, the top 5 of them again for security, performance and logic, and writes a walkthrough. That's up to about 29 model calls a PR, 4 at a time, instead of 1–3, so check the cost on a paid API. Set `review.file_reviews: 0` to keep the rest of `large` without them.
 
-A profile only fills in settings your policy file doesn't set, so anything you set stays as you set it. Each review says which profile it used and why.
+A profile only fills in settings your policy file doesn't set, so anything you set stays as you set it. Each review says which profile it used and why. `review.mode` (`general`, `security`, `performance` or `maintainability`) sets what the per-file passes look for first.
 
 Small models make more mistakes than large ones, so Stratum checks their answers:
 - a finding goes on the line whose code the model quoted, not the line number it guessed;

@@ -1,0 +1,7 @@
+# LF in the repo whatever the platform: an edit on Windows must not turn a whole file into a diff.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.gif binary
+*.ico binary
+*.zst binary
