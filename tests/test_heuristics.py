@@ -51,3 +51,14 @@ def test_secrets_and_sql_are_left_to_the_pattern_checks():
     assert rules(text) == []
     found = {f.rule for f in run_checks(parse_diff(text), apply(parse_policy(None), "large"))}
     assert {"code/secret", "code/sql"} <= found
+
+
+def test_an_area_sends_the_pr_to_a_maintainer_not_back_to_its_author():
+    from stratum_open.triage import PRFacts, triage
+
+    facts = PRFacts(number=1, title="Tidy a comment", body="Rewords a comment in the session code; no behaviour change.", author="dana",
+                    draft=False, additions=1, deletions=1, paths=["app/auth/session.py"], ci_ok=True, linked_issues=[9])
+    files = parse_diff(diff("app/auth/session.py", ["# checks the token"], ["# check token"]))
+    assert triage(facts, heuristics.check(files), parse_policy(None)).key == "needs_human"
+    weakened = heuristics.check(parse_diff(diff("tests/test_users.py", ["pass"], ["assert a", "assert b"])))
+    assert triage(facts, weakened, parse_policy(None)).key == "needs_work"  # the author can restore the tests
