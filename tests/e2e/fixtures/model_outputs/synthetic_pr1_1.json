@@ -1,0 +1,8 @@
+{
+ "ok": true,
+ "error": "",
+ "seconds": 1.2,
+ "prompt_tokens": 1229,
+ "output_tokens": 42,
+ "text": "{\n  \"summary\": \"This PR adds state management for AI settings and error handling for explanations.\",\n  \"matches_description\": \"yes\",\n  \"mismatch\": \"\",\n  \"findings\": []\n}"
+}

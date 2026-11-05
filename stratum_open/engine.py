@@ -19,12 +19,14 @@ the environment or calls GitHub.
 
 from __future__ import annotations
 
+import traceback
 from dataclasses import dataclass
 from typing import Any, Callable, Sequence
 
 from stratum_open import __version__
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank, risk_score
+from stratum_open.model import is_model_failure
 from stratum_open.policy import Policy
 from stratum_open.review import ReviewResult, _locate, review, shown
 from stratum_open.review_large import LargeReview, review_files, synthesize
@@ -72,8 +74,9 @@ def analyze(
     """Review a diff.
 
     - `model`: anything with `.name` and `.complete(system, user, *,
-      max_tokens, json_mode) -> Reply`; `.describe()` too for `profile: auto`.
-      None runs the checks only.
+      max_tokens, json_mode) -> Reply`; `.describe()` too for `profile: auto`;
+      `.failure_types`, optionally, for the exception types that mean the model
+      or the network failed rather than Stratum. None runs the checks only.
     - `contents`: a path's full new text, where the caller has it: the checks
       read past the diff with it, and `review.context_lines` shows the code
       around each hunk from it.
@@ -97,16 +100,30 @@ def analyze(
     result: ReviewResult | None = None
     large: LargeReview | None = None
     if model is not None and (only_paths is None or only_paths):
-        if policy.review.file_reviews > 0:
-            large = review_files(
+        try:
+            if policy.review.file_reviews > 0:
+                large = review_files(
+                    title=title, description=description, files=files, policy=policy, model=model, only_paths=only_paths,
+                    notes=notes, hotspots=hotspots, guidance=guidance, file_notes=file_notes, contents=contents, log=log,
+                )
+            result = review(
                 title=title, description=description, files=files, policy=policy, model=model, only_paths=only_paths,
-                notes=notes, hotspots=hotspots, guidance=guidance, file_notes=file_notes, contents=contents, log=log,
+                context=list(notes), hotspots=set(hotspots), guidance=guidance, contents=contents, log=log,
+                previous=still_there(previous or [], files) if only_paths is not None else None,
             )
-        result = review(
-            title=title, description=description, files=files, policy=policy, model=model, only_paths=only_paths,
-            context=list(notes), hotspots=set(hotspots), guidance=guidance, contents=contents, log=log,
-            previous=still_there(previous or [], files) if only_paths is not None else None,
-        )
+        except Exception as exc:  # the model step is the one part of a review that may never stop the rest
+            # Reported like any other failed call, so the review still says what happened; the traceback
+            # rides along for the caller's log and never reaches a comment. `Model.complete` already turns
+            # its own connection errors into failed calls, so what lands here from a model is an embedder's
+            # model raising; anything else is a bug of ours, and is named as one rather than as an outage.
+            if is_model_failure(exc, model):
+                error = f"the model step failed ({type(exc).__name__}): {exc}"
+            else:
+                error = f"Stratum hit a bug during the model step ({type(exc).__name__}): {exc}"
+            result = ReviewResult(failed_calls=1, calls=[{
+                "model": str(getattr(model, "name", "")), "seconds": 0, "ok": False, "prompt_tokens": None, "output_tokens": None,
+                "error": error, "traceback": traceback.format_exc(),
+            }])
 
     found = anchor_to_diff(checks + list(extra_findings) + (large.findings if large else []) + (result.findings if result else []), files)
     assign_fingerprints(found, files)
@@ -148,7 +165,10 @@ def effective_policy(policy: Policy, model: Any | None) -> tuple[Policy, str, st
     # A model that can't describe itself is treated as small and local, the
     # cheaper guess; embedders set review.profile to say otherwise.
     describe = getattr(model, "describe", None)
-    info = describe() if callable(describe) else ModelInfo()
+    try:
+        info = describe() if callable(describe) else ModelInfo()
+    except Exception:  # a model that can't be asked is still a model that can be called; guess, as the docstring says
+        info = ModelInfo()
     profile = choose(policy, info) if model is not None else "small"
     policy = apply(policy, profile, info)
     if model is not None:
@@ -192,8 +212,9 @@ def still_there(prior: list[dict], files: list[FileDiff]) -> list[dict]:
     kept = []
     for data in prior:
         file = by_path.get(data.get("path", ""))
-        if (data.get("source") == "model" and file is not None and data.get("line_start") is not None
-                and data.get("snippet") and _locate(data["snippet"], file, near=data["line_start"]) is not None):
+        if (data.get("source") == "model" and file is not None and isinstance(data.get("line_start"), int)
+                and isinstance(data.get("snippet"), str) and data["snippet"]
+                and _locate(data["snippet"], file, near=data["line_start"]) is not None):
             kept.append(data)
     return kept
 
@@ -213,8 +234,11 @@ def carry(prior: list[dict], files: list[FileDiff], current: set[str], reviewed_
         if file is None:
             gone[fp] = "Resolved: this file is no longer changed by the PR."
             continue
-        finding = Finding.from_dict(data)
-        snippet = data.get("snippet") or ""
+        try:
+            finding = Finding.from_dict(data)
+        except (TypeError, ValueError):  # state written by an older release, or damaged
+            continue
+        snippet = data.get("snippet") if isinstance(data.get("snippet"), str) else ""
         if finding.line_start is not None:
             located = _locate(snippet, file, near=finding.line_start) if snippet else None
             if located is None:

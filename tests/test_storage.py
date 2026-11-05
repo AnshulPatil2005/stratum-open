@@ -8,7 +8,8 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from stratum_open.findings import Finding
-from stratum_open.storage import FINDING_FIELDS, REDACTED, SCHEMA_VERSION, TABLES, NullStorage, SQLiteStorage, Storage
+from stratum_open.storage import FINDING_FIELDS, SCHEMA_VERSION, TABLES, NullStorage, SQLiteStorage, Storage
+from stratum_open.util import REDACTED
 
 REPO = "Octo/Widgets"
 OTHER = "octo/gadgets"

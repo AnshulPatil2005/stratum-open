@@ -33,3 +33,10 @@ packages = ["stratum_open", "stratum_open.checks", "stratum_open.repo", "stratum
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# The live end-to-end tests need a real model; `pytest -m live` runs them (they skip, not fail, without one).
+addopts = "-m 'not live'"
+markers = [
+    "e2e: end-to-end tests against the fake model and fake GitHub servers (tests/e2e)",
+    "live: needs a real model server at STRATUM_MODEL_ENDPOINT (default: Ollama on localhost)",
+    "slow: takes more than a few seconds",
+]

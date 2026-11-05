@@ -9,6 +9,7 @@ everything but token-shaped secrets, which leak just the same from a test.
 
 from __future__ import annotations
 
+import functools
 import re
 
 from stratum_open.checks.common import basename, extension, is_comment, is_test_path, view
@@ -19,6 +20,9 @@ PYTHON = {".py"}
 JAVASCRIPT = {".js", ".jsx", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts"}
 SQL_HOSTS = PYTHON | JAVASCRIPT | {".go", ".java", ".kt", ".scala", ".rb", ".php", ".cs", ".rs"}
 DOCS = {".md", ".markdown", ".rst", ".txt", ".adoc"}
+# A line longer than this was generated (a minified bundle, a data URI), not written: only the
+# secret scan runs on it. The other rules' findings there are noise, and their cost grows with it.
+MAX_LINE = 5000
 
 
 def check(files: list[FileDiff], contents: dict[str, str] | None = None) -> list[Finding]:
@@ -33,7 +37,7 @@ def check(files: list[FileDiff], contents: dict[str, str] | None = None) -> list
         child_process = ext in JAVASCRIPT and any("child_process" in line for line in lines.values())
         for number, text in added:
             findings.extend(_secrets(file.path, number, text, lines, test))
-            if is_comment(text):
+            if is_comment(text) or len(text) > MAX_LINE:
                 continue
             if not test:
                 findings.extend(_eval(file.path, number, text, ext))
@@ -238,23 +242,42 @@ def _code_search(pattern: re.Pattern, text: str) -> re.Match | None:
 
 
 def _in_string(text: str, pos: int) -> bool:
-    """Whether `pos` falls inside a string literal opened earlier on the line."""
-    quote, i = None, 0
-    while i < pos:
-        if quote:
-            if text[i] == "\\":
-                i += 2
-            elif text.startswith(quote, i):
-                i, quote = i + len(quote), None
-            else:
-                i += 1
-            continue
-        opener = next((q for q in ('"""', "'''", '"', "'", "`") if text.startswith(q, i)), None)
-        if opener:
-            quote, i = opener, i + len(opener)
-        else:
+    """Whether `pos` falls inside a string literal opened earlier on the line,
+    including one that opens here and closes on a later line."""
+    return any(start < pos < end for start, end, _, _ in _strings(text))
+
+
+@functools.lru_cache(maxsize=1)  # the checks ask about the same line several times in a row
+def _strings(text: str) -> tuple[tuple[int, int, str, str | None], ...]:
+    """Every string literal on a line as (start, end, quote, body), from one
+    left-to-right scan. A regex for this is easy to write and easy to get
+    exponentially wrong: `\\.` and "any character" both match a backslash, and
+    a minified line with thousands of escapes then backtracks for minutes. A
+    quote left open (a docstring or string that continues on the next line)
+    runs to the end of the line with a body of None: code after it is inside a
+    string, but there is no complete literal to read."""
+    found: list[tuple[int, int, str, str | None]] = []
+    i, n = 0, len(text)
+    while i < n:
+        char = text[i]
+        if char not in "\"'`":
             i += 1
-    return quote is not None
+            continue
+        quote = text[i:i + 3] if text[i:i + 3] in ('"""', "'''") else char
+        j = i + len(quote)
+        while j < n:
+            if text[j] == "\\":
+                j += 2
+            elif text.startswith(quote, j):
+                found.append((i, j + len(quote), quote, text[i + len(quote):j]))
+                i = j + len(quote)
+                break
+            else:
+                j += 1
+        else:
+            found.append((i, n, quote, None))  # open to the end of the line
+            break
+    return tuple(found)
 
 
 def _constant_command(lines: dict[int, str], number: int) -> bool:
@@ -275,7 +298,6 @@ def _constant_command(lines: dict[int, str], number: int) -> bool:
 _SQL = re.compile(r"(?i)\b(?:select\s.+?\sfrom|insert\s+into|update\s+\S+\s+set|delete\s+from)\b")
 _SQL_UPPER = re.compile(r"\b(?:SELECT\s.+?\sFROM|INSERT\s+INTO|UPDATE\s+\S+\s+SET|DELETE\s+FROM)\b")
 _SQL_SIGNS = re.compile(r"(?i)\bwhere\b|\bvalues\b|\*|=")  # tells lowercase SQL from prose
-_STRING = re.compile(r"""(?P<q>\"\"\"|'''|["'`])(?P<body>(?:\\.|(?!(?P=q)).)*?)(?P=q)""")
 _F_PREFIX = re.compile(r"(?<![\w])(?:[rRbB]?[fF]|[fF][rRbB]|\$@?|@\$)$")
 _AFTER = re.compile(r"""^\s*(?:%\s*[\w(\[]|\.\s*format\s*\(|\+\s*[^\s"'`])""")
 _BEFORE = re.compile(r"""[\w)\]]\s*\+\s*$""")
@@ -283,11 +305,10 @@ _FORMAT_CALL = re.compile(r"(?:Sprintf|String\.format|string\.Format|format)\s*\
 
 
 def _sql(path: str, number: int, text: str, ext: str) -> list[Finding]:
-    for match in _STRING.finditer(text):
-        body, quote = match.group("body"), match.group("q")
-        if not _SQL.search(body) or not (_SQL_UPPER.search(body) or _SQL_SIGNS.search(body)):
+    for start, end, quote, body in _strings(text):
+        if body is None or not _SQL.search(body) or not (_SQL_UPPER.search(body) or _SQL_SIGNS.search(body)):
             continue
-        before, after = text[: match.start()], text[match.end():]
+        before, after = text[:start], text[end:]
         interpolated = (
             (_F_PREFIX.search(before) and "{" in body)
             or (quote in ('"', "`", '"""') and "${" in body)

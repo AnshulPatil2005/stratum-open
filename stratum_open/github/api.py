@@ -13,7 +13,11 @@ from typing import Any, Iterator
 
 import requests
 
+from stratum_open.util import retry_after
+
 API = "https://api.github.com"
+TIMEOUT = 30  # seconds, per call
+RETRIES = 2  # extra tries on 5xx and rate limits
 _NEXT = re.compile(r'<([^>]+)>;\s*rel="next"')
 
 
@@ -38,15 +42,7 @@ class GitHub:
     # ── plumbing ─────────────────────────────────────────────────────────
 
     def request(self, method: str, path: str, *, accept: str | None = None, ok404: bool = False, **kwargs) -> Any:
-        url = path if path.startswith("http") else f"{self.api}{path}"
-        headers = {"Accept": accept} if accept else {}
-        for attempt in range(3):
-            response = self.session.request(method, url, headers=headers, timeout=30, **kwargs)
-            if response.status_code in (502, 503, 504) or _secondary_limit(response):
-                if attempt < 2:
-                    time.sleep(min(60.0, float(response.headers.get("Retry-After") or 2 * 3**attempt)))
-                    continue
-            break
+        response = self._send(method, path, accept=accept, **kwargs)
         if ok404 and response.status_code == 404:
             return None
         if response.status_code >= 400:
@@ -55,28 +51,50 @@ class GitHub:
             return None
         if accept and "json" not in accept:
             return response.text
-        return response.json()
+        return _json(response)
+
+    def _send(self, method: str, url: str, *, accept: str | None = None, **kwargs) -> requests.Response:
+        """One call with bounded retries: 5xx and rate limits are tried three
+        times, waiting what `Retry-After` says (seconds or an HTTP date) up to
+        a minute. A connection failure is a `requests.RequestException`, which
+        the entry points turn into one line for the user."""
+        url = url if url.startswith("http") else f"{self.api}{url}"
+        headers = {"Accept": accept} if accept else {}
+        for attempt in range(RETRIES + 1):
+            response = self.session.request(method, url, headers=headers, timeout=TIMEOUT, **kwargs)
+            # A 500 may come after GitHub applied a write, so only a read is tried again on one.
+            transient = response.status_code in (502, 503, 504) or (response.status_code == 500 and method == "GET")
+            if (transient or _secondary_limit(response)) and attempt < RETRIES:
+                time.sleep(min(60.0, retry_after(response.headers.get("Retry-After"), 2 * 3**attempt)))
+                continue
+            return response
+        return response  # pragma: no cover
 
     def get(self, path: str, **params) -> Any:
         return self.request("GET", path, params=params or None)
 
     def paginate(self, path: str, **params) -> Iterator[dict]:
-        url: str | None = f"{self.api}{path}"
+        url: str | None = path
         params = {"per_page": 100, **params}
         while url:
-            response = self.session.get(url, params=params, timeout=30)
+            response = self._send("GET", url, params=params)
             if response.status_code >= 400:
                 raise GitHubError(response.status_code, _message(response))
-            data = response.json()
-            yield from (data if isinstance(data, list) else data.get("check_runs", data.get("items", [])))
+            data = _json(response) if response.content else []
+            if isinstance(data, list):
+                yield from data
+            elif isinstance(data, dict):
+                yield from data.get("check_runs", data.get("items", [])) or []
             match = _NEXT.search(response.headers.get("Link", ""))
             url, params = (match.group(1), None) if match else (None, None)
 
     def graphql(self, query: str, **variables) -> dict:
         data = self.request("POST", "/graphql", json={"query": query, "variables": variables})
+        if not isinstance(data, dict):
+            raise GitHubError(200, "GraphQL answered with something that isn't an object")
         if data.get("errors"):
-            raise GitHubError(200, "; ".join(e.get("message", "") for e in data["errors"]))
-        return data["data"]
+            raise GitHubError(200, "; ".join(e.get("message", "") for e in data["errors"] if isinstance(e, dict)))
+        return data.get("data") or {}
 
     @property
     def _r(self) -> str:
@@ -119,10 +137,11 @@ class GitHub:
         return list(self.paginate(f"{self._r}/pulls", state="open"))
 
     def pull_diff(self, number: int) -> str:
-        """The PR's diff. GitHub refuses one over its size limit; the file
-        list's patches stand in for it then (each capped by GitHub too)."""
+        """The PR's diff ("" when it changes nothing). GitHub refuses one over
+        its size limit; the file list's patches stand in for it then (each
+        capped by GitHub too)."""
         try:
-            return self.request("GET", f"{self._r}/pulls/{number}", accept="application/vnd.github.diff")
+            return self.request("GET", f"{self._r}/pulls/{number}", accept="application/vnd.github.diff") or ""
         except GitHubError as exc:
             if exc.status not in (406, 422):
                 raise
@@ -219,14 +238,19 @@ class GitHub:
                 "nodes{id isResolved path comments(first:50){nodes{databaseId body author{login __typename}}}}}}}}",
                 owner=owner, name=name, number=number, cursor=cursor,
             )
-            page = data["repository"]["pullRequest"]["reviewThreads"]
-            for node in page["nodes"]:
-                comments = [{"id": c["databaseId"], "body": c.get("body") or "", "author": _login(c.get("author"))} for c in node["comments"]["nodes"]]
+            pull = (data.get("repository") or {}).get("pullRequest")
+            if not pull:
+                raise GitHubError(404, f"pull request {number} not found")
+            page = pull.get("reviewThreads") or {}
+            for node in page.get("nodes") or []:
+                comments = [{"id": c.get("databaseId"), "body": c.get("body") or "", "author": _login(c.get("author"))}
+                            for c in ((node.get("comments") or {}).get("nodes") or []) if isinstance(c, dict)]
                 if comments:
-                    threads.append({"id": node["id"], "resolved": node["isResolved"], "path": node.get("path"), "comments": comments})
-            if not page["pageInfo"]["hasNextPage"]:
+                    threads.append({"id": node["id"], "resolved": bool(node.get("isResolved")), "path": node.get("path"), "comments": comments})
+            info = page.get("pageInfo") or {}
+            if not info.get("hasNextPage") or not info.get("endCursor"):
                 return threads
-            cursor = page["pageInfo"]["endCursor"]
+            cursor = info["endCursor"]
 
     def resolve_thread(self, thread_id: str) -> None:
         self.graphql("mutation($id:ID!){resolveReviewThread(input:{threadId:$id}){thread{id}}}", id=thread_id)
@@ -254,7 +278,11 @@ class GitHub:
 
     def ensure_label(self, name: str, color: str, description: str) -> None:
         if self.request("GET", f"{self._r}/labels/{requests.utils.quote(name)}", ok404=True) is None:
-            self.request("POST", f"{self._r}/labels", json={"name": name, "color": color, "description": description[:100]})
+            try:
+                self.request("POST", f"{self._r}/labels", json={"name": name, "color": color, "description": description[:100]})
+            except GitHubError as exc:
+                if exc.status != 422 or "already_exists" not in str(exc):  # two runs created it at once
+                    raise
 
     def add_labels(self, number: int, labels: list[str]) -> None:
         if labels:
@@ -289,11 +317,22 @@ def _secondary_limit(response: requests.Response) -> bool:
     )
 
 
+def _json(response: requests.Response) -> Any:
+    """The body as JSON, or a GitHubError saying it wasn't: a proxy's HTML
+    error page with a 200 must not surface as a traceback."""
+    try:
+        return response.json()
+    except ValueError:
+        raise GitHubError(response.status_code, f"the reply wasn't JSON: {response.text[:120]!r}") from None
+
+
 def _message(response: requests.Response) -> str:
     try:
         data = response.json()
     except ValueError:
         return response.text[:200]
+    if not isinstance(data, dict):
+        return str(data)[:200]
     errors = data.get("errors")
     detail = f" ({errors})" if errors else ""
     return f"{data.get('message', '')}{detail}"[:300]

@@ -94,8 +94,11 @@ def build_records(
     """A record for every author with a PR landed on `ref` in the last
     `window_days`, keyed by `author_identity`."""
     since = (now or datetime.now(timezone.utc)) - timedelta(days=window_days)
+    try:
+        tip = _git(repo_dir, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}").strip()
+    except subprocess.CalledProcessError:
+        return {}  # an empty repo, or a ref that isn't there: nobody has a record yet
     by_sha = _history(repo_dir, ref, since)
-    tip = _git(repo_dir, "rev-parse", f"{ref}^{{commit}}").strip()
     if tip not in by_sha:
         return {}
 
@@ -202,6 +205,28 @@ def _git(repo_dir: str, *args: str) -> str:
         ["git", "-C", repo_dir, *args],
         capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120, check=True,
     ).stdout
+
+
+def describe_subprocess_error(exc: BaseException, limit: int = 200) -> str:
+    """One line for a git command that failed: what it wrote to stderr when
+    it ran, else its exit status or timeout; for an `OSError` (git missing, a
+    path that isn't there) the error itself. Never the command: the App runs
+    git with an authorization header in its arguments, and `str(exc)` of a
+    `CalledProcessError` would print it."""
+    if isinstance(exc, OSError):
+        return f"{type(exc).__name__}: {exc}"[:limit]
+    stderr = getattr(exc, "stderr", None)
+    if isinstance(stderr, bytes):
+        stderr = stderr.decode("utf-8", errors="replace")
+    detail = (stderr or "").strip()
+    if not detail:
+        if isinstance(exc, subprocess.TimeoutExpired):
+            detail = f"timed out after {exc.timeout:g} s"
+        elif isinstance(exc, subprocess.CalledProcessError):
+            detail = f"exit status {exc.returncode}"
+        else:
+            detail = type(exc).__name__
+    return detail[:limit]
 
 
 def _history(repo_dir: str, ref: str, since: datetime) -> dict[str, _Commit]:

@@ -7,7 +7,6 @@ counts them.
 
 from __future__ import annotations
 
-import codecs
 import math
 import re
 from dataclasses import dataclass, field, replace
@@ -60,9 +59,10 @@ class FileDiff:
         return {line.new: line.text for hunk in self.hunks for line in hunk.lines if line.new is not None}
 
     def can_comment(self, start: int, end: int | None = None) -> bool:
-        """GitHub only takes a comment on new-file lines inside one hunk."""
+        """GitHub only takes a comment on new-file lines inside one hunk, and
+        none at all on a binary file or a submodule entry."""
         end = end or start
-        if start > end:
+        if start > end or self.binary:
             return False
         for hunk in self.hunks:
             shown = {line.new for line in hunk.lines if line.new is not None}
@@ -138,6 +138,8 @@ def _header_line(current: FileDiff, raw: str) -> None:
         current.status = "renamed"
     elif raw.startswith("Binary files ") or raw.startswith("GIT binary patch"):
         current.binary = True
+    elif raw.startswith("index ") and raw.rstrip().endswith(" 160000"):
+        current.binary = True  # a submodule: the "Subproject commit" line is not code anyone can comment on
     elif raw.startswith("--- "):
         old = _strip_prefix(_unquote(raw[4:].split("\t")[0]), "a/")
         if old != "/dev/null" and current.old_path is None:
@@ -173,9 +175,40 @@ def _unquote(path: str) -> str:
     """git quotes paths with unusual characters as C strings."""
     path = path.strip()
     if len(path) >= 2 and path[0] == path[-1] == '"':
-        raw = codecs.escape_decode(path[1:-1].encode("utf-8"))[0]
-        return raw.decode("utf-8", errors="replace")
+        return _unescape(path[1:-1].encode("utf-8")).decode("utf-8", errors="replace")
     return path
+
+
+_C_ESCAPES = {b"a": b"\a", b"b": b"\b", b"f": b"\f", b"n": b"\n", b"r": b"\r", b"t": b"\t", b"v": b"\v", b"\\": b"\\", b'"': b'"'}
+
+
+def _unescape(text: bytes) -> bytes:
+    """git's C-style quoting undone: the named escapes and `\\NNN` octal
+    bytes. An escape git wouldn't write is kept as it is. Done here rather
+    than with `codecs.escape_decode`, which warns about such escapes through
+    the process-wide warning filters (not something to touch from a thread)."""
+    out = bytearray()
+    i, n = 0, len(text)
+    while i < n:
+        byte = text[i:i + 1]
+        if byte != b"\\" or i + 1 >= n:
+            out += byte
+            i += 1
+            continue
+        after = text[i + 1:i + 2]
+        if after in _C_ESCAPES:
+            out += _C_ESCAPES[after]
+            i += 2
+        elif after.isdigit() and after < b"8":
+            length = 1  # up to three octal digits, as many as follow
+            while length < 3 and b"0" <= text[i + 1 + length:i + 2 + length] < b"8" and text[i + 1 + length:i + 2 + length]:
+                length += 1
+            out.append(int(text[i + 1:i + 1 + length], 8) & 0xFF)
+            i += 1 + length
+        else:
+            out += byte + after
+            i += 2
+    return bytes(out)
 
 
 # ── what the model sees ──────────────────────────────────────────────────

@@ -231,8 +231,16 @@ def find_new(files: list[FileDiff], contents: dict[str, str] | None = None) -> l
 # Each scanner returns (line, name, source) for every dependency line it can
 # see, added or not. source: "registry", "remote" (git or URL) or "local".
 Entry = tuple[int, str, str]
-_STRING = re.compile(r"""(?P<q>["'])((?:\\.|(?!(?P=q)).)*)(?P=q)""")
+# One alternative per quote, with the backslash kept out of the plain-character class, so a
+# backslash is consumed one way only: the ambiguous form backtracks exponentially on long lines.
+_STRING = re.compile(r"""\"((?:\\.|[^"\\])*)\"|'((?:\\.|[^'\\])*)'""")
 _NAME = re.compile(r"^([A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?)\s*(\[[^\]]*\])?\s*(.*)$", re.S)
+
+
+def _quoted(match: re.Match) -> str:
+    """The body of a `_STRING` match, whichever quote it used."""
+    body = match.group(1)
+    return body if body is not None else match.group(2)
 
 
 def _requirement(text: str, strict: bool = False) -> tuple[str, str] | None:
@@ -352,7 +360,7 @@ def _strings_as_requirements(number: int, text: str, strict: bool) -> list[Entry
     for match in _STRING.finditer(text):
         if text[: match.start()].rstrip().endswith("="):
             continue  # a value in an inline table, like {include-group = "test"}
-        requirement = _requirement(match.group(2), strict=strict)
+        requirement = _requirement(_quoted(match), strict=strict)
         if requirement:
             found.append((number, *requirement))
     return found
@@ -396,7 +404,7 @@ def _scan_cargo(lines: list[tuple[int, str]]) -> list[Entry]:
             line, name, source = entries[subtable]
             if key == "package":
                 quoted = _STRING.search(value)
-                name = quoted.group(2) if quoted else name
+                name = _quoted(quoted) if quoted else name
             elif key in ("path", "workspace"):
                 source = "local"
             elif key == "git" and source != "local":
@@ -528,7 +536,7 @@ def _loose_names(kind: str, text: str) -> list[str]:
     if kind == "go":
         match = _GO_REQUIRE.match(text) or _GO_ENTRY.match(text)
         return [match.group("path")] if match else []
-    names = [requirement[0] for match in _STRING.finditer(text) if (requirement := _requirement(match.group(2)))]
+    names = [requirement[0] for match in _STRING.finditer(text) if (requirement := _requirement(_quoted(match)))]
     key = _TOML_KEY.match(text)
     if key:
         names.append(key.group("key").strip("\"'"))

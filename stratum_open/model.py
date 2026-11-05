@@ -20,6 +20,7 @@ import requests
 import yaml
 
 from stratum_open.policy import Policy
+from stratum_open.util import redact, retry_after
 
 RETRY_STATUSES = {408, 429, 500, 502, 503, 504}
 _FENCE_ANYWHERE = re.compile(r"```[a-zA-Z]*[ \t]*\n(.*?)\n[ \t]*```", re.DOTALL)
@@ -79,7 +80,8 @@ class Model:
         except requests.RequestException as exc:
             reply = Reply("", self.name, 0, error=f"couldn't reach the model at {self.endpoint}: {type(exc).__name__}")
         except ModelError as exc:
-            reply = Reply("", self.name, 0, error=str(exc))
+            # A server's error text can quote the request back, API key included; it ends up in a PR comment.
+            reply = Reply("", self.name, 0, error=redact(str(exc)))
         reply.seconds = time.monotonic() - started
         return reply
 
@@ -115,7 +117,8 @@ class Model:
             base = re.sub(r"/v1$", "", self.endpoint)
             try:
                 response = self.session.get(f"{base}/api/version", timeout=3)
-                found = response.ok and "version" in response.json()
+                data = response.json() if response.ok else None
+                found = isinstance(data, dict) and "version" in data
             except (requests.RequestException, ValueError):
                 found = False
             self._ollama = base if found else None
@@ -131,9 +134,11 @@ class Model:
         if json_mode:
             body["format"] = "json"
         data = self._post(f"{base}/api/chat", body)
+        message = data.get("message")
+        content = message.get("content") if isinstance(message, dict) else message if isinstance(message, str) else ""
         return Reply(
-            (data.get("message") or {}).get("content", ""), data.get("model", self.name), 0,
-            data.get("prompt_eval_count"), data.get("eval_count"),
+            content if isinstance(content, str) else "", str(data.get("model") or self.name), 0,
+            _count(data.get("prompt_eval_count")), _count(data.get("eval_count")),
         )
 
     def _openai_chat(self, system: str, user: str, max_tokens: int, json_mode: bool) -> Reply:
@@ -152,28 +157,42 @@ class Model:
                 raise
             del body["response_format"]  # servers that don't support JSON mode
             data = self._post(f"{self.endpoint}/chat/completions", body)
-        choices = data.get("choices") or [{}]
-        usage = data.get("usage") or {}
+        choices = data.get("choices")
+        first = choices[0] if isinstance(choices, list) and choices else None
+        message = first.get("message") if isinstance(first, dict) else None
+        content = message.get("content") if isinstance(message, dict) else None
+        usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
         return Reply(
-            ((choices[0].get("message") or {}).get("content") or ""), data.get("model", self.name), 0,
-            usage.get("prompt_tokens"), usage.get("completion_tokens"),
+            content if isinstance(content, str) else "", str(data.get("model") or self.name), 0,
+            _count(usage.get("prompt_tokens")), _count(usage.get("completion_tokens")),
         )
 
     def _post(self, url: str, body: dict[str, Any]) -> dict[str, Any]:
+        """One call with bounded retries. Everything a server can send that
+        isn't a JSON object (an HTML error page with a 200, an empty body,
+        `null`, a list) is a ModelError, never a traceback."""
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         for attempt in range(self.retries + 1):
             response = self.session.post(url, json=body, headers=headers, timeout=self.timeout)
             if response.status_code in RETRY_STATUSES and attempt < self.retries:
-                time.sleep(min(30.0, float(response.headers.get("Retry-After") or 2 * 3**attempt)))
+                time.sleep(min(30.0, retry_after(response.headers.get("Retry-After"), 2 * 3**attempt)))
                 continue
             if not response.ok:
-                raise ModelError(f"the model server answered {response.status_code}: {response.text[:200]}", response.status_code)
+                raise ModelError(f"the model server answered {response.status_code}: {_excerpt(response.text)}", response.status_code)
+            if not response.content.strip():
+                raise ModelError("the model server sent an empty reply", response.status_code)
             try:
-                return response.json()
+                data = response.json()
             except ValueError:
-                raise ModelError("the model server sent something that isn't JSON", response.status_code) from None
+                raise ModelError(f"the model server sent something that isn't JSON: {_excerpt(response.text)}", response.status_code) from None
+            if not isinstance(data, dict):
+                raise ModelError(f"the model server sent JSON that isn't an object: {_excerpt(response.text)}", response.status_code)
+            if isinstance(data.get("error"), (str, dict)) and not data.get("choices") and not data.get("message"):
+                error = data["error"]
+                raise ModelError(f"the model server reported an error: {_excerpt(error if isinstance(error, str) else error.get('message') or json.dumps(error))}", response.status_code)
+            return data
         raise ModelError("the model server kept failing", 0)  # pragma: no cover
 
 
@@ -181,6 +200,24 @@ class ModelError(Exception):
     def __init__(self, message: str, status: int):
         super().__init__(message)
         self.status = status
+
+
+def is_model_failure(exc: BaseException, model: Any = None) -> bool:
+    """Whether an exception raised by a model object means the model or the
+    network failed, as opposed to a bug in Stratum: a `ModelError`, a
+    `requests` error, any `OSError` (sockets, urllib, aiohttp), or a type the
+    model lists in `failure_types` (a client built on another library, httpx
+    say, names its own there)."""
+    declared = tuple(t for t in getattr(model, "failure_types", ()) or () if isinstance(t, type))
+    return isinstance(exc, (ModelError, requests.RequestException, OSError) + declared)
+
+
+def _count(value: Any) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _excerpt(text: str, limit: int = 160) -> str:
+    return " ".join((text or "").split())[:limit]
 
 
 def model_from_policy(policy: Policy, env: Mapping[str, str] = os.environ) -> Model:
@@ -226,30 +263,46 @@ def parse_json(text: str) -> Any | None:
     """The first JSON object in a model's reply. Small models wrap it in
     fences (sometimes with prose around them), add a sentence after it, leave
     a trailing comma, or write near-JSON (single quotes, unquoted keys) that
-    YAML still reads."""
+    YAML still reads. Only an object is ever returned, and an object with
+    keys beats a stray `{}` in the prose before the answer."""
+    if not isinstance(text, str):
+        return None
     text = repair_text(text).strip()
     blocks = [m.group(1) for m in _FENCE_ANYWHERE.finditer(text) if "{" in m.group(1)] + [text]
     decoder = json.JSONDecoder()
+    empty: dict | None = None
     for block in blocks:
         start = block.find("{")
-        if start < 0:
-            continue
-        body = block[start:]
-        for candidate in (body, _TRAILING_COMMA.sub(r"\1", body)):
+        tries = 0
+        while start >= 0 and tries < 50:
+            # A complete but empty object here is a "{}" in the prose before the answer: look past it.
+            # A broken object is the answer itself, cut off or near-JSON: stop here and let YAML, then
+            # `salvage`, have it, rather than mistake one of its complete inner objects for the answer.
+            tries += 1
+            body = block[start:]
+            decoded = None
+            for candidate in (body, _TRAILING_COMMA.sub(r"\1", body)):
+                try:
+                    decoded, _ = decoder.raw_decode(candidate)
+                    break
+                except ValueError:
+                    continue
+            if decoded is None:
+                break
+            if isinstance(decoded, dict) and decoded:
+                return decoded
+            if isinstance(decoded, dict) and empty is None:
+                empty = decoded
+            start = block.find("{", start + 1)
+        end = block.rfind("}")
+        if start >= 0 and start < end:
             try:
-                value, _ = decoder.raw_decode(candidate)
-                return value
-            except ValueError:
-                continue
-        end = body.rfind("}")
-        if end > 0:
-            try:
-                value = yaml.safe_load(body[: end + 1])
+                value = yaml.safe_load(block[start: end + 1])
             except yaml.YAMLError:
                 value = None
-            if isinstance(value, dict):
+            if isinstance(value, dict) and value:
                 return value
-    return None
+    return empty
 
 
 def salvage(text: str) -> dict[str, Any] | None:

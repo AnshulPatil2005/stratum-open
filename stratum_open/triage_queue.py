@@ -26,15 +26,31 @@ def update_queue(ctx: Context, *, post: bool = True) -> str:
         facts.additions, facts.deletions = found.get("additions", 0), found.get("deletions", 0)
         result = None
         if found.get("key"):
-            result = Triage(found["key"], found.get("reasons", []), found.get("evidence", []), float(found.get("score", 0)))
+            result = Triage(str(found["key"]), _strings(found.get("reasons")), _strings(found.get("evidence")), _number(found.get("score")))
         rows.append((facts, result))
     body = render_queue(rows, ctx.policy)
-    if post:
-        issue = next((i for i in gh.paginate(f"/repos/{gh.repo}/issues", state="open")
-                      if i.get("title") == TITLE and "pull_request" not in i
-                      and (i.get("user") or {}).get("login", "").lower() == ctx.bot.lower()), None)
-        if issue:
-            gh.edit_issue(issue["number"], body)
-        else:
-            gh.create_issue(TITLE, body)
+    return _post(ctx, body) if post else body
+
+
+def _strings(value) -> list[str]:
+    return [str(v) for v in value] if isinstance(value, list) else []
+
+
+def _number(value) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _post(ctx: Context, body: str) -> str:
+    """Edit the queue issue in place when there is one, else create it."""
+    gh = ctx.gh
+    issue = next((i for i in gh.paginate(f"/repos/{gh.repo}/issues", state="open")
+                  if i.get("title") == TITLE and "pull_request" not in i
+                  and ((i.get("user") or {}).get("login") or "").lower() == ctx.bot.lower()), None)
+    if issue:
+        gh.edit_issue(issue["number"], body)
+    else:
+        gh.create_issue(TITLE, body)
     return body
