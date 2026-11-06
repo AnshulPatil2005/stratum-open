@@ -113,6 +113,17 @@ def near(finding, bug: dict) -> bool:
     return finding.line_start - LINES_NEAR <= bug["line"] <= (finding.line_end or finding.line_start) + LINES_NEAR
 
 
+def shown(chunks: list[str], path: str, line: Line) -> bool:
+    """Whether the planted line, numbered as `render` numbers it, is in the
+    planted file's part of a prompt: its text alone (`return True`) could be
+    anywhere else in a clipped diff."""
+    numbered = f"{line.new:>6} +  {line.text}"
+    return any(
+        section.startswith(f"{path} (") and numbered in section.split("\n")
+        for chunk in chunks for section in ("\n" + chunk).split("\n## ")[1:]
+    )
+
+
 def _run(args) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -136,7 +147,7 @@ def _run(args) -> int:
         hits = [f for f in mine if near(f, bug)]
         reviews.append({
             "case": case, "kind": bug["kind"], "path": bug["path"], "line": bug["line"], "model": name,
-            "seconds": round(seconds, 1), "shown": "yes" if any(planted.text in chunk for chunk in chunks) else "no",
+            "seconds": round(seconds, 1), "shown": "yes" if shown(chunks, bug["path"], planted) else "no",
             "calls": len(calls), "failed_calls": result.review.failed_calls if result.review else 0,
             "findings": len(mine), "near": len(hits),
             "error": "; ".join(sorted({c["error"] for c in calls if c.get("error")}))[:300],
@@ -155,12 +166,26 @@ def _run(args) -> int:
 
 
 def _score(out: Path) -> int:
+    """summary.md for whatever the run folder holds: the checks' results,
+    the model reviews (every reviews.csv under it, one per shard), or both."""
+    parts = []
     if (out / "checks.csv").exists():
-        return _checks_summary(out)
+        parts.append(_checks_summary(out))
+    if any(out.rglob("reviews.csv")):
+        parts.append(_model_summary(out))
+    if not parts:
+        raise SystemExit(f"Nothing to score in {out}: no checks.csv, and no reviews.csv under it")
+    notes = out / "notes.md"
+    if notes.exists():
+        parts.append(notes.read_text(encoding="utf-8").strip())
+    (out / "summary.md").write_text("\n\n".join(parts) + "\n", encoding="utf-8")
+    print((out / "summary.md").read_text(encoding="utf-8"))
+    return 0
+
+
+def _model_summary(out: Path) -> str:
     reviews = [row for path in sorted(out.rglob("reviews.csv")) for row in _read(path)]
     findings = [row for path in sorted(out.rglob("findings.csv")) for row in _read(path)]
-    if not reviews:
-        raise SystemExit(f"No reviews.csv under {out}")
     by_model: dict[str, list[dict]] = defaultdict(list)
     for row in reviews:
         by_model[row["model"]].append(row)
@@ -180,9 +205,9 @@ def _score(out: Path) -> int:
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
     for model, rows in sorted(by_model.items(), key=lambda item: _size(item[0])):
-        shown = [r for r in rows if r["shown"] == "yes"]
-        near_hits = [r for r in shown if int(r["near"])]
-        found = [r for r in shown if any(m["near"] == "yes" and m["verdict"] == "right" for m in marks[(model, r["case"])])]
+        seen = [r for r in rows if r["shown"] == "yes"]
+        near_hits = [r for r in seen if int(r["near"])]
+        found = [r for r in seen if any(m["near"] == "yes" and m["verdict"] == "right" for m in marks[(model, r["case"])])]
         other = [m for r in rows for m in marks[(model, r["case"])] if m["near"] != "yes"]
         other_right = sum(m["verdict"] == "right" for m in other)
         other_marked = sum(m["verdict"] in ("right", "wrong") for m in other)
@@ -190,7 +215,7 @@ def _score(out: Path) -> int:
         calls = sum(int(r["calls"]) for r in rows)
         median = statistics.median(float(r["seconds"]) for r in rows)
         lines.append(
-            f"| `{model}` | {len(rows)} | {len(shown)} | {len(near_hits)} of {len(shown)} | {len(found)} of {len(shown)} "
+            f"| `{model}` | {len(rows)} | {len(seen)} | {len(near_hits)} of {len(seen)} | {len(found)} of {len(seen)} "
             f"| {len(other)} | {other_right} of {other_marked} marked | {failed} of {calls} | {median:.0f}s |"
         )
     kinds = sorted({r["kind"] for r in reviews})
@@ -205,12 +230,7 @@ def _score(out: Path) -> int:
     unmarked = sum(1 for m in findings if not m["verdict"])
     if unmarked:
         lines += ["", f"**{unmarked} finding(s) not marked yet**, so Found and the marked counts are incomplete."]
-    notes = out / "notes.md"
-    if notes.exists():
-        lines += ["", notes.read_text(encoding="utf-8").strip()]
-    (out / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print((out / "summary.md").read_text(encoding="utf-8"))
-    return 0
+    return "\n".join(lines)
 
 
 def _size(model: str) -> float:
@@ -257,10 +277,10 @@ def _checks(args) -> int:
     (out / "prs.json").write_text(json.dumps(prs, indent=1) + "\n", encoding="utf-8")
     if not bandit_available():
         print("Bandit isn't installed, so its cases are missed: pip install bandit.")
-    return _checks_summary(out)
+    return _score(out)
 
 
-def _checks_summary(out: Path) -> int:
+def _checks_summary(out: Path) -> str:
     planted = json.loads((out / "planted.json").read_text(encoding="utf-8"))
     rows = _read(out / "checks.csv")
     merged = [r for r in rows if r["set"] == "merged"]
@@ -294,12 +314,7 @@ def _checks_summary(out: Path) -> int:
     if merged:
         lines += ["", "| PR | Rule | Finding | Verdict | Why |", "| --- | --- | --- | --- | --- |"]
         lines += [f"| {r['case']} | `{r['rule']}` | {r['title']} | {r['verdict'] or '?'} | {r['note']} |" for r in merged]
-    notes = out / "notes.md"
-    if notes.exists():
-        lines += ["", notes.read_text(encoding="utf-8").strip()]
-    (out / "summary.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print((out / "summary.md").read_text(encoding="utf-8"))
-    return 0
+    return "\n".join(lines)
 
 
 _ALNUM = string.ascii_letters + string.digits
