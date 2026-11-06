@@ -248,6 +248,48 @@ def test_an_ignore_made_while_a_review_runs_is_kept(gh):
     assert dead["resolved"] and "Ignored on this PR." in dead["comments"][0]["body"]
 
 
+def test_the_check_follows_findings_ignored_while_a_review_runs(gh):
+    review_pull(context(gh, FakeModel(model_answer())), 7)
+    assert gh.checks[-1]["conclusion"] == "neutral"  # two high findings
+
+    class IgnoresBothHighs(FakeModel):
+        def complete(self, system, user, **kwargs):
+            summary = gh.issue_comments_[7][0]
+            state = publish.State.decode(summary["body"])
+            state.ignored_rules = ["code/sql", "model:unknown-id"]
+            gh.edit_comment(summary["id"], publish.replace_state(summary["body"], state))
+            return super().complete(system, user, **kwargs)
+
+    review_pull(context(gh, IgnoresBothHighs(model_answer())), 7, full=True)
+    assert gh.checks[-1]["conclusion"] == "success"  # only the medium one is left
+
+
+def test_two_ignores_at_once_both_stick(gh, monkeypatch):
+    """Editing a comment is last-writer-wins, so an ignore that another
+    command's edit replaced is written again."""
+    from stratum_open.github import commands
+
+    monkeypatch.setattr(commands, "_pause", lambda seconds: None)
+    ctx = context(gh, FakeModel(model_answer()))
+    review_pull(ctx, 7)
+    gh.permissions["mona"] = "admin"
+    edit, raced = gh.edit_comment, []
+
+    def racing_edit(comment_id, body):
+        before = gh.issue_comments_[7][0]["body"]
+        edit(comment_id, body)
+        if not raced:  # the other command read the state before this edit, and writes it after
+            raced.append(True)
+            state = publish.State.decode(before)
+            state.ignored_rules.append("code/sql")
+            edit(comment_id, publish.replace_state(before, state))
+
+    monkeypatch.setattr(gh, "edit_comment", racing_edit)
+    event, payload = comment_event("@stratum ignore model:dead-code", login="mona")
+    assert handle(ctx, event, payload) == "ignore"
+    assert set(publish.State.decode(gh.issue_comments_[7][0]["body"]).ignored_rules) == {"model:dead-code", "code/sql"}
+
+
 def test_ignore_a_rule_and_help_and_bots(gh):
     ctx = context(gh, FakeModel(model_answer()))
     review_pull(ctx, 7)

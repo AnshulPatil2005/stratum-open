@@ -10,6 +10,7 @@ takes write access.
 from __future__ import annotations
 
 import re
+import time
 from datetime import datetime, timedelta, timezone
 
 from stratum_open.github import publish
@@ -177,24 +178,47 @@ def _ignore(ctx: Context, number: int, rule: str, thread_root: int | None, reply
     if existing is None:
         reply("Stratum hasn't reviewed this PR yet, so there's nothing to ignore.")
         return "ignore"
-    state = publish.State.decode(existing["body"])
+    fp = None
     if thread_root is not None:
         root = gh.review_comment(thread_root) or {}
         fp = publish.thread_fingerprint({"comments": [{"author": (root.get("user") or {}).get("login", ""), "body": root.get("body", "")}]}, ctx.bot)
         if fp is None:
             reply("That isn't one of Stratum's comments, so there's nothing to ignore.")
             return "ignore"
-        if fp not in state.ignored:
-            state.ignored.append(fp)
-    elif rule:
-        if rule not in state.ignored_rules:
-            state.ignored_rules.append(rule)
-    else:
+    elif not rule:
         reply("Reply `@stratum ignore` to one of Stratum's inline comments, or name a rule: `@stratum ignore <rule>`.")
         return "ignore"
-    gh.edit_comment(existing["id"], publish.replace_state(existing["body"], state))
+    _record_ignore(gh, number, ctx.bot, fingerprint=fp, rule=None if fp else rule)
     review_pull(ctx, number)  # the head hasn't moved, so no model call; this resolves the thread and redraws the summary
     return "ignore"
+
+
+# Commands run alongside each other, and editing a comment is last-writer-
+# wins: two ignores at once could each write the state without the other's.
+# So an ignore is read back a moment after it's written, and written again
+# if another edit replaced it. Both read and write within moments, so the
+# second read always sees an overlapping write.
+IGNORE_RECHECK_SECONDS = 3
+IGNORE_ATTEMPTS = 3
+_pause = time.sleep
+
+
+def _record_ignore(gh, number: int, bot: str, *, fingerprint: str | None, rule: str | None) -> None:
+    """Adds a fingerprint or a rule to the summary's ignored state, until a
+    read shows it there (or IGNORE_ATTEMPTS writes)."""
+    for _ in range(IGNORE_ATTEMPTS):
+        existing = publish.find_summary(gh.issue_comments(number), bot)
+        if existing is None:
+            return
+        state = publish.State.decode(existing["body"])
+        if (fingerprint is None or fingerprint in state.ignored) and (rule is None or rule in state.ignored_rules):
+            return
+        if fingerprint is not None and fingerprint not in state.ignored:
+            state.ignored.append(fingerprint)
+        if rule is not None and rule not in state.ignored_rules:
+            state.ignored_rules.append(rule)
+        gh.edit_comment(existing["id"], publish.replace_state(existing["body"], state))
+        _pause(IGNORE_RECHECK_SECONDS)
 
 
 def _explain(ctx: Context, number: int, thread_root: int) -> str:

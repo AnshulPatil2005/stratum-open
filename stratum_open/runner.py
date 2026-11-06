@@ -13,8 +13,8 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from stratum_open.diff import FileDiff, parse_diff
-from stratum_open.engine import analyze, effective_policy, snippet_of  # noqa: F401  (effective_policy: re-exported)
-from stratum_open.findings import Finding
+from stratum_open.engine import analyze, default_conclusion, effective_policy, snippet_of  # noqa: F401  (effective_policy: re-exported)
+from stratum_open.findings import Finding, risk_score
 from stratum_open.github import publish
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
@@ -161,7 +161,9 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
 
     # Each `@stratum` command runs on its own, so an `ignore` can land while
     # this review was reading the PR: read the summary again before writing
-    # it, keep what was ignored meanwhile, and leave those findings out.
+    # it, keep what was ignored meanwhile, and leave those findings out (the
+    # score and the check's conclusion then follow the findings that are left).
+    score, conclusion = engine.score, engine.conclusion
     if post:
         latest = publish.find_summary(gh.issue_comments(number), ctx.bot)
         if latest is not None:
@@ -172,7 +174,11 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             for finding in findings:
                 if finding.fingerprint in added or finding.rule in added_rules:
                     gone.setdefault(finding.fingerprint, "Ignored on this PR.")
-            findings = [f for f in findings if f.fingerprint not in added and f.rule not in added_rules]
+            kept = [f for f in findings if f.fingerprint not in added and f.rule not in added_rules]
+            if len(kept) < len(findings):
+                findings = kept
+                score = max(0, min(100, risk_score(findings)))
+                conclusion = default_conclusion(findings, engine.complete, policy, score)
             existing = latest  # edit the summary that's there now, never post a second one
     sorted_pr = triage(
         facts, findings, policy,
@@ -228,7 +234,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     except GitHubError as exc:
         ctx.log(f"couldn't post the summary comment: {exc}")
     try:
-        publish.publish_check(gh, head, findings, body.split("<details>")[0], conclusion=engine.conclusion, name=policy.review.check_name)
+        publish.publish_check(gh, head, findings, body.split("<details>")[0], conclusion=conclusion, name=policy.review.check_name)
     except GitHubError as exc:
         ctx.log(f"couldn't publish the check run: {exc}")
 
@@ -244,7 +250,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             ctx.log(f"couldn't apply the triage label: {exc}")
 
     try:
-        ctx.storage.record_review(gh.repo, number, head, engine.score, result.summary if result else "", findings)
+        ctx.storage.record_review(gh.repo, number, head, score, result.summary if result else "", findings)
     except Exception as exc:  # the review is on GitHub already; a broken database loses only the App's copy
         ctx.log(redact(f"couldn't store the review: {type(exc).__name__}: {exc}"))
     return Outcome(number, "published", findings, sorted_pr, result, body)
