@@ -69,6 +69,7 @@ jobs:
 
   review:
     needs: [plan, fetch]
+    if: inputs.models != ''  # an empty matrix is an error; hosted-model alone is a valid run
     runs-on: ubuntu-latest
     timeout-minutes: 330
     strategy:
