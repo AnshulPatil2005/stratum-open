@@ -30,6 +30,34 @@ come back as an artifact.
 A hosted model can be compared the same way: pass its OpenAI-compatible
 endpoint, with the key in `STRATUM_MODEL_API_KEY`.
 
+## Planted bugs
+
+Marking findings on merged PRs needs a maintainer for every row, so
+[planted.py](planted.py) also measures against an answer known in advance.
+
+- **The model's review.** [bugs.json](planted/bugs.json) is 40 real merged PRs
+  from 12 Python projects, each with one bug planted on a line it adds: a
+  flipped comparison, a negated condition, `and` for `or`, an inverted return,
+  a dropped `await`, an off-by-one. Each case says what the bug breaks. Each
+  model reviews them as the Action does (the `small` profile, an 8,192-token
+  window). A finding within 3 lines of the bug is near it; a person then marks
+  whether it describes the bug (`found`) and whether each other finding is a
+  real problem. Start the **Planted-bug benchmark** workflow to run it on
+  GitHub's free runners, one job per model and shard.
+- **The checks that need no model.** [risks.yml](planted/risks.yml) is 44
+  planted risks (secrets, code that runs input, workflow holes, typosquatted
+  and made-up packages, coding-agent files, hidden Unicode), after real
+  incidents where there was one. [clean.json](planted/clean.json) is 184
+  merged PRs as they are, where every finding is a possible false alarm.
+
+```sh
+python benchmark/planted.py checks --risks benchmark/planted/risks.yml --prs benchmark/planted/clean.json \
+    --out benchmark/results/<name>
+python benchmark/planted.py run --bugs benchmark/planted/bugs.json --out benchmark/results/<name>/raw/7b \
+    --model qwen2.5-coder:7b@http://localhost:11434/v1
+python benchmark/planted.py score benchmark/results/<name>   # after marking the verdict columns
+```
+
 ## Results
 
 Each run is a folder in [results/](results/), holding its `summary.md`, every
@@ -38,3 +66,4 @@ finding and every call. The machine each run used is noted in its summary.
 | Run | Machine | Models |
 | --- | --- | --- |
 | [2026-11-02-actions-cpu](results/2026-11-02-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | `qwen2.5-coder:7b`, `qwen2.5-coder:14b` |
+| [2026-11-07-checks](results/2026-11-07-checks/summary.md) | Any (no model) | The checks: 43 of 44 planted risks caught, no false alarms on 184 merged PRs |

@@ -1,0 +1,738 @@
+[
+ {
+  "repo": "pallets/flask",
+  "pr": 6176
+ },
+ {
+  "repo": "pallets/flask",
+  "pr": 6095
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3690
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5649
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5510
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3899
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3884
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14176
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14172
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3180
+ },
+ {
+  "repo": "pallets/flask",
+  "pr": 6133
+ },
+ {
+  "repo": "pallets/flask",
+  "pr": 6096
+ },
+ {
+  "repo": "pallets/flask",
+  "pr": 6013
+ },
+ {
+  "repo": "pallets/flask",
+  "pr": 5917
+ },
+ {
+  "repo": "pallets/flask",
+  "pr": 5899
+ },
+ {
+  "repo": "pallets/flask",
+  "pr": 5898
+ },
+ {
+  "repo": "pallets/flask",
+  "pr": 5799
+ },
+ {
+  "repo": "pallets/flask",
+  "pr": 5700
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3865
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3861
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3860
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3858
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3821
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3818
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3805
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3781
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3780
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3777
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3341
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3339
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3338
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3337
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3332
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3329
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3327
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3322
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3309
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3306
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3304
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3300
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3299
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3298
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3293
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3292
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3287
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3282
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3278
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3277
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3276
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3273
+ },
+ {
+  "repo": "pallets/werkzeug",
+  "pr": 3270
+ },
+ {
+  "repo": "pallets/jinja",
+  "pr": 2098
+ },
+ {
+  "repo": "pallets/jinja",
+  "pr": 2061
+ },
+ {
+  "repo": "pallets/jinja",
+  "pr": 2029
+ },
+ {
+  "repo": "pallets/jinja",
+  "pr": 2026
+ },
+ {
+  "repo": "pallets/jinja",
+  "pr": 2017
+ },
+ {
+  "repo": "pallets/jinja",
+  "pr": 1979
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3673
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3672
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3670
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3419
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3418
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3412
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5657
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5652
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5651
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5647
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5645
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5643
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5641
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5638
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5637
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5635
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5634
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5631
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5630
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5628
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5626
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5625
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5621
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5620
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5618
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5617
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5615
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5613
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5612
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5610
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5609
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5606
+ },
+ {
+  "repo": "psf/requests",
+  "pr": 7505
+ },
+ {
+  "repo": "psf/requests",
+  "pr": 7497
+ },
+ {
+  "repo": "psf/requests",
+  "pr": 7496
+ },
+ {
+  "repo": "psf/requests",
+  "pr": 7436
+ },
+ {
+  "repo": "psf/requests",
+  "pr": 7429
+ },
+ {
+  "repo": "psf/requests",
+  "pr": 7427
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14244
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14213
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14202
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14199
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14196
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14195
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14163
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 4079
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 4075
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 4006
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3953
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3941
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3939
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3938
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3937
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3935
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3934
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3906
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3905
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3894
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3879
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3845
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3807
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3783
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3782
+ },
+ {
+  "repo": "Textualize/rich",
+  "pr": 3777
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6594
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6592
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6544
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6543
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6542
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6478
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6471
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6470
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6464
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6455
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6410
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6405
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6402
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6397
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6392
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6374
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6362
+ },
+ {
+  "repo": "Textualize/textual",
+  "pr": 6335
+ },
+ {
+  "repo": "python-attrs/attrs",
+  "pr": 1606
+ },
+ {
+  "repo": "python-attrs/attrs",
+  "pr": 1600
+ },
+ {
+  "repo": "python-attrs/attrs",
+  "pr": 1592
+ },
+ {
+  "repo": "python-attrs/attrs",
+  "pr": 1571
+ },
+ {
+  "repo": "python-attrs/attrs",
+  "pr": 1541
+ },
+ {
+  "repo": "fastapi/fastapi",
+  "pr": 16598
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8466
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8464
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8463
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8461
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8460
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8457
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8440
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8431
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8416
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8414
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8413
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8394
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8392
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8391
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8386
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8385
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8382
+ },
+ {
+  "repo": "marshmallow-code/marshmallow",
+  "pr": 3034
+ },
+ {
+  "repo": "marshmallow-code/marshmallow",
+  "pr": 3024
+ },
+ {
+  "repo": "fastapi/typer",
+  "pr": 1972
+ },
+ {
+  "repo": "fastapi/typer",
+  "pr": 1942
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11175
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11171
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11141
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11131
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11099
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11077
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11074
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11073
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11072
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11042
+ },
+ {
+  "repo": "pypa/pip",
+  "pr": 14424
+ },
+ {
+  "repo": "pypa/pip",
+  "pr": 14407
+ },
+ {
+  "repo": "pypa/pip",
+  "pr": 14403
+ },
+ {
+  "repo": "pypa/pip",
+  "pr": 14398
+ },
+ {
+  "repo": "pypa/pip",
+  "pr": 14395
+ },
+ {
+  "repo": "pypa/pip",
+  "pr": 14352
+ },
+ {
+  "repo": "pypa/pip",
+  "pr": 14349
+ },
+ {
+  "repo": "pypa/pip",
+  "pr": 14347
+ }
+]

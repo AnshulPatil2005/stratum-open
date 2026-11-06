@@ -1,0 +1,5 @@
+Run on 2026-11-07 on a laptop: the checks give the same answer on any machine. Bandit 1.9.4 was installed; the Action doesn't install it by default, so its three cases count only with the `bandit` extra. Package registries were asked about each new dependency's name, as the Action does.
+
+The planted risks follow real incidents where there was one (see `seen` in [risks.yml](../../planted/risks.yml)), and the typosquat names are those incidents' own; nothing was changed to make a case pass, and the one miss is kept. Written by the people who wrote the checks, they show the checks work on these shapes, not how much of everything they'd catch. The merged PRs are the false-alarm test: PRs from 17 popular Python projects that changed Python code outside the tests, up to 400 added lines each.
+
+`jeIlyfish` (a capital I for an l) was taken down from PyPI, so it was still flagged, as a package that doesn't exist there. But it wasn't flagged as a look-alike, because `jellyfish` isn't on the popular-package list. Three other typosquats were flagged both ways, since PyPI has removed them too.
