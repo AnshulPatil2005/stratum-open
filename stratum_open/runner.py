@@ -158,6 +158,22 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         facts.linked_issues = gh.linked_issues(number)
     except GitHubError as exc:
         problems.append(f"Couldn't read CI status or linked issues ({exc.status}).")
+
+    # Each `@stratum` command runs on its own, so an `ignore` can land while
+    # this review was reading the PR: read the summary again before writing
+    # it, keep what was ignored meanwhile, and leave those findings out.
+    if post:
+        latest = publish.find_summary(gh.issue_comments(number), ctx.bot)
+        if latest is not None:
+            fresh = publish.State.decode(latest["body"])
+            added = [fp for fp in fresh.ignored if fp not in state.ignored]
+            added_rules = [rule for rule in fresh.ignored_rules if rule not in state.ignored_rules]
+            state.ignored, state.ignored_rules = state.ignored + added, state.ignored_rules + added_rules
+            for finding in findings:
+                if finding.fingerprint in added or finding.rule in added_rules:
+                    gone.setdefault(finding.fingerprint, "Ignored on this PR.")
+            findings = [f for f in findings if f.fingerprint not in added and f.rule not in added_rules]
+            existing = latest  # edit the summary that's there now, never post a second one
     sorted_pr = triage(
         facts, findings, policy,
         matches_description=result.matches_description if result else "", mismatch=result.mismatch if result else "",

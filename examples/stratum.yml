@@ -28,11 +28,6 @@ permissions:
   issues: write
   checks: write
 
-concurrency:
-  # A new push cancels the review of the old one; comments queue on their own.
-  group: stratum-${{ github.event_name }}-${{ github.event.pull_request.number || github.event.issue.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
-
 jobs:
   stratum:
     if: >-
@@ -40,6 +35,13 @@ jobs:
       github.event_name == 'workflow_run' ||
       contains(github.event.comment.body, '@stratum')
     runs-on: ubuntu-latest
+    # On the job, not the workflow, so a comment without a command never joins
+    # a group: GitHub keeps one pending run per group and cancels the others,
+    # which lost queued commands. A new push cancels the review of the old one;
+    # each command gets a group of its own, so none is dropped.
+    concurrency:
+      group: stratum-${{ github.event_name == 'pull_request_target' && format('review-{0}', github.event.pull_request.number) || github.event.comment.id && format('comment-{0}', github.event.comment.id) || github.run_id }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request_target' }}
     timeout-minutes: 60
     steps:
       # The default branch, with history for track records, ownership and hotspots.

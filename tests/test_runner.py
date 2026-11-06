@@ -225,6 +225,29 @@ def test_ignore_needs_write_access_and_resolves_the_thread(gh):
     assert "Dead code" not in gh.issue_comments_[7][0]["body"].split("<details>")[0]
 
 
+def test_an_ignore_made_while_a_review_runs_is_kept(gh):
+    """Each command runs on its own, so an `@stratum ignore` can land while a
+    review is reading the PR: the review must not write the old state back."""
+    review_pull(context(gh, FakeModel(model_answer())), 7)
+
+    class IgnoresMidway(FakeModel):
+        def complete(self, system, user, **kwargs):  # what a concurrent `@stratum ignore model:dead-code` writes
+            summary = gh.issue_comments_[7][0]
+            state = publish.State.decode(summary["body"])
+            if "model:dead-code" not in state.ignored_rules:
+                state.ignored_rules.append("model:dead-code")
+                gh.edit_comment(summary["id"], publish.replace_state(summary["body"], state))
+            return super().complete(system, user, **kwargs)
+
+    review_pull(context(gh, IgnoresMidway(model_answer())), 7, full=True)
+    summaries = [c for c in gh.issue_comments_[7] if publish.find_summary([c], BOT)]
+    assert len(summaries) == 1
+    assert publish.State.decode(summaries[0]["body"]).ignored_rules == ["model:dead-code"]
+    assert "Dead code" not in summaries[0]["body"].split("<details>")[0]
+    dead = next(t for t in gh.threads if "Dead code" in t["comments"][0]["body"])
+    assert dead["resolved"] and "Ignored on this PR." in dead["comments"][0]["body"]
+
+
 def test_ignore_a_rule_and_help_and_bots(gh):
     ctx = context(gh, FakeModel(model_answer()))
     review_pull(ctx, 7)
