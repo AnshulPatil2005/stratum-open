@@ -52,7 +52,7 @@ jobs:
           persist-credentials: false
 
       # Pin to a commit SHA (AnshulPatil2005/stratum-open@<sha>) so a new release reaches you only when you choose.
-      - uses: AnshulPatil2005/stratum-open@v0.2.0
+      - uses: AnshulPatil2005/stratum-open@v0.3.0
         with:
           # Runs the model on the runner: no server needed, but slow on CPU.
           # To use your own server instead, remove this line and set
