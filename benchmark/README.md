@@ -35,7 +35,7 @@ endpoint, with the key in `STRATUM_MODEL_API_KEY`.
 Marking findings on merged PRs needs a maintainer for every row, so
 [planted.py](planted.py) also measures against an answer known in advance.
 
-- **The model's review.** [bugs.json](planted/bugs.json) is 40 real merged PRs
+- **The model's review.** [bugs.json](planted/bugs.json) is 40 real merged PRs (one since found not to be a bug, and left out: see its `invalid`)
   from 12 Python projects, each with one bug planted on a line it adds: a
   flipped comparison, a negated condition, `and` for `or`, an inverted return,
   a dropped `await`, an off-by-one. Each case says what the bug breaks. Each

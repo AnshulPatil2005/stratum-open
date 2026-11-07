@@ -349,7 +349,8 @@
   "set": "dev",
   "find": "                await self._fin.close()",
   "replace": "                self._fin.close()",
-  "why": "The file's `close()` coroutine is never awaited, so the file stays open."
+  "why": "The file's `close()` coroutine is never awaited, so the file stays open.",
+  "invalid": "Not a bug: the stream's file comes from the builtin open(), so close() is synchronous and dropping its await fixes the line rather than breaking it. The merged PR awaits that file's read() and close() (lines 199, 205, 217), which raises TypeError on httpx's v1 branch."
  },
  {
   "repo": "pypa/pip",
