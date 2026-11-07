@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8461,gpt-oss:20b,,clean,high,bug,scrapy/extensions/feedexport.py,965,,Incorrect lock status check,"Twisted's Lock has a method `locked()`; accessing `self._export_lock.locked` returns the method object, which is truthy, so the condition is always true. This causes the lock to be acquired without awaiting and can lead to race conditions or deadlocks.",,
+pallets/werkzeug#3293,gpt-oss:20b,,clean,high,bug,src/werkzeug/datastructures/accept.py,319,,Indentation error,"The return statement is indented with 12 spaces instead of the 8 spaces used for the rest of the method body, causing an IndentationError and preventing the method from executing.",,

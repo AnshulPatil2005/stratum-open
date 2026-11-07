@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3818,dev,negated-condition,src/click/core.py,1591,deepseek-coder-v2:16b,,planted,218.5,yes,2,0,4,0,
+psf/black#5634,dev,flipped-comparison,src/black/comments.py,698,deepseek-coder-v2:16b,,planted,87.4,yes,1,0,2,0,
+Textualize/rich#3845,test,wrong-boolean,rich/style.py,202,deepseek-coder-v2:16b,,planted,56.8,yes,1,0,1,1,
+scrapy/scrapy#8461,dev,missing-await,scrapy/extensions/feedexport.py,969,deepseek-coder-v2:16b,,planted,35.2,yes,1,0,1,0,
+pallets/werkzeug#3293,dev,not-in,src/werkzeug/datastructures/accept.py,302,deepseek-coder-v2:16b,,planted,33.4,yes,1,0,2,1,

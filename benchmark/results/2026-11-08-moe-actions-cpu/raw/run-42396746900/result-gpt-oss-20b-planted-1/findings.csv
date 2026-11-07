@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pydantic/pydantic#14244,gpt-oss:20b,,planted,high,bug,pydantic/json_schema.py,2967,yes,TypeError when comparing None to int,"The condition compares `max_digits <= decimal_places` when `max_digits` is `None`, causing a TypeError during pattern generation for any Decimal schema where `max_digits` is unspecified.",right,Describes the planted flip: None compared with `<=` raises TypeError.

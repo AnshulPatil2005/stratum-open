@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8461,gpt-oss:20b,reasoning-low,clean,medium,bug,scrapy/extensions/feedexport.py,965,,Incorrect lock status check,"DeferredLock exposes a method `locked()`; accessing it as a property returns the method object, which is truthy, so the condition is always false and the lock is always awaited, negating the intended optimization.",,
+scrapy/scrapy#8461,gpt-oss:20b,reasoning-low,clean,medium,bug,scrapy/extensions/feedexport.py,967,yes,Missing await on lock acquisition,"When the lock is free, the code calls `self._export_lock.acquire()` without awaiting the returned Deferred, so the lock acquisition may not complete before the item is processed, leading to race conditions.",,
