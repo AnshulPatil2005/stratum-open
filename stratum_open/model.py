@@ -58,6 +58,7 @@ class Model:
         timeout: float = 900,
         retries: int = 2,
         session: requests.Session | None = None,
+        reasoning: str = "default",
     ):
         self.endpoint = endpoint.rstrip("/")
         self.name = name
@@ -65,6 +66,7 @@ class Model:
         self.context_tokens = context_tokens
         self.timeout = timeout
         self.retries = retries
+        self.reasoning = reasoning  # default | low | off, for models that think before they answer
         self.session = session or requests.Session()
         self._ollama: str | None | bool = False  # False = not checked yet
         self._info = None  # what describe() learned; a model doesn't change during a run
@@ -133,7 +135,17 @@ class Model:
         }
         if json_mode:
             body["format"] = "json"
-        data = self._post(f"{base}/api/chat", body)
+        # A thinking model (gpt-oss, Qwen3) spends its output budget on thinking first; on a CPU
+        # that can leave no room for the answer. Ollama's `think` takes a level or false.
+        if self.reasoning in ("low", "off"):
+            body["think"] = "low" if self.reasoning == "low" else False
+        try:
+            data = self._post(f"{base}/api/chat", body)
+        except ModelError as exc:
+            if not ("think" in body and exc.status == 400):
+                raise
+            del body["think"]  # a model or an Ollama that doesn't take it
+            data = self._post(f"{base}/api/chat", body)
         message = data.get("message")
         content = message.get("content") if isinstance(message, dict) else message if isinstance(message, str) else ""
         return Reply(
@@ -150,13 +162,18 @@ class Model:
         }
         if json_mode:
             body["response_format"] = {"type": "json_object"}
-        try:
-            data = self._post(f"{self.endpoint}/chat/completions", body)
-        except ModelError as exc:
-            if not (json_mode and exc.status == 400):
-                raise
-            del body["response_format"]  # servers that don't support JSON mode
-            data = self._post(f"{self.endpoint}/chat/completions", body)
+        if self.reasoning == "low":
+            body["reasoning_effort"] = "low"
+        # A server that refuses an optional field gets the call again without it, one at a time.
+        while True:
+            try:
+                data = self._post(f"{self.endpoint}/chat/completions", body)
+                break
+            except ModelError as exc:
+                optional = next((key for key in ("reasoning_effort", "response_format") if key in body), None)
+                if exc.status != 400 or optional is None:
+                    raise
+                del body[optional]
         choices = data.get("choices")
         first = choices[0] if isinstance(choices, list) and choices else None
         message = first.get("message") if isinstance(first, dict) else None

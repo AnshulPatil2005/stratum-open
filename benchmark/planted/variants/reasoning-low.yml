@@ -1,0 +1,3 @@
+# For thinking models (gpt-oss, Qwen3): less thinking, so the answer fits the output budget.
+review:
+  reasoning: low

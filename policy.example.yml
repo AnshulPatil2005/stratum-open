@@ -26,6 +26,7 @@ review:
   verify: none                 # none | strict | lenient: one more short call per model finding, asking the model whether it's a real defect.
                                #   strict: for models up to about 8B, which can't tell (cuts their wrong comments by ~60%);
                                #   lenient: for 14B-class models, which can (keeps their real catches, drops ~30% of the wrong ones)
+  reasoning: default           # default | low | off: how long a thinking model (gpt-oss, Qwen3) thinks first; on a CPU, `low` leaves room for the answer
   rules: []                    # your own review rules in plain words, e.g. "Every SQL query is parameterized."
   ignore_paths: ["**/*.lock", "**/package-lock.json", "**/pnpm-lock.yaml", "**/go.sum",
                  "**/*.min.js", "**/*.min.css", "**/*.map", "**/*.svg", "**/*.snap",
