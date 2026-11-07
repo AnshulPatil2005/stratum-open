@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/flask#5917,gpt-oss:20b,reasoning-low-verify-lenient,clean,medium,bug,tests/test_blueprints.py,233,,send_static_file not a context manager,"blueprint.send_static_file returns a Response object, which does not implement the context manager protocol. Using it in a with-statement will raise an AttributeError at runtime.",,

@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/textual#6464,gpt-oss:20b,reasoning-low-verify-lenient,clean,medium,bug,src/textual/screen.py,1532,yes,Potential TypeError when one breakpoint list is None,"The condition allows the function to run when either horizontal_breakpoints or vertical_breakpoints is truthy. If one of them is None, the set comprehensions that iterate over the lists will raise a TypeError because None is not iterable.",,

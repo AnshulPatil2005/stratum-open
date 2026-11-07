@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/jinja#2098,gpt-oss:20b,reasoning-low-verify-lenient,clean,medium,bug,src/jinja2/__init__.py,55,,Wrong package name in version lookup,"The __getattr__ implementation returns the version of the 'werkzeug' package instead of 'jinja2', causing incorrect version reporting and potential failures when the attribute is accessed.",,
+scrapy/scrapy#8464,gpt-oss:20b,reasoning-low-verify-lenient,clean,medium,bug,scrapy/core/downloader/handlers/http2.py,142,,Potential AttributeError on non-Failure response,"When a non-Failure response object is returned, it may not have a 'flags' attribute, causing an AttributeError when checking ""dataloss"" in response.flags.",,

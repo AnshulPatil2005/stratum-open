@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+psf/black#5645,gpt-oss:20b,reasoning-low-verify-strict,clean,medium,performance,src/blackd/client.py,74,,Missing timeout on HTTP request,"The aiohttp session.post call has no timeout specified, which can cause the client to hang indefinitely if the server does not respond.",,
