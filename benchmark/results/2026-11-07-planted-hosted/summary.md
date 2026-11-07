@@ -1,6 +1,6 @@
 # Planted-bug benchmark
 
-40 real merged PRs, each with one bug planted on a line it adds. Each model reviewed
+39 real merged PRs, each with one bug planted on a line it adds. Each model reviewed
 them as the Action does: the `small` profile and an 8,192-token window, unless a variant says
 otherwise. Only the model's own findings count. A finding is near the bug when it's on that file
 within 3 lines; found means it was read and it describes the bug. Where the PRs were also
@@ -9,15 +9,17 @@ version got no finding on that line: a model that comments on every changed line
 
 | Model | Variant | PRs | Near the bug | Near it when clean | Near only with the bug | Found (dev + test) | Other findings | Other findings marked right | Findings on the clean PRs | Failed calls | Median time |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `qwen/qwen-2.5-coder-32b-instruct` | - | 40 | 20 of 40 | - | - | 12 of 40 (6 + 6) | 38 | 3 of 38 marked | - | 0 of 44 | 13s |
-| `qwen/qwen3-coder` | - | 40 | 18 of 40 | - | - | 15 of 40 (7 + 8) | 32 | 5 of 30 marked | - | 0 of 44 | 3s |
+| `qwen/qwen-2.5-coder-32b-instruct` | - | 39 | 20 of 39 | - | - | 12 of 39 (6 + 6) | 33 | 3 of 33 marked | - | 0 of 43 | 13s |
+| `qwen/qwen3-coder` | - | 39 | 18 of 39 | - | - | 15 of 39 (7 + 8) | 26 | 3 of 24 marked | - | 0 of 43 | 3s |
 
 Found, by kind of bug:
 
 | Model | Variant | flipped-comparison | inverted-return | missing-await | negated-condition | not-in | off-by-one | wrong-boolean |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `qwen/qwen-2.5-coder-32b-instruct` | - | 6 of 11 | 1 of 4 | 0 of 4 | 2 of 9 | 0 of 1 | 1 of 4 | 2 of 7 |
-| `qwen/qwen3-coder` | - | 6 of 11 | 2 of 4 | 1 of 4 | 3 of 9 | 1 of 1 | 0 of 4 | 2 of 7 |
+| `qwen/qwen-2.5-coder-32b-instruct` | - | 6 of 11 | 1 of 4 | 0 of 3 | 2 of 9 | 0 of 1 | 1 of 4 | 2 of 7 |
+| `qwen/qwen3-coder` | - | 6 of 11 | 2 of 4 | 1 of 3 | 3 of 9 | 1 of 1 | 0 of 4 | 2 of 7 |
+
+Left out: encode/httpx#3670. Not a bug: the stream's file comes from the builtin open(), so close() is synchronous and dropping its await fixes the line rather than breaking it. The merged PR awaits that file's read() and close() (lines 199, 205, 217), which raises TypeError on httpx's v1 branch.
 
 ## The run
 
@@ -30,5 +32,5 @@ Found, by kind of bug:
 The same way as the free-runner run (see its notes).
 
 - **Found, with the consequence off:** two of Qwen3-Coder's found and two of the 32B's name the planted change as wrong but say what breaks, or how to fix it, inaccurately.
-- **The planted bug on the wrong line:** two of Qwen3-Coder's other findings marked right describe the planted bug in httpx#3670 (`close()` without `await`), but on lines 199 and 217, outside the 3-line window, so they don't count as found.
+- **The planted bug on the wrong line:** two of Qwen3-Coder's other findings marked right describe the planted bug in httpx#3670 (`close()` without `await`), but on lines 199 and 217, outside the 3-line window, so they don't count as found. That case was later found not to be a bug (see its `invalid` in bugs.json), so it's left out of the scores, these two findings with it.
 - **Real bugs in the merged PRs:** both models found that jinja#2098's `__version__` returned werkzeug's version (fixed later in pallets/jinja@9c11dd6). Qwen3-Coder also flagged a debug `print` left in a textual test, and the 32B two docstring typos in textual#6455. Those three are real but trivial.

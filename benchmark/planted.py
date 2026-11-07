@@ -165,7 +165,8 @@ def _run(args) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     k, n = (int(part) for part in args.shard.split("/"))
-    bugs = [b for b in json.loads(Path(args.bugs).read_text(encoding="utf-8")) if args.set in ("all", b.get("set"))][k - 1::n]
+    bugs = [b for b in json.loads(Path(args.bugs).read_text(encoding="utf-8"))
+            if args.set in ("all", b.get("set")) and not b.get("invalid")][k - 1::n]
     name, _, endpoint = args.model.partition("@")
     model = Model(endpoint or "http://localhost:11434/v1", name, api_key=os.environ.get("STRATUM_MODEL_API_KEY"), context_tokens=args.context_tokens)
     policy = policy_for(args.context_tokens, Path(args.policy).read_text(encoding="utf-8") if args.policy else None)
@@ -224,9 +225,12 @@ def _score(out: Path) -> int:
 
 
 def _model_summary(out: Path) -> str:
-    sets = {f"{b['repo']}#{b['pr']}": b.get("set", "") for b in json.loads(BUGS.read_text(encoding="utf-8"))}
-    reviews = [row for path in sorted(out.rglob("reviews.csv")) for row in _read(path)]
-    findings = [row for path in sorted(out.rglob("findings.csv")) for row in _read(path)]
+    every = json.loads(BUGS.read_text(encoding="utf-8"))
+    sets = {f"{b['repo']}#{b['pr']}": b.get("set", "") for b in every}
+    invalid = {f"{b['repo']}#{b['pr']}": b["invalid"] for b in every if b.get("invalid")}
+    # A case found not to be a bug after a run is left out of its scores too.
+    reviews = [row for path in sorted(out.rglob("reviews.csv")) for row in _read(path) if row["case"] not in invalid]
+    findings = [row for path in sorted(out.rglob("findings.csv")) for row in _read(path) if row["case"] not in invalid]
     for row in reviews + findings:  # runs from before the clean control and the split
         row["variant"] = row.get("variant") or ""
         row["version"] = row.get("version") or "planted"
@@ -290,6 +294,8 @@ def _model_summary(out: Path) -> str:
     unmarked = sum(1 for m in findings if m["version"] == "planted" and not m["verdict"])
     if unmarked:
         lines += ["", f"**{unmarked} finding(s) not marked yet**, so Found and the marked counts are incomplete."]
+    for case, why in sorted(invalid.items()):
+        lines += ["", f"Left out: {case}. {why}"]
     return "\n".join(lines)
 
 
