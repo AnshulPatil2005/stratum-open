@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/click#3777,gpt-oss:20b,reasoning-low-verify-lenient,clean,medium,bug,src/click/_termui_impl.py,660,,Subprocess call without timeout,"The temporary file pager invokes the pager program via subprocess.call without specifying a timeout or handling errors. If the pager hangs or crashes, the process will block indefinitely, potentially causing the calling program to hang.",,

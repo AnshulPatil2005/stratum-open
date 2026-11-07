@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/werkzeug#3339,gpt-oss:20b,reasoning-low-verify-strict,clean,medium,bug,src/werkzeug/exceptions.py,185,,Missing None check for environ,"When `get_response` is called with the default `environ=None`, the code skips the `_get_environ` call (removed in this PR) and only converts a `Request` instance. If `environ` remains `None`, subsequent code that expects a dict will raise a `TypeError` or `AttributeError` when accessing keys.",,

@@ -55,8 +55,8 @@ jobs:
       - uses: AnshulPatil2005/stratum-open@v0.2.0
         with:
           # Runs the model on the runner: no server needed, but slow on CPU.
-          # For reviews that find far more, use gpt-oss:20b and set
-          # review.reasoning: low in .stratum/policy.yml (a 13.8 GB download each run;
+          # For reviews that find far more, use gpt-oss:20b and set review.reasoning: low
+          # and review.verify: strict in .stratum/policy.yml (a 13.8 GB download each run;
           # see "Models" in the README).
           # To use your own server instead, remove this line and set
           # review.endpoint in .stratum/policy.yml (or model-endpoint here).

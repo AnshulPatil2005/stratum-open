@@ -83,3 +83,4 @@ finding and every call. The machine each run used is noted in its summary.
 | [2026-11-07-planted-hosted](results/2026-11-07-planted-hosted/summary.md) | OpenRouter (reference) | Planted bugs found: `qwen-2.5-coder-32b` 12, `qwen3-coder` 15, of 40, with the same prompt |
 | [2026-11-07-verify-actions-cpu](results/2026-11-07-verify-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | `review.verify` against the current method, 7B and 14B, with the clean control |
 | [2026-11-08-moe-actions-cpu](results/2026-11-08-moe-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | Mixtures of experts: `gpt-oss:20b` finds 12 of 39 with `review.reasoning: low`, `deepseek-coder-v2:16b` 4 |
+| [2026-11-08-gpt-oss-actions-cpu](results/2026-11-08-gpt-oss-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | `gpt-oss:20b` with `reasoning: low` and each `verify`: 16 of 39 found with strict verify, 7 comments on 39 clean PRs |

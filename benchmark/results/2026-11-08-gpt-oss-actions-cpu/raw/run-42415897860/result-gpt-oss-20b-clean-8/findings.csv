@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/werkzeug#3337,gpt-oss:20b,reasoning-low-verify-strict,clean,medium,bug,src/werkzeug/http.py,1341,,Potential UnicodeEncodeError when parsing cookies,"The code encodes the cookie string using latin-1 without specifying an error handler. If the cookie header contains characters outside the latin-1 range, this will raise a UnicodeEncodeError and crash the request parsing.",,

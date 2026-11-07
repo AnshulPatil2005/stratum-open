@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/jinja#2098,gpt-oss:20b,reasoning-low-verify-strict,clean,high,bug,src/jinja2/__init__.py,55,,Incorrect package name in __getattr__,"When accessing __version__, the code attempts to read the version of the 'werkzeug' package instead of 'jinja2', causing AttributeError or wrong version information.",,
+Textualize/rich#3953,gpt-oss:20b,reasoning-low-verify-strict,clean,medium,bug,rich/cells.py,77,,Return negative width from get_character_cell_size,"The original logic returned 0 when width == -1 to indicate a non-printable character. The new code returns width directly, so a width of -1 propagates, causing negative cell widths and incorrect rendering.",,

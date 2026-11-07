@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/click#3858,gpt-oss:20b,reasoning-low-verify-strict,clean,medium,bug,src/click/types.py,1157,,Calling non-callable path_type,"When `path_type` is a type like `os.PathLike[str]` or a custom class that is not callable, the code attempts to call it with `value`. This raises a TypeError at runtime, breaking conversion for such path types.",,

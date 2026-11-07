@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3858,test,negated-condition,src/click/types.py,1152,gpt-oss:20b,reasoning-low-verify-strict,planted,462.5,yes,2,0,1,1,
+psf/black#5637,test,flipped-comparison,src/black/files.py,86,gpt-oss:20b,reasoning-low-verify-strict,planted,247.3,yes,2,0,1,1,
+Textualize/rich#3905,dev,wrong-boolean,rich/progress.py,1177,gpt-oss:20b,reasoning-low-verify-strict,planted,236.2,yes,2,0,1,1,
+encode/httpx#3672,test,inverted-return,src/httpx/_parsers.py,400,gpt-oss:20b,reasoning-low-verify-strict,planted,746.8,yes,1,1,0,0,the reply wasn't the JSON asked for
+pallets/werkzeug#3270,test,off-by-one,src/werkzeug/datastructures/range.py,359,gpt-oss:20b,reasoning-low-verify-strict,planted,753.1,yes,1,0,0,0,

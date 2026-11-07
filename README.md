@@ -98,13 +98,17 @@ On GitHub's free runner (4 CPUs, 16 GB RAM, no GPU) you can choose between two m
 | `ollama-model` | Policy setting | Bugs found | Wrong comments per clean PR | Time per PR | Download |
 | --- | --- | --- | --- | --- | --- |
 | `qwen2.5-coder:7b` (the example's) | | 1 of 39 | about 0.4 | about 2.5 min | 4.7 GB, kept in the Actions cache |
-| `gpt-oss:20b` | `review.reasoning: low` | 12 of 39 | about 0.4 | about 3 min | 13.8 GB, downloaded each run |
+| `gpt-oss:20b` | `review.reasoning: low` and `review.verify: strict` | 16 of 39 (12 to 16 over three runs) | about 0.2 | about 3.5 min | 13.8 GB, downloaded each run |
 
-`gpt-oss:20b` finds far more, at about the same speed and noise. Two costs:
+`gpt-oss:20b` finds far more, at about the same speed and with fewer wrong comments. Two costs:
 - **Disk:** it doesn't fit the runner's disk as it comes, so the Action removes preinstalled SDKs it doesn't need to make room.
 - **Cache:** it's bigger than a repository's 10 GB Actions cache, so it's downloaded each run, which adds a couple of minutes. Ollama itself is still cached.
 
 It's a thinking model, so it needs `review.reasoning: low`. Without it, the thinking uses up the output budget and most replies come back empty.
+
+`review.verify: strict` costs it no real catches and halves its wrong comments. On the 7B, by contrast, it removes noise only because there were no real catches to lose.
+
+The same review can catch different bugs from one run to the next, so expect the counts to move by a few.
 
 How much a review asks of the model depends on the model. `review.profile: auto` asks the model's server for its size:
 - **`small`**, for models up to about 20B: a compact diff, 1–3 model calls.

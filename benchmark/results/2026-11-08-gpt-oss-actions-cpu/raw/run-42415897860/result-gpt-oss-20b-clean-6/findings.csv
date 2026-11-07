@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8461,gpt-oss:20b,reasoning-low-verify-strict,clean,medium,bug,scrapy/extensions/feedexport.py,965,,Incorrect lock state check,"The DeferredLock API provides a `locked()` method, not a `locked` attribute. Using `self._export_lock.locked` will always evaluate to the method object, which is truthy, causing the code to always take the `else` branch and await the lock even when it is free. This can lead to unnecessary blocking and incorrect behavior.",,

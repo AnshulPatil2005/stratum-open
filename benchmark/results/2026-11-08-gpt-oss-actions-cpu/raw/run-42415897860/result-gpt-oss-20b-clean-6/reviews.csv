@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3818,dev,negated-condition,src/click/core.py,1591,gpt-oss:20b,reasoning-low-verify-strict,clean,289.4,yes,2,0,0,0,
+psf/black#5634,dev,flipped-comparison,src/black/comments.py,698,gpt-oss:20b,reasoning-low-verify-strict,clean,102.5,yes,1,0,0,0,
+Textualize/rich#3845,test,wrong-boolean,rich/style.py,202,gpt-oss:20b,reasoning-low-verify-strict,clean,65.8,yes,1,0,0,0,
+scrapy/scrapy#8461,dev,missing-await,scrapy/extensions/feedexport.py,969,gpt-oss:20b,reasoning-low-verify-strict,clean,100.4,yes,2,0,1,0,
+pallets/werkzeug#3293,dev,not-in,src/werkzeug/datastructures/accept.py,302,gpt-oss:20b,reasoning-low-verify-strict,clean,50.8,yes,1,0,0,0,
