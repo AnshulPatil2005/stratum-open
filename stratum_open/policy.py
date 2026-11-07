@@ -322,7 +322,7 @@ _INVALID = object()
 
 def _check(path: tuple[str, ...], value: Any, default: Any, errors: list[str]) -> Any:
     name = _dotted(path)
-    if path == ("boundaries", "new_edges") and value is False:
+    if path in (("boundaries", "new_edges"), ("review", "reasoning")) and value is False:
         return "off"  # YAML reads an unquoted `off` as false
     if path == ("boundaries", "forbid"):
         entries = _forbid_entries(value)
