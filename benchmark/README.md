@@ -68,3 +68,4 @@ finding and every call. The machine each run used is noted in its summary.
 | [2026-11-02-actions-cpu](results/2026-11-02-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | `qwen2.5-coder:7b`, `qwen2.5-coder:14b` |
 | [2026-11-07-checks](results/2026-11-07-checks/summary.md) | Any (no model) | The checks: 43 of 44 planted risks caught, no false alarms on 184 merged PRs |
 | [2026-11-07-planted-actions-cpu](results/2026-11-07-planted-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | Planted bugs found: `qwen2.5-coder` 1.5B 0, 3B 0, 7B 1, 14B 10, of 40 |
+| [2026-11-07-planted-hosted](results/2026-11-07-planted-hosted/summary.md) | OpenRouter (reference) | Planted bugs found: `qwen-2.5-coder-32b` 12, `qwen3-coder` 15, of 40, with the same prompt |
