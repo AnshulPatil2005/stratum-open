@@ -47,6 +47,7 @@ class Review:
     parallel_calls: int = 1  # model calls at once in the per-file passes (large: 4)
     max_inline_comments: int = 12
     min_severity: str = "medium"  # the model's findings below this aren't shown; the checks' always are
+    reasoning: str = "default"  # default | low | off: how much a thinking model (gpt-oss, Qwen3) thinks before answering
     rules: tuple[str, ...] = ()  # the project's own review rules, in plain words, added to the prompt
     ignore_paths: tuple[str, ...] = DEFAULT_IGNORED
     log_prompts: bool = False
@@ -177,6 +178,7 @@ _CHOICES = {
     ("review", "large_patch"): ("clip", "skip"),
     ("review", "mode"): ("general", "security", "performance", "maintainability"),
     ("review", "conclusion"): ("severity", "score"),
+    ("review", "reasoning"): ("default", "low", "off"),
     ("boundaries", "severity"): ("low", "medium", "high", "critical"),
     ("boundaries", "new_edges"): ("off", "warn", "fail"),
     **{("commands", name): _WHO for name in ("review", "ignore", "mute", "explain", "triage", "record")},

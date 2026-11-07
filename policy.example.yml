@@ -23,6 +23,7 @@ review:
   parallel_calls: 1            # profile: model calls at once in the per-file passes (large: 4)
   max_inline_comments: 12
   min_severity: medium         # the model's findings below this aren't shown (low | medium | high | critical); the checks' always are
+  reasoning: default           # default | low | off: how long a thinking model (gpt-oss, Qwen3) thinks first; on a CPU, `low` leaves room for the answer
   rules: []                    # your own review rules in plain words, e.g. "Every SQL query is parameterized."
   ignore_paths: ["**/*.lock", "**/package-lock.json", "**/pnpm-lock.yaml", "**/go.sum",
                  "**/*.min.js", "**/*.min.css", "**/*.map", "**/*.svg", "**/*.snap",
