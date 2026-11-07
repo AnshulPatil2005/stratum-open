@@ -210,3 +210,13 @@ def test_verify_is_off_by_default_and_for_unknown_values():
         model = FakeModel(answer())
         run(model, policy=policy)
         assert len(model.prompts) == 1
+
+
+def test_the_verifier_is_shown_the_flagged_line_even_in_a_long_hunk():
+    from stratum_open.review import VERIFY_CHARS, _excerpt
+    body = "".join(f"+    value_{i} = compute_something_long({i})  # padding padding padding\n" for i in range(1, 400))
+    long_diff = f"diff --git a/big.py b/big.py\n--- a/big.py\n+++ b/big.py\n@@ -0,0 +1,399 @@\n{body}"
+    [file] = parse_diff(long_diff)
+    text = _excerpt(file, 380, "interleaved")
+    assert len(text) <= VERIFY_CHARS
+    assert "value_380 = " in text and text.startswith("## big.py")

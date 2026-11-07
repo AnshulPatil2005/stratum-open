@@ -28,7 +28,7 @@ from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank, risk_score
 from stratum_open.model import is_model_failure
 from stratum_open.policy import Policy
-from stratum_open.review import ReviewResult, _locate, review, shown
+from stratum_open.review import VERIFY_PROMPTS, ReviewResult, _locate, review, shown, verify_findings
 from stratum_open.review_large import LargeReview, review_files, synthesize
 
 
@@ -124,6 +124,11 @@ def analyze(
                 "model": str(getattr(model, "name", "")), "seconds": 0, "ok": False, "prompt_tokens": None, "output_tokens": None,
                 "error": error, "traceback": traceback.format_exc(),
             }])
+
+    # The chunked review verifies its own findings; the per-file passes' go through the same check here.
+    if large is not None and large.findings and policy.review.verify in VERIFY_PROMPTS:
+        large.findings, dropped = verify_findings(large.findings, files, policy, model, large.calls, log)
+        large.dropped += dropped
 
     found = anchor_to_diff(checks + list(extra_findings) + (large.findings if large else []) + (result.findings if result else []), files)
     assign_fingerprints(found, files)

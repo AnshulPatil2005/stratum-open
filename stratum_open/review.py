@@ -262,33 +262,65 @@ def review(
 
 def _verified(result: ReviewResult, by_path: dict[str, FileDiff], policy: Policy, model: Model,
               log: Callable[[str, str], None] | None) -> list[Finding]:
+    kept, dropped = verify_findings(result.findings, list(by_path.values()), policy, model, result.calls, log)
+    result.dropped += dropped
+    return kept
+
+
+def verify_findings(findings: list[Finding], files: list[FileDiff], policy: Policy, model: Model,
+                    calls: list[dict[str, Any]], log: Callable[[str, str], None] | None = None) -> tuple[list[Finding], int]:
     """`review.verify`: one short call per finding, asking the model whether
     it's a real defect, with the code around it. `strict` expects most
     findings to be wrong; `lenient` has the model work the case through
-    first. A failed or unclear answer keeps the finding."""
+    first. A failed or unclear answer keeps the finding. Each call is added
+    to `calls`; returns the findings kept and how many were dropped."""
     system, max_tokens = VERIFY_PROMPTS[policy.review.verify]
-    kept = []
-    for finding in result.findings:
+    by_path = {f.path: f for f in files}
+    kept, dropped = [], 0
+    for finding in findings:
         file = by_path.get(finding.path)
         if file is None or finding.line_start is None:
             kept.append(finding)
             continue
-        near = [h for h in file.hunks if any(l.new is not None and abs(l.new - finding.line_start) <= VERIFY_LINES for l in h.lines)]
-        code = diffs.render(file, near or file.hunks, style=policy.review.diff_format)[:VERIFY_CHARS]
+        code = _excerpt(file, finding.line_start, policy.review.diff_format)
         user = f"The changed code:\n{code}\n\nThe finding, on line {finding.line_start}:\n{finding.title}: {finding.detail}"
         reply = model.complete(system, user, max_tokens=max_tokens)
         call = reply.as_dict()
         call["pass"] = "verify"
-        result.calls.append(call)
+        calls.append(call)
         if log and policy.review.log_prompts:
             log(system + "\n\n" + user, reply.text)
         data = parse_json(reply.text) if reply.ok else None
         verdict = _text(data.get("real"), 10).lower() if isinstance(data, dict) else ""
         if verdict == "no":
-            result.dropped += 1
+            dropped += 1
         else:
             kept.append(finding)
-    return kept
+    return kept, dropped
+
+
+def _excerpt(file: FileDiff, line: int, style: str) -> str:
+    """The hunks within VERIFY_LINES of `line`, cut to VERIFY_CHARS around
+    `line` itself, so a long hunk can't leave the flagged line out of what
+    the verifier is shown."""
+    near = [h for h in file.hunks if any(l.new is not None and abs(l.new - line) <= VERIFY_LINES for l in h.lines)]
+    text = diffs.render(file, near or file.hunks, style=style)
+    if len(text) <= VERIFY_CHARS:
+        return text
+    rows = text.split("\n")
+    at = next((i for i, row in enumerate(rows) if row.startswith(f"{line:>6} ")), len(rows) // 2)
+    start = end = at
+    size = len(rows[0]) + len(rows[at]) + 2
+    while True:  # grow the window both ways while it fits
+        grew = False
+        for i in (start - 1, end + 1):
+            if 0 < i < len(rows) and size + len(rows[i]) + 1 <= VERIFY_CHARS:
+                size += len(rows[i]) + 1
+                start, end = min(start, i), max(end, i)
+                grew = True
+        if not grew:
+            break
+    return "\n".join([rows[0]] + rows[max(start, 1):end + 1])
 
 
 def _left_out_block(packed: Packed) -> str:
