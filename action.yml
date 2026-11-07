@@ -11,8 +11,9 @@ inputs:
     default: ${{ github.token }}
   ollama-model:
     description: >-
-      Run this model with Ollama on the runner itself, e.g. qwen2.5-coder:7b. No server needed, but reviews are
-      slow on GitHub's CPU runners. Leave empty to use the endpoint in .stratum/policy.yml (or model-endpoint).
+      Run this model with Ollama on the runner itself, e.g. qwen2.5-coder:7b (the example's), or gpt-oss:20b with
+      review.reasoning: low in .stratum/policy.yml, which finds far more but is a 13.8 GB download each run. No
+      server needed. Leave empty to use the endpoint in .stratum/policy.yml (or model-endpoint).
     default: ""
   model-endpoint:
     description: An OpenAI-compatible endpoint to use instead of the policy file's, e.g. a GPU box your project runs.
@@ -53,28 +54,9 @@ runs:
       shell: bash
       env:
         MODEL: ${{ inputs.ollama-model }}
-        OLLAMA_VERSION: "0.40.13"
-        OLLAMA_SHA256: c9490e0f520be21271d969e6703f012268b1d39f8b70dd58854e5bfef7a75bb6
-      run: |
-        set -euo pipefail
-        root="$HOME/.stratum-ollama"
-        if [ ! -x "$root/bin/ollama" ]; then
-          mkdir -p "$root"
-          archive="$RUNNER_TEMP/ollama.tar.zst"
-          curl -fsSL -o "$archive" "https://github.com/ollama/ollama/releases/download/v${OLLAMA_VERSION}/ollama-linux-amd64.tar.zst"
-          echo "${OLLAMA_SHA256}  $archive" | sha256sum -c -  # pinned here, so a changed download fails
-          tar --zstd -x -C "$root" -f "$archive"
-          rm -f "$archive"
-          # GitHub's runners have no GPU; drop the GPU libraries so the cache stays small.
-          find "$root/lib/ollama" -mindepth 1 -maxdepth 1 -type d \( -name 'cuda*' -o -name 'rocm*' -o -name 'mlx*' \) -exec rm -rf {} + 2>/dev/null || true
-        fi
-        export OLLAMA_MODELS="$root/models"
-        nohup "$root/bin/ollama" serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
-        for _ in $(seq 1 60); do
-          if curl -sf http://localhost:11434/api/version > /dev/null; then break; fi
-          sleep 1
-        done
-        "$root/bin/ollama" pull "$MODEL"
+      # Installs Ollama into the cached folder if it isn't there, makes room on the
+      # disk for a model that needs it, and keeps one too big for the cache out of it.
+      run: bash "$GITHUB_ACTION_PATH/scripts/start-ollama.sh" "$MODEL"
 
     - name: Review
       shell: bash
