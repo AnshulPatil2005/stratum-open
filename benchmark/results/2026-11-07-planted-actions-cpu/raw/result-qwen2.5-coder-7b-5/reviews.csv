@@ -1,0 +1,6 @@
+case,kind,path,line,model,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3858,negated-condition,src/click/types.py,1152,qwen2.5-coder:7b,237.2,yes,1,0,0,0,
+psf/black#5637,flipped-comparison,src/black/files.py,86,qwen2.5-coder:7b,144.1,yes,1,0,0,0,
+Textualize/rich#3905,wrong-boolean,rich/progress.py,1177,qwen2.5-coder:7b,115.5,yes,1,0,0,0,
+encode/httpx#3672,inverted-return,src/httpx/_parsers.py,400,qwen2.5-coder:7b,416.0,yes,1,0,1,0,
+psf/black#5626,inverted-return,src/black/linegen.py,2025,qwen2.5-coder:7b,172.7,yes,1,0,0,0,

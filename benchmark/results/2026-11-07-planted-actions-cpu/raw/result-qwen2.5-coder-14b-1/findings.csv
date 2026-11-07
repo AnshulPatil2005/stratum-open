@@ -1,0 +1,5 @@
+case,model,severity,category,path,line,near,title,detail,verdict,note
+encode/httpx#3690,qwen2.5-coder:14b,medium,bug,src/ahttpx/_parsers.py,232,,Potential AttributeError,"If `self.parser` does not have a `wait_ready` method, this will raise an AttributeError. The same applies to line 468.",wrong,The PR adds wait_ready to the parser.
+encode/httpx#3690,qwen2.5-coder:14b,medium,bug,src/ahttpx/_server.py,35,,Potential AttributeError,"If `self._parser` does not have a `wait_ready` method, this will raise an AttributeError. The same applies to line 60.",wrong,The PR adds wait_ready to the parser.
+encode/httpx#3690,qwen2.5-coder:14b,medium,bug,src/httpx/_parsers.py,232,,Potential AttributeError,"If `self.parser` does not have a `wait_ready` method, this will raise an AttributeError. The same applies to line 468.",wrong,The PR adds wait_ready to the parser.
+encode/httpx#3690,qwen2.5-coder:14b,medium,bug,src/httpx/_server.py,35,yes,Potential AttributeError,"If `self._parser` does not have a `wait_ready` method, this will raise an AttributeError.",wrong,"On the planted line, but worries about a missing method instead of seeing the condition is negated."

@@ -40,9 +40,9 @@ Marking findings on merged PRs needs a maintainer for every row, so
   flipped comparison, a negated condition, `and` for `or`, an inverted return,
   a dropped `await`, an off-by-one. Each case says what the bug breaks. Each
   model reviews them as the Action does (the `small` profile, an 8,192-token
-  window). A finding within 3 lines of the bug is near it; a person then marks
-  whether it describes the bug (`found`) and whether each other finding is a
-  real problem. Start the **Planted-bug benchmark** workflow to run it on
+  window). A finding within 3 lines of the bug is near it; each finding is
+  then read and marked: whether it describes the bug (`found`), and whether
+  each other finding is a real problem, with the reason in its `note`. Start the **Planted-bug benchmark** workflow to run it on
   GitHub's free runners, one job per model and shard.
 - **The checks that need no model.** [risks.yml](planted/risks.yml) is 44
   planted risks (secrets, code that runs input, workflow holes, typosquatted
@@ -67,3 +67,4 @@ finding and every call. The machine each run used is noted in its summary.
 | --- | --- | --- |
 | [2026-11-02-actions-cpu](results/2026-11-02-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | `qwen2.5-coder:7b`, `qwen2.5-coder:14b` |
 | [2026-11-07-checks](results/2026-11-07-checks/summary.md) | Any (no model) | The checks: 43 of 44 planted risks caught, no false alarms on 184 merged PRs |
+| [2026-11-07-planted-actions-cpu](results/2026-11-07-planted-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | Planted bugs found: `qwen2.5-coder` 1.5B 0, 3B 0, 7B 1, 14B 10, of 40 |

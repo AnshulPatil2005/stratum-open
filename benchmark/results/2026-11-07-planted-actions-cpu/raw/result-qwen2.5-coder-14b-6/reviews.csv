@@ -1,0 +1,6 @@
+case,kind,path,line,model,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3818,negated-condition,src/click/core.py,1591,qwen2.5-coder:14b,1081.9,yes,2,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+psf/black#5634,flipped-comparison,src/black/comments.py,698,qwen2.5-coder:14b,340.0,yes,1,0,0,0,
+Textualize/rich#3845,wrong-boolean,rich/style.py,202,qwen2.5-coder:14b,278.3,yes,1,0,1,0,
+scrapy/scrapy#8461,missing-await,scrapy/extensions/feedexport.py,969,qwen2.5-coder:14b,222.4,yes,1,0,1,0,
+pallets/werkzeug#3270,off-by-one,src/werkzeug/datastructures/range.py,359,qwen2.5-coder:14b,900.1,yes,1,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout

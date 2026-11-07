@@ -14,7 +14,7 @@
 
 Missed: `dep-jellyfish` (found: deps/missing, deps/new).
 
-On the merged PRs: 3 finding(s) on 2 of 184 PRs. Marked by hand: 3 right, 0 wrong (false alarms), 0 unsure.
+On the merged PRs: 3 finding(s) on 2 of 184 PRs. Marked: 3 right, 0 wrong (false alarms), 0 unsure.
 
 | PR | Rule | Finding | Verdict | Why |
 | --- | --- | --- | --- | --- |

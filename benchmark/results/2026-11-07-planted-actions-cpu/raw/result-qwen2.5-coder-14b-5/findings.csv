@@ -1,0 +1,2 @@
+case,model,severity,category,path,line,near,title,detail,verdict,note
+Textualize/rich#3905,qwen2.5-coder:14b,medium,bug,rich/progress.py,1175,yes,Incorrect condition,The condition `if not self.disable:` should be `if self.disable:` to correctly handle the disabled state. The same applies to line 1177.,wrong,"Near the bug, but calls the correct disable check inverted."

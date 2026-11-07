@@ -1,0 +1,6 @@
+case,kind,path,line,model,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5917,negated-condition,src/flask/sansio/app.py,641,qwen2.5-coder:3b,298.6,yes,1,0,2,0,
+encode/httpx#3690,negated-condition,src/httpx/_server.py,35,qwen2.5-coder:3b,128.4,yes,1,0,0,0,
+pydantic/pydantic#14244,flipped-comparison,pydantic/json_schema.py,2967,qwen2.5-coder:3b,119.2,yes,1,0,1,0,
+Textualize/textual#6455,wrong-boolean,src/textual/screen.py,2028,qwen2.5-coder:3b,131.3,yes,1,0,2,1,
+pypa/pip#14349,off-by-one,src/pip/_internal/cli/autocompletion.py,144,qwen2.5-coder:3b,304.7,yes,1,0,0,0,

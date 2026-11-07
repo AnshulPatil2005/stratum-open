@@ -1,0 +1,4 @@
+case,model,severity,category,path,line,near,title,detail,verdict,note
+encode/httpx#3673,qwen2.5-coder:7b,medium,bug,src/httpx/_server.py,54,,Potential infinite loop,"The `_reset` method is called without a condition, which could lead to an infinite loop if the parser is not properly reset.",wrong,_reset is called once per exchange; there is no loop.
+pallets/click#3777,qwen2.5-coder:7b,medium,bug,src/click/_termui_impl.py,578,,Inverted condition,"The condition checks if `cmd_name` is 'less' when `color` is `None`, but it should check if `color` is `None` when `cmd_name` is 'less'.",wrong,Restates the same condition in other words.
+pallets/click#3777,qwen2.5-coder:7b,medium,bug,src/click/_termui_impl.py,660,,Potential subprocess call without timeout,"The subprocess call does not have a timeout, which could lead to hanging if the pager command takes too long.",wrong,A pager is interactive; a timeout would cut the user off.
