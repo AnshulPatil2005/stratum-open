@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/werkzeug#3337,gpt-oss:20b,reasoning-low,clean,high,bug,src/werkzeug/sansio/http.py,114,,Passing unsupported kwarg to http.parse_cookie,"The deprecated `cls` kwarg is still forwarded to http.parse_cookie, which does not accept it, leading to a TypeError when callers pass `cls` (e.g., Request.cookies).",,

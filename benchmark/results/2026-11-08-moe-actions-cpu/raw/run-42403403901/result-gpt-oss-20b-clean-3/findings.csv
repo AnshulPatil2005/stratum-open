@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pydantic/pydantic#14199,gpt-oss:20b,reasoning-low,clean,medium,bug,pydantic/_internal/_contextlib.py,37,,Unconditionally raises RuntimeError on context exit,"When exiting a context with no exception (typ is None), the loop iterates over the generator and immediately raises RuntimeError(""generator didn't stop"") inside a try block, then closes the generator in the finally clause. This causes every normal exit to raise an exception, breaking normal context usage.",,

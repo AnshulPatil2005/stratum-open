@@ -173,6 +173,8 @@ def effective_policy(policy: Policy, model: Any | None) -> tuple[Policy, str, st
     policy = apply(policy, profile, info)
     if model is not None:
         model.context_tokens = policy.review.context_tokens
+        if hasattr(model, "reasoning"):
+            model.reasoning = policy.review.reasoning
     if policy.review.profile != "auto":
         why = "set in the policy"
     elif info.billions is not None:

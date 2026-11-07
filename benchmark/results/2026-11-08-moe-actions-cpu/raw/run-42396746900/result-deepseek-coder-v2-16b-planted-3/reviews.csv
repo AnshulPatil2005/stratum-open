@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5700,test,negated-condition,src/flask/__init__.py,45,deepseek-coder-v2:16b,,planted,73.9,yes,1,0,2,1,
+pallets/jinja#2026,dev,flipped-comparison,src/jinja2/runtime.py,998,deepseek-coder-v2:16b,,planted,128.6,yes,1,0,4,0,
+pydantic/pydantic#14199,dev,flipped-comparison,pydantic/_internal/_contextlib.py,45,deepseek-coder-v2:16b,,planted,66.2,yes,1,0,0,0,
+scrapy/scrapy#8431,dev,wrong-boolean,scrapy/downloadermiddlewares/cookies.py,45,deepseek-coder-v2:16b,,planted,148.9,yes,1,0,2,1,
+pallets/click#3777,test,inverted-return,src/click/_termui_impl.py,543,deepseek-coder-v2:16b,,planted,306.9,yes,2,0,3,0,

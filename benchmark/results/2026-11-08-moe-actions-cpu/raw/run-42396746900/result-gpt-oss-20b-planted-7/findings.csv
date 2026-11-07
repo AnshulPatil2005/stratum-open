@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+psf/requests#7496,gpt-oss:20b,,planted,high,bug,src/requests/models.py,241,yes,Inverted condition in file encoding,"The condition incorrectly skips all non‑None file pointers, causing any file-like object to be ignored and not uploaded. This breaks file upload functionality.",right,Describes the planted flip: every file that is set gets skipped.

@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5917,test,negated-condition,src/flask/sansio/app.py,641,gpt-oss:20b,,clean,786.0,yes,1,1,0,0,the reply wasn't the JSON asked for
+encode/httpx#3690,test,negated-condition,src/httpx/_server.py,35,gpt-oss:20b,,clean,543.5,yes,1,1,0,0,the reply wasn't the JSON asked for
+pydantic/pydantic#14244,dev,flipped-comparison,pydantic/json_schema.py,2967,gpt-oss:20b,,clean,641.2,yes,1,0,0,0,
+Textualize/textual#6455,test,wrong-boolean,src/textual/screen.py,2028,gpt-oss:20b,,clean,331.1,yes,1,0,0,0,
+Textualize/rich#4006,dev,off-by-one,rich/cells.py,197,gpt-oss:20b,,clean,608.3,yes,1,1,0,0,the reply wasn't the JSON asked for
