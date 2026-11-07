@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8464,qwen2.5-coder:7b,verify,planted,medium,bug,scrapy/core/downloader/handlers/http2.py,142,,Inverted condition,"The condition checks if the response is not a failure and has the 'dataloss' flag, which is incorrect. It should check if the response is a failure or has the 'dataloss' flag.",,

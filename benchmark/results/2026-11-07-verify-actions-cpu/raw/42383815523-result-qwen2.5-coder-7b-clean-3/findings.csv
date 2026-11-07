@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/click#3777,qwen2.5-coder:7b,verify,clean,medium,bug,src/click/_termui_impl.py,660,,Potential command injection,"The code directly passes `cmd_path` and `f.name` to `subprocess.call`, which could lead to command injection if `cmd_path` contains unexpected values.",,

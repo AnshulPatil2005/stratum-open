@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/werkzeug#3339,test,negated-condition,src/werkzeug/exceptions.py,48,qwen2.5-coder:14b,verify,planted,1553.2,yes,5,1,1,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+psf/requests#7496,dev,flipped-comparison,src/requests/models.py,241,qwen2.5-coder:14b,verify,planted,469.5,yes,3,0,0,0,
+Textualize/textual#6542,test,wrong-boolean,src/textual/_xterm_parser.py,356,qwen2.5-coder:14b,verify,planted,900.1,yes,1,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+scrapy/scrapy#8413,test,missing-await,scrapy/pipelines/media.py,171,qwen2.5-coder:14b,verify,planted,199.3,yes,1,0,0,0,
+Textualize/textual#6405,test,missing-await,src/textual/widgets/_directory_tree.py,537,qwen2.5-coder:14b,verify,planted,808.4,yes,3,0,0,0,

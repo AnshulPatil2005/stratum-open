@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/werkzeug#3293,qwen2.5-coder:14b,verify,clean,medium,breaking-change,src/werkzeug/datastructures/accept.py,302,yes,Breaking change in `accept_html`,"The `accept_html` property no longer matches XHTML or XML, which may break existing code that relies on this behavior.",,

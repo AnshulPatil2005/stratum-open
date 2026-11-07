@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8464,qwen2.5-coder:7b,verify,clean,medium,bug,scrapy/core/_http2/stream.py,411,,Incorrect condition for clearing the buffer,"The condition checks if the reason is not `STOP_DOWNLOAD` and not (`CANCELLED` and `self._cancel_keeps_body`). This will not clear the buffer when `reason` is `CANCELLED` and `self._cancel_keeps_body` is `True`, which is incorrect.",,

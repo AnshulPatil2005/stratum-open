@@ -1,0 +1,4 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+encode/httpx#3672,qwen2.5-coder:7b,,clean,medium,bug,src/ahttpx/_server.py,54,,Potential infinite loop,The `_reset()` method is called without a condition to check if the connection is still keep-alive. This could lead to an infinite loop if the connection is not properly closed.,,
+encode/httpx#3672,qwen2.5-coder:7b,,clean,medium,bug,src/httpx/_network.py,192,,Potential memory leak,"The code only removes closed streams from the `_streams` list. If a stream is not properly closed, it will remain in the list, potentially leading to a memory leak.",,
+encode/httpx#3672,qwen2.5-coder:7b,,clean,medium,bug,src/httpx/_server.py,54,,Potential infinite loop,The `_reset()` method is called without a condition to check if the connection is still keep-alive. This could lead to an infinite loop if the connection is not properly closed.,,

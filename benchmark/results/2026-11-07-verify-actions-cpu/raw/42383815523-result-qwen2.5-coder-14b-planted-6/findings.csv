@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8461,qwen2.5-coder:14b,verify,planted,medium,bug,scrapy/extensions/feedexport.py,965,,Incorrect lock check,The check `if not self._export_lock.locked:` does not ensure that the lock is acquired. The lock might still be acquired by another thread or process after the check.,,

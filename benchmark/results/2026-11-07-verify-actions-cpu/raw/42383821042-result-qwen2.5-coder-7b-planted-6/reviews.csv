@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3818,dev,negated-condition,src/click/core.py,1591,qwen2.5-coder:7b,,planted,318.4,yes,2,0,0,0,
+psf/black#5634,dev,flipped-comparison,src/black/comments.py,698,qwen2.5-coder:7b,,planted,128.9,yes,1,0,0,0,
+Textualize/rich#3845,test,wrong-boolean,rich/style.py,202,qwen2.5-coder:7b,,planted,97.9,yes,1,0,0,0,
+scrapy/scrapy#8461,dev,missing-await,scrapy/extensions/feedexport.py,969,qwen2.5-coder:7b,,planted,74.2,yes,1,0,2,0,
+pallets/werkzeug#3293,dev,not-in,src/werkzeug/datastructures/accept.py,302,qwen2.5-coder:7b,,planted,37.8,yes,1,0,0,0,

@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8464,qwen2.5-coder:14b,verify,clean,medium,bug,scrapy/core/downloader/handlers/http2.py,142,,Potential AttributeError,"If `response` is None, accessing `flags` will raise an AttributeError.",,

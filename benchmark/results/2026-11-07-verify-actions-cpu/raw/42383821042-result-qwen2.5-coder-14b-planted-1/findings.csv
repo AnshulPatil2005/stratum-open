@@ -1,0 +1,5 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/textual#6455,qwen2.5-coder:14b,,planted,medium,bug,src/textual/screen.py,2061,,Missing default parameter in get_common_ancestor,"The call to get_common_ancestor does not provide a default parameter, which could raise a ValueError if there is no common ancestor.",,
+Textualize/rich#4006,qwen2.5-coder:14b,,planted,medium,bug,rich/cells.py,189,,Handling of special characters at the start,"If `spans` is empty, appending a span with a zero cell length might not correctly handle the start of the string.",,
+Textualize/rich#4006,qwen2.5-coder:14b,,planted,medium,bug,rich/cells.py,197,yes,Incorrect index increment,The condition `index <= (codepoint_count - 1)` can lead to an infinite loop if `index` is incremented by 1 when it should be incremented by 2.,,
+Textualize/rich#4006,qwen2.5-coder:14b,,planted,medium,bug,rich/cells.py,203,,Incorrect handling of variation selectors,The condition `if last_measured_character:` might not correctly handle variation selectors.,,

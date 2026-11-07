@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8461,qwen2.5-coder:7b,verify,planted,medium,bug,scrapy/extensions/feedexport.py,965,,Potential race condition,"The lock is checked and acquired without an atomic operation, which could lead to a race condition.",,

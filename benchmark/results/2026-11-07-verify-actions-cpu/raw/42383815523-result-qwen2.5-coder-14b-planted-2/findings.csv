@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pydantic/pydantic#14213,qwen2.5-coder:14b,verify,planted,high,bug,pydantic/plugin/_loader.py,43,yes,Incorrect disabled plugins check,"The condition checks if `disabled_plugins` is `None` and then tries to split it, which will raise an AttributeError.",,
+Textualize/rich#3953,qwen2.5-coder:14b,verify,planted,medium,bug,rich/cells.py,,,Incorrect test case for ZWJ sequence,"The test case assumes a specific behavior for the ZWJ sequence, which may not align with the actual implementation.",,
