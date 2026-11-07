@@ -150,3 +150,71 @@ def test_without_the_full_text_a_call_handed_on_or_collected_is_left_alone():
         assert awaits.check(diff(added)) == [], added
     for added in ("job()", "result = job()", "return job()"):
         assert [f.line_start for f in awaits.check(diff(added))] == [10], added
+
+
+def sync_flagged(text):
+    files, contents = added_file("app.py", text)
+    return sorted((f.line_start, f.rule) for f in awaits.check_sync_files(files, contents))
+
+
+def test_awaiting_a_plain_file_from_open_is_flagged():
+    # The shape that shipped in encode/httpx#3670: a plain file awaited like an async one.
+    assert sync_flagged("""
+class MultiPartStream:
+    async def read(self):
+        if self._fin is None:
+            self._fin = open(self._path, "rb")
+        chunk = await self._fin.read(65536)
+        await self._fin.close()
+        return chunk
+
+async def dump(path):
+    with open(path) as f:
+        return await f.read()
+""") == [(5, "code/await-sync-file"), (6, "code/await-sync-file"), (11, "code/await-sync-file")]
+
+
+def test_files_from_an_async_open_are_left_alone():
+    assert sync_flagged("""
+import aiofiles
+
+async def dump(path):
+    async with aiofiles.open(path) as f:
+        return await f.read()
+""") == []
+    assert sync_flagged("""
+from anyio import open_file as open
+
+async def dump(path):
+    f = open(path)
+    return await f.read()
+""") == []
+    assert sync_flagged("""
+class Stream:
+    def __init__(self, fin):
+        self._fin = fin
+
+    async def read(self):
+        return await self._fin.read()
+""") == []
+
+
+def test_a_plain_file_in_one_function_says_nothing_about_another():
+    assert sync_flagged("""
+def save(path):
+    with open(path) as f:
+        f.write("x")
+
+async def load(path):
+    async with anyio.open_file(path) as f:
+        return await f.read()
+""") == []
+
+
+def test_a_name_rebound_to_something_else_is_no_longer_a_plain_file():
+    assert sync_flagged("""
+async def load(path):
+    f = open(path)
+    f = anyio.wrap_file(f)
+    return await f.read()
+""") == []
