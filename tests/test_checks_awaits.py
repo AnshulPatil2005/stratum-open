@@ -197,3 +197,24 @@ class Stream:
     async def read(self):
         return await self._fin.read()
 """) == []
+
+
+def test_a_plain_file_in_one_function_says_nothing_about_another():
+    assert sync_flagged("""
+def save(path):
+    with open(path) as f:
+        f.write("x")
+
+async def load(path):
+    async with anyio.open_file(path) as f:
+        return await f.read()
+""") == []
+
+
+def test_a_name_rebound_to_something_else_is_no_longer_a_plain_file():
+    assert sync_flagged("""
+async def load(path):
+    f = open(path)
+    f = anyio.wrap_file(f)
+    return await f.read()
+""") == []

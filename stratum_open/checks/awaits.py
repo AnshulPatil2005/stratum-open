@@ -191,11 +191,16 @@ def check_sync_files(files: list[FileDiff], contents: dict[str, str] | None = No
         tree = _parse((contents or {}).get(file.path) or "") if added else None
         if tree is None or _shadows_open(tree):
             continue
-        for scope in [tree, *(n for n in ast.walk(tree) if isinstance(n, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)))]:
-            plain = _plain_files(scope)
-            if not plain:
+        # A class's `self.` files are matched against its methods' awaits; a
+        # function's local files against its own body's. Nothing crosses over.
+        for scope in ast.walk(tree):
+            if isinstance(scope, ast.ClassDef):
+                plain, body = _plain_files(scope, own=True), list(ast.walk(scope))
+            elif isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                plain, body = _plain_files(scope, own=False), _own_body(scope)
+            else:
                 continue
-            for node in ast.walk(scope):
+            for node in body if plain else []:
                 if (isinstance(node, ast.Await) and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute)
                         and node.value.func.attr in _FILE_METHODS and _name(node.value.func.value) in plain and node.lineno in added):
                     findings.append(_sync_file_finding(file.path, node.lineno, f"{_name(node.value.func.value)}.{node.value.func.attr}"))
@@ -212,18 +217,53 @@ def _shadows_open(tree: ast.Module) -> bool:
     return any(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "open" for n in tree.body)
 
 
-def _plain_files(scope: ast.AST) -> set[str]:
-    """Names (`f`, `self._fin`) this scope binds to the builtin `open()`."""
-    def is_open(call: ast.AST) -> bool:
-        return isinstance(call, ast.Call) and _name(call.func) in ("open", "io.open")
-    names = set()
-    for node in ast.walk(scope):
-        if isinstance(node, ast.Assign) and is_open(node.value):
-            names |= {n for t in node.targets for n in [_name(t)] if n}
-        elif isinstance(node, ast.With):  # a sync `with open(...) as f`; `async with` is someone else's open
-            names |= {n for item in node.items if is_open(item.context_expr) and item.optional_vars is not None
-                      for n in [_name(item.optional_vars)] if n}
-    return names
+def _own_body(func: ast.AST) -> list[ast.AST]:
+    """A function's nodes, without those of the functions and classes in it."""
+    nodes, stack = [], list(ast.iter_child_nodes(func))
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)):
+            continue
+        nodes.append(node)
+        stack.extend(ast.iter_child_nodes(node))
+    return nodes
+
+
+def _plain_files(scope: ast.AST, *, own: bool) -> set[str]:
+    """What a scope binds only to the builtin `open()` (or resets to None):
+    a class's `self.`/`cls.` attributes (`own`), or a function's local names.
+    A name it also binds to anything else (`anyio.wrap_file(f)`, a parameter
+    passed in) may be async by then, so it's left out."""
+    def is_open(value: ast.AST | None) -> bool:
+        return isinstance(value, ast.Call) and _name(value.func) in ("open", "io.open")
+
+    def wanted(name: str | None) -> bool:
+        return bool(name) and (name.startswith(("self.", "cls.")) if own else "." not in name)
+
+    nodes = list(ast.walk(scope)) if own else _own_body(scope)
+    opened, other = set(), set()
+    for node in nodes:
+        pairs: list[tuple[ast.AST, ast.AST | None]] = []
+        if isinstance(node, ast.Assign):
+            pairs = [(t, node.value) for t in node.targets]
+        elif isinstance(node, (ast.AnnAssign, ast.AugAssign)):
+            pairs = [(node.target, node.value if isinstance(node, ast.AnnAssign) else None)]
+        elif isinstance(node, (ast.With, ast.AsyncWith)):  # `async with` is someone else's open
+            pairs = [(item.optional_vars, item.context_expr if isinstance(node, ast.With) else None)
+                     for item in node.items if item.optional_vars is not None]
+        elif isinstance(node, (ast.For, ast.AsyncFor)):
+            pairs = [(node.target, None)]
+        for target, value in pairs:
+            name = _name(target)
+            if not wanted(name):
+                continue
+            if is_open(value):
+                opened.add(name)
+            elif not (isinstance(value, ast.Constant) and value.value is None):
+                other.add(name)
+    if not own and isinstance(scope, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        other |= {a.arg for a in scope.args.args + scope.args.kwonlyargs + scope.args.posonlyargs}
+    return opened - other
 
 
 def _sync_file_finding(path: str, number: int, call: str) -> Finding:
