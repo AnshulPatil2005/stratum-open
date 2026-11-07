@@ -111,3 +111,42 @@ def test_touches_async():
     assert awaits.touches_async(files[0])
     files, _ = added_file("app.py", "def a():\n    pass\n")
     assert not awaits.touches_async(files[0])
+
+
+def test_a_removed_self_await_counts_only_in_the_class_its_hunk_is_in():
+    # The PR drops `await self._file.close()` from AsyncStream and adds a
+    # plain `self._file.close()` to SyncStream: the second isn't missing one.
+    new = "\n".join([
+        "class AsyncStream:",
+        "    async def close(self):",
+        "        pass",
+        "",
+        "class SyncStream:",
+        "    async def close(self):",
+        "        self._file.close()",
+    ])
+    diff = "\n".join([
+        "diff --git a/app.py b/app.py", "--- a/app.py", "+++ b/app.py",
+        "@@ -1,3 +1,3 @@", " class AsyncStream:", "     async def close(self):", "-        await self._file.close()", "+        pass",
+        "@@ -5,3 +5,3 @@", " class SyncStream:", "     async def close(self):", "-        pass", "+        self._file.close()",
+    ]) + "\n"
+    assert awaits.check(parse_diff(diff), {"app.py": new + "\n"}) == []
+    # Within the same class it still counts.
+    same = "\n".join([
+        "diff --git a/app.py b/app.py", "--- a/app.py", "+++ b/app.py",
+        "@@ -1,3 +1,3 @@", " class Stream:", "     async def close(self):", "-        await self._file.close()", "+        self._file.close()",
+    ]) + "\n"
+    text = "class Stream:\n    async def close(self):\n        self._file.close()\n"
+    assert [f.line_start for f in awaits.check(parse_diff(same), {"app.py": text})] == [3]
+
+
+def test_without_the_full_text_a_call_handed_on_or_collected_is_left_alone():
+    def diff(added):
+        return parse_diff("\n".join([
+            "diff --git a/app.py b/app.py", "--- a/app.py", "+++ b/app.py",
+            "@@ -10,2 +10,2 @@ async def run(self):", "-    await job()", f"+    {added}", "     return None",
+        ]) + "\n")
+    for added in ("task = asyncio.create_task(job())", "await asyncio.gather(job())", "jobs = [job()]", "log(job())"):
+        assert awaits.check(diff(added)) == [], added
+    for added in ("job()", "result = job()", "return job()"):
+        assert [f.line_start for f in awaits.check(diff(added))] == [10], added

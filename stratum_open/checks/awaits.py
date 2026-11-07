@@ -39,13 +39,15 @@ def check(files: list[FileDiff], contents: dict[str, str] | None = None) -> list
         added = {number for number, _ in file.added()}
         if not added:
             continue
-        removed_awaits = {m.group(1) for text in file.removed() for m in _AWAITED.finditer(text)}
+        # Each removed await, with a new-file line from its hunk to place it in a class.
+        removed = [(_anchor(hunk), m.group(1)) for hunk in file.hunks for line in hunk.lines
+                   if line.kind == "-" for m in _AWAITED.finditer(line.text)]
         text = (contents or {}).get(file.path)
         tree = _parse(text) if text is not None else None
         if tree is not None:
-            hits = _from_tree(tree, added, removed_awaits)
+            hits = _from_tree(tree, added, removed)
         else:
-            hits = _from_lines(file, added, removed_awaits)
+            hits = _from_lines(file, added)
         findings.extend(_finding(file.path, number, name) for number, name in sorted(set(hits)))
     return findings
 
@@ -82,18 +84,30 @@ def _awaits(node: ast.AST) -> set[str]:
             for name in [_name(n.value.func)] if name}
 
 
-def _from_tree(tree: ast.Module, added: set[int], removed_awaits: set[str]) -> list[tuple[int, str]]:
+def _anchor(hunk) -> int:
+    """A new-file line in the hunk, near its removed lines."""
+    return next((line.new for line in hunk.lines if line.new is not None), hunk.new_start)
+
+
+def _own(name: str) -> bool:
+    return name.startswith(("self.", "cls."))
+
+
+def _from_tree(tree: ast.Module, added: set[int], removed: list[tuple[int, str]]) -> list[tuple[int, str]]:
     """`self.x.y` means something different in each class (one class's
     `self._file` can be a sync file, another's an async one), so those names
-    count as awaited only within the class; other names, file-wide."""
-    module_wide = {n for n in _awaits(tree) | removed_awaits if not n.startswith(("self.", "cls."))}
+    count as awaited only within their class, and a removed one only in the
+    class its hunk is in; other names, file-wide."""
+    module_wide = {n for n in _awaits(tree) if not _own(n)} | {n for _, n in removed if not _own(n)}
     hits = []
     scopes: list[tuple[ast.AST, set[str]]] = [(tree, set())]
     while scopes:
         scope, own = scopes.pop()
         for node in ast.iter_child_nodes(scope):
             if isinstance(node, ast.ClassDef):
-                scopes.append((node, {n for n in _awaits(node) | removed_awaits if n.startswith(("self.", "cls."))}))
+                span = range(node.lineno, (node.end_lineno or node.lineno) + 1)
+                mine = {n for n in _awaits(node) if _own(n)} | {n for at, n in removed if _own(n) and at in span}
+                scopes.append((node, mine))
             elif isinstance(node, ast.AsyncFunctionDef):
                 hits.extend(_in_async(node, added, module_wide | own))
                 scopes.append((node, own))
@@ -137,21 +151,25 @@ def _in_async(func: ast.AsyncFunctionDef, added: set[int], awaited: set[str]) ->
     return hits
 
 
-def _from_lines(file: FileDiff, added: set[int], removed_awaits: set[str]) -> list[tuple[int, str]]:
-    """No full text: only a call the PR's own removed lines awaited, on an
-    added line in a hunk that shows it's inside an `async def`."""
-    if not removed_awaits:
-        return []
+def _from_lines(file: FileDiff, added: set[int]) -> list[tuple[int, str]]:
+    """No full text, so only the plainest case: in a hunk that shows it's
+    inside an `async def`, an added line whose whole statement is a call
+    (`f(...)`, `x = f(...)`, `return f(...)`) that a removed line of the
+    same hunk awaited. A call nested in another (`create_task(f())`) or in a
+    collection can't be told apart from one handed on, so it's left alone."""
     hits = []
     for hunk in file.hunks:
+        awaited = {m.group(1) for line in hunk.lines if line.kind == "-" for m in _AWAITED.finditer(line.text)}
+        if not awaited:
+            continue
         in_async = "async def" in hunk.header
         for line in hunk.lines:
             if line.new is not None and _ASYNC_DEF.match(line.text):
                 in_async = True
             if line.kind != "+" or line.new not in added or not in_async or "await" in line.text:
                 continue
-            for name in removed_awaits:
-                if re.search(rf"(?<![\w.]){re.escape(name)}\s*\(", line.text):
+            for name in awaited:
+                if re.match(rf"\s*(?:return\s+|[\w.]+(?:\s*,\s*[\w.]+)*\s*=\s*)?{re.escape(name)}\s*\(", line.text):
                     hits.append((line.new, name))
     return hits
 
