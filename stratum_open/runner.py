@@ -259,8 +259,10 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
 def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = False) -> dict[str, str] | None:
     """The full new text of the files where the checks need context:
     workflows and manifests always (they're small), Python files for Bandit
-    when it's installed. With `around` (the profile shows code around each
-    hunk), the biggest changes the model will read too."""
+    when it's installed, and otherwise the Python files whose change touches
+    async code, for the missing-await check. With `around` (the profile shows
+    code around each hunk), the biggest changes the model will read too."""
+    from stratum_open.checks.awaits import touches_async
     from stratum_open.checks.bandit import available
     from stratum_open.checks.dependencies import manifest_kind
 
@@ -271,9 +273,8 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
 
     live = [f for f in files if f.status != "deleted" and not f.binary]
     fetch = [f for f in live if wanted(f)][:MAX_CONTEXT_FILES]
-    if available():
-        python = sorted((f for f in live if f.path.endswith(".py")), key=lambda f: -f.additions)
-        fetch += python[:MAX_BANDIT_FILES]
+    python = sorted((f for f in live if f.path.endswith(".py")), key=lambda f: -f.additions)
+    fetch += (python if available() else [f for f in python if touches_async(f)])[:MAX_BANDIT_FILES]
     if around:
         reviewed = sorted((f for f in live if not ctx.policy.ignored(f.path) and f not in fetch), key=lambda f: -(f.additions + f.deletions))
         fetch += reviewed[:MAX_REVIEW_TEXT_FILES]

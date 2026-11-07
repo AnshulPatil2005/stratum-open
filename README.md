@@ -17,6 +17,7 @@ repo. Nothing is sent to Stratum: no account, no telemetry, no license check.
   - new dependencies, packages published days ago, packages that don't exist (a typo, or a name an AI invented that someone could register), and look-alike names such as `reqeusts`;
   - edits to files that steer coding agents (`AGENTS.md`, `.cursorrules`, `.github/copilot-instructions.md`…), and hidden Unicode in any added line;
   - imports that break your module rules;
+  - in Python, a coroutine called without `await` inside an `async def`, when the same call is awaited elsewhere in the file;
   - Python security issues via Bandit, when it's installed.
 - **A review by the model:**
   - a summary of what the PR does, and whether that matches its description;

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from stratum_open.checks import agents, bandit, dependencies, heuristics, paths, patterns, workflows
+from stratum_open.checks import agents, awaits, bandit, dependencies, heuristics, paths, patterns, workflows
 from stratum_open.checks.dependencies import PackageInfo, PackageLookup
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
@@ -40,6 +40,7 @@ def run_checks(
     checks: list[tuple[str, Callable[[], list[Finding]]]] = [
         ("protected paths", lambda: paths.check(files, policy)),
         ("risky code patterns", lambda: patterns.check(files, contents)),
+        ("missing await", lambda: awaits.check(files, contents)),
         ("workflow", lambda: workflows.check(files, contents)),
         ("coding-agent files", lambda: agents.check_instruction_files(files)),
         ("hidden Unicode", lambda: agents.check_hidden_unicode(files)),
