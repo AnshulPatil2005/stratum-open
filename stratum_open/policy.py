@@ -47,6 +47,7 @@ class Review:
     parallel_calls: int = 1  # model calls at once in the per-file passes (large: 4)
     max_inline_comments: int = 12
     min_severity: str = "medium"  # the model's findings below this aren't shown; the checks' always are
+    verify: bool = False  # one more short call per model finding, to drop the ones the model itself can't stand behind
     rules: tuple[str, ...] = ()  # the project's own review rules, in plain words, added to the prompt
     ignore_paths: tuple[str, ...] = DEFAULT_IGNORED
     log_prompts: bool = False
