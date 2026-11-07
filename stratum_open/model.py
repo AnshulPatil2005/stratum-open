@@ -244,7 +244,8 @@ def model_from_policy(policy: Policy, env: Mapping[str, str] = os.environ) -> Mo
     endpoint = env.get("STRATUM_MODEL_ENDPOINT") or policy.review.endpoint
     name = env.get("STRATUM_MODEL_NAME") or policy.model_name
     api_key = env.get("STRATUM_MODEL_API_KEY") or None
-    return Model(endpoint, name, api_key=api_key, context_tokens=policy.review.context_tokens)
+    return Model(endpoint, name, api_key=api_key, context_tokens=policy.review.context_tokens,
+                 reasoning=policy.review.reasoning)
 
 
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal"}

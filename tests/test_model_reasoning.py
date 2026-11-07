@@ -71,3 +71,10 @@ def test_the_policy_sets_it_on_the_model():
     effective_policy(parse_policy("review:\n  profile: small\n  reasoning: low\n"), model)
     assert model.reasoning == "low"
     assert parse_policy("review:\n  reasoning: lots\n").review.reasoning == "default"
+
+
+def test_a_model_built_from_the_policy_has_its_reasoning_level():
+    # Commands like `@stratum explain` use model_from_policy() without effective_policy().
+    from stratum_open.model import model_from_policy
+    model = model_from_policy(parse_policy("review:\n  reasoning: off\n"), env={})
+    assert model.reasoning == "off"
