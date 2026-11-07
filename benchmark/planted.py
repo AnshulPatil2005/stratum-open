@@ -58,8 +58,9 @@ from stratum_open.policy import parse_policy  # noqa: E402
 
 LINES_NEAR = 3
 POLICY = "review:\n  profile: small\n  context_tokens: {tokens}\n"  # what the Action runs with Ollama
-REVIEW_COLUMNS = ["case", "kind", "path", "line", "model", "seconds", "shown", "calls", "failed_calls", "findings", "near", "error"]
-FINDING_COLUMNS = ["case", "model", "severity", "category", "path", "line", "near", "title", "detail", "verdict", "note"]
+REVIEW_COLUMNS = ["case", "set", "kind", "path", "line", "model", "variant", "version", "seconds", "shown", "calls", "failed_calls", "findings", "near", "error"]
+FINDING_COLUMNS = ["case", "model", "variant", "version", "severity", "category", "path", "line", "near", "title", "detail", "verdict", "note"]
+BUGS = Path(__file__).resolve().parent / "planted" / "bugs.json"
 CHECK_COLUMNS = ["set", "case", "rule", "path", "line", "title", "expected", "verdict", "note"]
 
 
@@ -72,6 +73,11 @@ def main() -> int:
     run.add_argument("--out", required=True)
     run.add_argument("--shard", default="1/1", help="k/n: run every n-th case, starting at the k-th")
     run.add_argument("--context-tokens", type=int, default=8192)
+    run.add_argument("--set", choices=("dev", "test", "all"), default="all",
+                     help="tune on dev; keep test for the result (each case's set is in bugs.json)")
+    run.add_argument("--clean", action="store_true", help="review the PRs as merged, without the bug: the control")
+    run.add_argument("--policy", help="a YAML file merged over the Action's settings, for trying a change")
+    run.add_argument("--variant", default="", help="a name for what --policy changes, kept with the results")
     fetch = sub.add_parser("fetch", help="fill the cache, so parallel jobs needn't each call GitHub")
     fetch.add_argument("--bugs", required=True)
     score = sub.add_parser("score")
@@ -83,7 +89,8 @@ def main() -> int:
     args = parser.parse_args()
     if args.command == "fetch":
         for bug in json.loads(Path(args.bugs).read_text(encoding="utf-8")):
-            _fetch(bug["repo"], int(bug["pr"]))
+            _, text = _fetch(bug["repo"], int(bug["pr"]))
+            _head_contents(bug["repo"], int(bug["pr"]), parse_diff(text))
         return 0
     return {"run": _run, "score": lambda a: _score(Path(a.out)), "checks": _checks}[args.command](args)
 
@@ -124,41 +131,74 @@ def shown(chunks: list[str], path: str, line: Line) -> bool:
     )
 
 
+def policy_for(tokens: int, extra: str | None = None):
+    """The Action's settings, with a --policy file's keys merged over them."""
+    settings = yaml.safe_load(POLICY.format(tokens=tokens))
+    for section, values in ((yaml.safe_load(extra) if extra else None) or {}).items():
+        settings.setdefault(section, {}).update(values or {})
+    return parse_policy(yaml.safe_dump(settings))
+
+
+def original(bug: dict, files: list[FileDiff]) -> Line:
+    """The line a bug would be planted on, left as merged (the clean control)."""
+    for file in files:
+        for hunk in file.hunks if file.path == bug["path"] else []:
+            for line in hunk.lines:
+                if line.kind == "+" and line.new == bug["line"]:
+                    return line
+    raise SystemExit(f"{bug['repo']}#{bug['pr']}: no added line {bug['path']}:{bug['line']}")
+
+
+def with_line(contents: dict[str, str], bug: dict, text: str) -> dict[str, str]:
+    """The files' full text as the Action reads it, with the planted line in
+    it too, so code shown around a hunk (`review.context_lines`) agrees with
+    the diff."""
+    contents = dict(contents)
+    lines = contents.get(bug["path"], "").split("\n")
+    if len(lines) >= bug["line"] and lines[bug["line"] - 1] in (bug["find"], bug["replace"]):
+        lines[bug["line"] - 1] = text
+        contents[bug["path"]] = "\n".join(lines)
+    return contents
+
+
 def _run(args) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     k, n = (int(part) for part in args.shard.split("/"))
-    bugs = json.loads(Path(args.bugs).read_text(encoding="utf-8"))[k - 1::n]
+    bugs = [b for b in json.loads(Path(args.bugs).read_text(encoding="utf-8")) if args.set in ("all", b.get("set"))][k - 1::n]
     name, _, endpoint = args.model.partition("@")
     model = Model(endpoint or "http://localhost:11434/v1", name, api_key=os.environ.get("STRATUM_MODEL_API_KEY"), context_tokens=args.context_tokens)
-    policy = parse_policy(POLICY.format(tokens=args.context_tokens))
+    policy = policy_for(args.context_tokens, Path(args.policy).read_text(encoding="utf-8") if args.policy else None)
+    version = "clean" if args.clean else "planted"
     reviews, findings = [], []
     for bug in bugs:
         case = f"{bug['repo']}#{bug['pr']}"
         pull, text = _fetch(bug["repo"], int(bug["pr"]))
         files = parse_diff(text)
-        planted = plant(bug, files)
+        planted = original(bug, files) if args.clean else plant(bug, files)
+        contents = with_line(_head_contents(bug["repo"], int(bug["pr"]), files), bug, planted.text)
         started = time.monotonic()
-        result = analyze(title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=policy, model=model)
+        result = analyze(title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=policy, model=model,
+                         contents=contents)
         seconds = time.monotonic() - started
         calls = result.review.calls if result.review else []
         chunks = result.review.packed.chunks if result.review and result.review.packed else []
         mine = [f for f in result.findings if f.source == "model"]
         hits = [f for f in mine if near(f, bug)]
         reviews.append({
-            "case": case, "kind": bug["kind"], "path": bug["path"], "line": bug["line"], "model": name,
-            "seconds": round(seconds, 1), "shown": "yes" if shown(chunks, bug["path"], planted) else "no",
+            "case": case, "set": bug.get("set", ""), "kind": bug["kind"], "path": bug["path"], "line": bug["line"], "model": name,
+            "variant": args.variant, "version": version, "seconds": round(seconds, 1), "shown": "yes" if shown(chunks, bug["path"], planted) else "no",
             "calls": len(calls), "failed_calls": result.review.failed_calls if result.review else 0,
             "findings": len(mine), "near": len(hits),
             "error": "; ".join(sorted({c["error"] for c in calls if c.get("error")}))[:300],
         })
         for f in mine:
             findings.append({
-                "case": case, "model": name, "severity": f.severity, "category": f.category, "path": f.path,
+                "case": case, "model": name, "variant": args.variant, "version": version, "severity": f.severity, "category": f.category, "path": f.path,
                 "line": f.line_start or "", "near": "yes" if f in hits else "", "title": f.title,
                 "detail": " ".join(f.detail.split()), "verdict": "", "note": "",
             })
-        print(f"{case} {name}: {len(mine)} finding(s), {len(hits)} near the bug, {seconds:.0f}s"
+        print(f"{case} {name} {args.variant} {version}: {len(mine)} finding(s), {len(hits)} near the bug, {seconds:.0f}s"
               + (f", error: {reviews[-1]['error']}" if reviews[-1]["error"] else ""), flush=True)
         _write(out / "reviews.csv", REVIEW_COLUMNS, reviews)
         _write(out / "findings.csv", FINDING_COLUMNS, findings)
@@ -184,50 +224,70 @@ def _score(out: Path) -> int:
 
 
 def _model_summary(out: Path) -> str:
+    sets = {f"{b['repo']}#{b['pr']}": b.get("set", "") for b in json.loads(BUGS.read_text(encoding="utf-8"))}
     reviews = [row for path in sorted(out.rglob("reviews.csv")) for row in _read(path)]
     findings = [row for path in sorted(out.rglob("findings.csv")) for row in _read(path)]
-    by_model: dict[str, list[dict]] = defaultdict(list)
+    for row in reviews + findings:  # runs from before the clean control and the split
+        row["variant"] = row.get("variant") or ""
+        row["version"] = row.get("version") or "planted"
+        row["set"] = row.get("set") or sets.get(row["case"], "")
+    runs: dict[tuple[str, str], dict[str, list[dict]]] = defaultdict(lambda: defaultdict(list))
     for row in reviews:
-        by_model[row["model"]].append(row)
-    marks: dict[tuple[str, str], list[dict]] = defaultdict(list)
+        runs[(row["model"], row["variant"])][row["version"]].append(row)
+    marks: dict[tuple[str, str, str, str], list[dict]] = defaultdict(list)
     for row in findings:
-        marks[(row["model"], row["case"])].append(row)
+        marks[(row["model"], row["variant"], row["version"], row["case"])].append(row)
     cases = {row["case"] for row in reviews}
     lines = [
         "# Planted-bug benchmark",
         "",
         f"{len(cases)} real merged PRs, each with one bug planted on a line it adds. Each model reviewed",
-        "them as the Action does: the `small` profile and an 8,192-token window. Only the model's own",
-        "findings count. A finding is near the bug when it's on that file within "
-        f"{LINES_NEAR} lines; found means it was read and it describes the bug.",
+        "them as the Action does: the `small` profile and an 8,192-token window, unless a variant says",
+        "otherwise. Only the model's own findings count. A finding is near the bug when it's on that file",
+        f"within {LINES_NEAR} lines; found means it was read and it describes the bug. Where the PRs were also",
+        "reviewed as merged (the clean control), *near only with the bug* counts the cases whose clean",
+        "version got no finding on that line: a model that comments on every changed line doesn't score.",
         "",
-        "| Model | PRs | Bug shown to the model | Near the bug | Found | Other findings | Other findings marked right | Failed calls | Median time |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| Model | Variant | PRs | Near the bug | Near it when clean | Near only with the bug | Found (dev + test) "
+        "| Other findings | Other findings marked right | Findings on the clean PRs | Failed calls | Median time |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
-    for model, rows in sorted(by_model.items(), key=lambda item: _size(item[0])):
-        seen = [r for r in rows if r["shown"] == "yes"]
-        near_hits = [r for r in seen if int(r["near"])]
-        found = [r for r in seen if any(m["near"] == "yes" and m["verdict"] == "right" for m in marks[(model, r["case"])])]
-        other = [m for r in rows for m in marks[(model, r["case"])] if m["near"] != "yes"]
-        other_right = sum(m["verdict"] == "right" for m in other)
+    order = sorted(runs, key=lambda key: (_size(key[0]), key[0], key[1]))
+    for model, variant in order:
+        planted, clean = runs[(model, variant)]["planted"], runs[(model, variant)]["clean"]
+        if not planted:
+            continue
+        seen = [r for r in planted if r["shown"] == "yes"]
+        near = {r["case"] for r in seen if int(r["near"])}
+        near_clean = {r["case"] for r in clean if int(r["near"])}
+        found = [r for r in seen if any(m["near"] == "yes" and m["verdict"] == "right" for m in marks[(model, variant, "planted", r["case"])])]
+        dev = sum(r["set"] == "dev" for r in found)
+        other = [m for r in planted for m in marks[(model, variant, "planted", r["case"])] if m["near"] != "yes"]
         other_marked = sum(m["verdict"] in ("right", "wrong") for m in other)
-        failed = sum(int(r["failed_calls"]) for r in rows)
-        calls = sum(int(r["calls"]) for r in rows)
-        median = statistics.median(float(r["seconds"]) for r in rows)
+        on_clean = sum(int(r["findings"]) for r in clean)
+        rows = planted + clean
         lines.append(
-            f"| `{model}` | {len(rows)} | {len(seen)} | {len(near_hits)} of {len(seen)} | {len(found)} of {len(seen)} "
-            f"| {len(other)} | {other_right} of {other_marked} marked | {failed} of {calls} | {median:.0f}s |"
+            f"| `{model}` | {variant or '-'} | {len(planted)} | {len(near)} of {len(seen)} "
+            f"| {f'{len(near_clean)} of {len(clean)}' if clean else '-'} "
+            f"| {f'{len(near - near_clean)} of {len(seen)}' if clean else '-'} "
+            f"| {len(found)} of {len(seen)} ({dev} + {len(found) - dev}) "
+            f"| {len(other)} | {sum(m['verdict'] == 'right' for m in other)} of {other_marked} marked "
+            f"| {on_clean if clean else '-'} | {sum(int(r['failed_calls']) for r in rows)} of {sum(int(r['calls']) for r in rows)} "
+            f"| {statistics.median(float(r['seconds']) for r in rows):.0f}s |"
         )
     kinds = sorted({r["kind"] for r in reviews})
-    lines += ["", "Found, by kind of bug:", "", "| Model | " + " | ".join(kinds) + " |", "| --- |" + " --- |" * len(kinds)]
-    for model, rows in sorted(by_model.items(), key=lambda item: _size(item[0])):
+    lines += ["", "Found, by kind of bug:", "", "| Model | Variant | " + " | ".join(kinds) + " |", "| --- | --- |" + " --- |" * len(kinds)]
+    for model, variant in order:
+        planted = runs[(model, variant)]["planted"]
+        if not planted:
+            continue
         cells = []
         for kind in kinds:
-            mine = [r for r in rows if r["kind"] == kind and r["shown"] == "yes"]
-            hit = sum(any(m["near"] == "yes" and m["verdict"] == "right" for m in marks[(model, r["case"])]) for r in mine)
+            mine = [r for r in planted if r["kind"] == kind and r["shown"] == "yes"]
+            hit = sum(any(m["near"] == "yes" and m["verdict"] == "right" for m in marks[(model, variant, "planted", r["case"])]) for r in mine)
             cells.append(f"{hit} of {len(mine)}")
-        lines.append(f"| `{model}` | " + " | ".join(cells) + " |")
-    unmarked = sum(1 for m in findings if not m["verdict"])
+        lines.append(f"| `{model}` | {variant or '-'} | " + " | ".join(cells) + " |")
+    unmarked = sum(1 for m in findings if m["version"] == "planted" and not m["verdict"])
     if unmarked:
         lines += ["", f"**{unmarked} finding(s) not marked yet**, so Found and the marked counts are incomplete."]
     return "\n".join(lines)

@@ -5,6 +5,7 @@
   "path": "src/flask/sansio/app.py",
   "line": 641,
   "kind": "negated-condition",
+  "set": "test",
   "find": "        if provide_automatic_options:",
   "replace": "        if not provide_automatic_options:",
   "why": "OPTIONS is added only when automatic OPTIONS is off, the reverse of the setting."
@@ -15,6 +16,7 @@
   "path": "src/flask/app.py",
   "line": 1590,
   "kind": "negated-condition",
+  "set": "dev",
   "find": "            if (",
   "replace": "            if not (",
   "why": "An error is passed to teardown as ignored exactly when it shouldn't be."
@@ -25,6 +27,7 @@
   "path": "src/flask/__init__.py",
   "line": 45,
   "kind": "negated-condition",
+  "set": "test",
   "find": "if not t.TYPE_CHECKING:",
   "replace": "if t.TYPE_CHECKING:",
   "why": "The deprecation `__getattr__` exists only for type checkers, so `flask.__version__` fails at runtime."
@@ -35,6 +38,7 @@
   "path": "src/click/core.py",
   "line": 3453,
   "kind": "negated-condition",
+  "set": "dev",
   "find": "            if envvar:",
   "replace": "            if not envvar:",
   "why": "The env var branch runs only when there is no env var, and `tuple(None)` raises."
@@ -45,6 +49,7 @@
   "path": "src/click/types.py",
   "line": 1152,
   "kind": "negated-condition",
+  "set": "test",
   "find": "            if path_type is str:",
   "replace": "            if path_type is not str:",
   "why": "Values for `path_type=str` are no longer decoded; every other type is passed to `os.fsdecode`."
@@ -55,6 +60,7 @@
   "path": "src/click/core.py",
   "line": 1591,
   "kind": "negated-condition",
+  "set": "dev",
   "find": "                if not standalone_mode:",
   "replace": "                if standalone_mode:",
   "why": "`Abort` is re-raised in standalone mode and swallowed otherwise, the reverse of before."
@@ -65,6 +71,7 @@
   "path": "src/werkzeug/exceptions.py",
   "line": 48,
   "kind": "negated-condition",
+  "set": "test",
   "find": "            if not cls.name:",
   "replace": "            if cls.name:",
   "why": "The name is filled in from `HTTPStatus` only when the class already has one."
@@ -75,6 +82,7 @@
   "path": "src/werkzeug/http.py",
   "line": 1356,
   "kind": "negated-condition",
+  "set": "dev",
   "find": "    if not cookie:",
   "replace": "    if cookie:",
   "why": "Any non-empty cookie header parses to an empty dict."
@@ -85,6 +93,7 @@
   "path": "src/httpx/_server.py",
   "line": 35,
   "kind": "negated-condition",
+  "set": "test",
   "find": "                if not self._parser.wait_ready():",
   "replace": "                if self._parser.wait_ready():",
   "why": "The server stops handling a connection as soon as data is ready to read."
@@ -95,6 +104,7 @@
   "path": "src/jinja2/__init__.py",
   "line": 44,
   "kind": "flipped-comparison",
+  "set": "test",
   "find": "    if name == \"__version__\":",
   "replace": "    if name != \"__version__\":",
   "why": "Every module attribute except `__version__` takes the deprecation path, and `__version__` raises."
@@ -105,6 +115,7 @@
   "path": "src/jinja2/runtime.py",
   "line": 998,
   "kind": "flipped-comparison",
+  "set": "dev",
   "find": "        if name[:2] == \"__\" and name[-2:] == \"__\":",
   "replace": "        if name[:2] != \"__\" and name[-2:] == \"__\":",
   "why": "Names that only end in `__` raise, while real dunders like `__setstate__` get an Undefined back."
@@ -115,6 +126,7 @@
   "path": "src/blackd/client.py",
   "line": 68,
   "kind": "flipped-comparison",
+  "set": "dev",
   "find": "                if name.lower() == \"content-type\":",
   "replace": "                if name.lower() != \"content-type\":",
   "why": "Every header except Content-Type is renamed to Content-Type."
@@ -125,6 +137,7 @@
   "path": "src/black/files.py",
   "line": 86,
   "kind": "flipped-comparison",
+  "set": "test",
   "find": "    return resolved == resolved.parent",
   "replace": "    return resolved != resolved.parent",
   "why": "Every path except the filesystem root is reported as the root."
@@ -135,6 +148,7 @@
   "path": "src/black/comments.py",
   "line": 698,
   "kind": "flipped-comparison",
+  "set": "dev",
   "find": "        if sibling.type == token.ENDMARKER:",
   "replace": "        if sibling.type != token.ENDMARKER:",
   "why": "The function returns the sibling for anything but the end marker, and nothing for the end marker."
@@ -145,6 +159,7 @@
   "path": "src/requests/models.py",
   "line": 241,
   "kind": "flipped-comparison",
+  "set": "dev",
   "find": "            elif fp is None:  # defensive check for untyped callers",
   "replace": "            elif fp is not None:  # defensive check for untyped callers",
   "why": "File values that are set are skipped, and a `None` value is sent on as the file's data."
@@ -155,6 +170,7 @@
   "path": "src/requests/utils.py",
   "line": 855,
   "kind": "flipped-comparison",
+  "set": "test",
   "find": "                if hostname == host or host_with_port == host:",
   "replace": "                if hostname != host or host_with_port == host:",
   "why": "`no_proxy` treats a host that doesn't match as a match, so the proxy is bypassed for it."
@@ -165,6 +181,7 @@
   "path": "pydantic/json_schema.py",
   "line": 2967,
   "kind": "flipped-comparison",
+  "set": "dev",
   "find": "    if max_digits is not None and decimal_places is not None and max_digits <= decimal_places:",
   "replace": "    if max_digits is None and decimal_places is not None and max_digits <= decimal_places:",
   "why": "When `max_digits` is None this compares None with `<=` and raises; when both are set the fix never applies."
@@ -175,6 +192,7 @@
   "path": "pydantic/plugin/_loader.py",
   "line": 43,
   "kind": "flipped-comparison",
+  "set": "test",
   "find": "                if disabled_plugins is not None and entry_point.name in disabled_plugins.split(','):",
   "replace": "                if disabled_plugins is None and entry_point.name in disabled_plugins.split(','):",
   "why": "With the variable unset this calls `None.split`; with it set, disabled plugins still load."
@@ -185,6 +203,7 @@
   "path": "pydantic/_internal/_contextlib.py",
   "line": 45,
   "kind": "flipped-comparison",
+  "set": "dev",
   "find": "        if value is None:",
   "replace": "        if value is not None:",
   "why": "A given exception is replaced by a new one, and a None value is never instantiated."
@@ -195,6 +214,7 @@
   "path": "pydantic/_internal/_typing_extra.py",
   "line": 279,
   "kind": "flipped-comparison",
+  "set": "test",
   "find": "                elif name == 'model_config':",
   "replace": "                elif name != 'model_config':",
   "why": "Every annotation except `model_config` is left unevaluated."
@@ -205,6 +225,7 @@
   "path": "rich/progress.py",
   "line": 1177,
   "kind": "wrong-boolean",
+  "set": "dev",
   "find": "            if not self.console.is_interactive and not self.console.is_jupyter:",
   "replace": "            if not self.console.is_interactive or not self.console.is_jupyter:",
   "why": "A blank line is printed on interactive terminals and in Jupyter, where it shouldn't be."
@@ -215,6 +236,7 @@
   "path": "rich/style.py",
   "line": 202,
   "kind": "wrong-boolean",
+  "set": "test",
   "find": "            f\"{next(_id_generator)}{hash(self._meta)}\" if (link or meta) else \"\"",
   "replace": "            f\"{next(_id_generator)}{hash(self._meta)}\" if (link and meta) else \"\"",
   "why": "A link without metadata gets no link id."
@@ -225,6 +247,7 @@
   "path": "src/textual/_xterm_parser.py",
   "line": 356,
   "kind": "wrong-boolean",
+  "set": "test",
   "find": "            if modifiers and key not in MODIFIER_FUNCTIONAL_KEYS:",
   "replace": "            if modifiers or key not in MODIFIER_FUNCTIONAL_KEYS:",
   "why": "A key with no modifiers enters the modifier branch, and `int('')` raises."
@@ -235,6 +258,7 @@
   "path": "src/textual/screen.py",
   "line": 1532,
   "kind": "wrong-boolean",
+  "set": "dev",
   "find": "        if horizontal_breakpoints or vertical_breakpoints:",
   "replace": "        if horizontal_breakpoints and vertical_breakpoints:",
   "why": "Breakpoint classes update only when both horizontal and vertical breakpoints are set."
@@ -245,6 +269,7 @@
   "path": "src/textual/screen.py",
   "line": 2028,
   "kind": "wrong-boolean",
+  "set": "test",
   "find": "        if not start_widget.is_attached or not end_widget.is_attached:",
   "replace": "        if not start_widget.is_attached and not end_widget.is_attached:",
   "why": "Selection carries on when one of the two widgets has been removed."
@@ -255,6 +280,7 @@
   "path": "scrapy/core/_http2/stream.py",
   "line": 469,
   "kind": "wrong-boolean",
+  "set": "test",
   "find": "        elif reason is StreamCloseReason.CANCELLED and self._cancel_keeps_body:",
   "replace": "        elif reason is StreamCloseReason.CANCELLED or self._cancel_keeps_body:",
   "why": "A stream closed for any reason fires a partial response when the flag is set."
@@ -265,6 +291,7 @@
   "path": "scrapy/downloadermiddlewares/cookies.py",
   "line": 45,
   "kind": "wrong-boolean",
+  "set": "dev",
   "find": "    return not name.startswith(\"__host-\") or (",
   "replace": "    return not name.startswith(\"__host-\") and (",
   "why": "Ordinary cookies are dropped unless they meet `__Host-` rules, and `__Host-` cookies never are accepted."
@@ -275,6 +302,7 @@
   "path": "src/ahttpx/_parsers.py",
   "line": 384,
   "kind": "inverted-return",
+  "set": "dev",
   "find": "            return False",
   "replace": "            return True",
   "why": "A connection that isn't kept alive reports that it can be reused."
@@ -285,6 +313,7 @@
   "path": "src/httpx/_parsers.py",
   "line": 400,
   "kind": "inverted-return",
+  "set": "test",
   "find": "        return True",
   "replace": "        return False",
   "why": "Every connection reports that it can't be reused after a complete exchange."
@@ -295,6 +324,7 @@
   "path": "scrapy/extensions/feedexport.py",
   "line": 969,
   "kind": "missing-await",
+  "set": "dev",
   "find": "            await maybe_deferred_to_future(self._export_lock.acquire())",
   "replace": "            maybe_deferred_to_future(self._export_lock.acquire())",
   "why": "When the lock is held, the item is exported without waiting for it."
@@ -305,6 +335,7 @@
   "path": "scrapy/pipelines/media.py",
   "line": 171,
   "kind": "missing-await",
+  "set": "test",
   "find": "        return await ensure_awaitable(self.item_completed(results, item, info))",
   "replace": "        return ensure_awaitable(self.item_completed(results, item, info))",
   "why": "Returns an un-awaited coroutine instead of the item."
@@ -315,6 +346,7 @@
   "path": "src/ahttpx/_streams.py",
   "line": 205,
   "kind": "missing-await",
+  "set": "dev",
   "find": "                await self._fin.close()",
   "replace": "                self._fin.close()",
   "why": "The file's `close()` coroutine is never awaited, so the file stays open."
@@ -325,6 +357,7 @@
   "path": "src/pip/_internal/cli/autocompletion.py",
   "line": 144,
   "kind": "off-by-one",
+  "set": "dev",
   "find": "    if cword < 2:",
   "replace": "    if cword <= 2:",
   "why": "Path completion is skipped for the first option's argument (`cword == 2`)."
@@ -335,6 +368,7 @@
   "path": "rich/cells.py",
   "line": 197,
   "kind": "off-by-one",
+  "set": "dev",
   "find": "                index += 2 if index < (codepoint_count - 1) else 1",
   "replace": "                index += 2 if index <= (codepoint_count - 1) else 1",
   "why": "A ZWJ in the second-to-last position steps the index past the end of the string."
@@ -345,6 +379,7 @@
   "path": "rich/cells.py",
   "line": 58,
   "kind": "off-by-one",
+  "set": "test",
   "find": "    if codepoint and codepoint < 32 or 0x07F <= codepoint < 0x0A0:",
   "replace": "    if codepoint and codepoint < 32 or 0x07F < codepoint < 0x0A0:",
   "why": "DEL (0x7F) is measured as taking a cell instead of none."
@@ -355,6 +390,7 @@
   "path": "src/click/_termui_impl.py",
   "line": 543,
   "kind": "inverted-return",
+  "set": "test",
   "find": "                return True",
   "replace": "                return False",
   "why": "A short flag containing `r` (like `-R`) is never detected."
@@ -365,6 +401,7 @@
   "path": "src/black/linegen.py",
   "line": 2025,
   "kind": "inverted-return",
+  "set": "dev",
   "find": "            return False",
   "replace": "            return True",
   "why": "A node with a previous sibling is treated as the start of a statement."
@@ -375,6 +412,7 @@
   "path": "src/werkzeug/datastructures/range.py",
   "line": 359,
   "kind": "off-by-one",
+  "set": "test",
   "find": "        return cls(units, start, stop + 1, length)",
   "replace": "        return cls(units, start, stop, length)",
   "why": "The parsed range keeps the inclusive end, so it's one byte short."
@@ -385,6 +423,7 @@
   "path": "src/werkzeug/datastructures/accept.py",
   "line": 302,
   "kind": "not-in",
+  "set": "dev",
   "find": "        return \"text/html\" in self  # type: ignore[comparison-overlap]",
   "replace": "        return \"text/html\" not in self  # type: ignore[comparison-overlap]",
   "why": "`accept_html` is true when text/html is not accepted."
@@ -395,6 +434,7 @@
   "path": "src/textual/widgets/_directory_tree.py",
   "line": 537,
   "kind": "missing-await",
+  "set": "test",
   "find": "            node = await load_queue.get()",
   "replace": "            node = load_queue.get()",
   "why": "`node` is a coroutine rather than a queued node, so loading breaks."

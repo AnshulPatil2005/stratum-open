@@ -1,24 +1,27 @@
 # Planted-bug benchmark
 
 40 real merged PRs, each with one bug planted on a line it adds. Each model reviewed
-them as the Action does: the `small` profile and an 8,192-token window. Only the model's own
-findings count. A finding is near the bug when it's on that file within 3 lines; found means it was read and it describes the bug.
+them as the Action does: the `small` profile and an 8,192-token window, unless a variant says
+otherwise. Only the model's own findings count. A finding is near the bug when it's on that file
+within 3 lines; found means it was read and it describes the bug. Where the PRs were also
+reviewed as merged (the clean control), *near only with the bug* counts the cases whose clean
+version got no finding on that line: a model that comments on every changed line doesn't score.
 
-| Model | PRs | Bug shown to the model | Near the bug | Found | Other findings | Other findings marked right | Failed calls | Median time |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `qwen2.5-coder:1.5b` | 40 | 40 | 0 of 40 | 0 of 40 | 4 | 0 of 4 marked | 1 of 44 | 42s |
-| `qwen2.5-coder:3b` | 40 | 40 | 11 of 40 | 0 of 40 | 38 | 0 of 38 marked | 0 of 44 | 100s |
-| `qwen2.5-coder:7b` | 40 | 40 | 1 of 40 | 1 of 40 | 15 | 0 of 14 marked | 0 of 44 | 171s |
-| `qwen2.5-coder:14b` | 40 | 40 | 16 of 40 | 10 of 40 | 35 | 1 of 34 marked | 7 of 44 | 429s |
+| Model | Variant | PRs | Near the bug | Near it when clean | Near only with the bug | Found (dev + test) | Other findings | Other findings marked right | Findings on the clean PRs | Failed calls | Median time |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `qwen2.5-coder:1.5b` | - | 40 | 0 of 40 | - | - | 0 of 40 (0 + 0) | 4 | 0 of 4 marked | - | 1 of 44 | 42s |
+| `qwen2.5-coder:3b` | - | 40 | 11 of 40 | - | - | 0 of 40 (0 + 0) | 38 | 0 of 38 marked | - | 0 of 44 | 100s |
+| `qwen2.5-coder:7b` | - | 40 | 1 of 40 | - | - | 1 of 40 (0 + 1) | 15 | 0 of 14 marked | - | 0 of 44 | 171s |
+| `qwen2.5-coder:14b` | - | 40 | 16 of 40 | - | - | 10 of 40 (7 + 3) | 35 | 1 of 34 marked | - | 7 of 44 | 429s |
 
 Found, by kind of bug:
 
-| Model | flipped-comparison | inverted-return | missing-await | negated-condition | not-in | off-by-one | wrong-boolean |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| `qwen2.5-coder:1.5b` | 0 of 11 | 0 of 4 | 0 of 4 | 0 of 9 | 0 of 1 | 0 of 4 | 0 of 7 |
-| `qwen2.5-coder:3b` | 0 of 11 | 0 of 4 | 0 of 4 | 0 of 9 | 0 of 1 | 0 of 4 | 0 of 7 |
-| `qwen2.5-coder:7b` | 1 of 11 | 0 of 4 | 0 of 4 | 0 of 9 | 0 of 1 | 0 of 4 | 0 of 7 |
-| `qwen2.5-coder:14b` | 5 of 11 | 0 of 4 | 0 of 4 | 1 of 9 | 1 of 1 | 1 of 4 | 2 of 7 |
+| Model | Variant | flipped-comparison | inverted-return | missing-await | negated-condition | not-in | off-by-one | wrong-boolean |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `qwen2.5-coder:1.5b` | - | 0 of 11 | 0 of 4 | 0 of 4 | 0 of 9 | 0 of 1 | 0 of 4 | 0 of 7 |
+| `qwen2.5-coder:3b` | - | 0 of 11 | 0 of 4 | 0 of 4 | 0 of 9 | 0 of 1 | 0 of 4 | 0 of 7 |
+| `qwen2.5-coder:7b` | - | 1 of 11 | 0 of 4 | 0 of 4 | 0 of 9 | 0 of 1 | 0 of 4 | 0 of 7 |
+| `qwen2.5-coder:14b` | - | 5 of 11 | 0 of 4 | 0 of 4 | 1 of 9 | 1 of 1 | 1 of 4 | 2 of 7 |
 
 ## The run
 

@@ -58,6 +58,18 @@ python benchmark/planted.py run --bugs benchmark/planted/bugs.json --out benchma
 python benchmark/planted.py score benchmark/results/<name>   # after marking the verdict columns
 ```
 
+**Trying a change.** Each case is in the `dev` or the `test` set (in bugs.json, stratified by kind):
+- **Tune on dev only.** Use `--set dev`, and run `test` once at the end, so the result isn't tuned to its cases.
+- **Add the clean control.** `--clean` reviews the PRs as merged, without the bug. A method that comments on every changed condition flags the planted line in both, so the summary counts **near only with the bug**: the cases whose clean version got no finding on that line.
+- **Name what you change.** `--policy change.yml --variant <name>` merges a policy file over the Action's settings and keeps the name with the results.
+
+```sh
+python benchmark/planted.py run --bugs benchmark/planted/bugs.json --set dev --out benchmark/results/<name>/raw/7b-planted \
+    --model qwen2.5-coder:7b@http://localhost:11434/v1 --policy change.yml --variant change
+python benchmark/planted.py run --bugs benchmark/planted/bugs.json --set dev --clean --out benchmark/results/<name>/raw/7b-clean \
+    --model qwen2.5-coder:7b@http://localhost:11434/v1 --policy change.yml --variant change
+```
+
 ## Results
 
 Each run is a folder in [results/](results/), holding its `summary.md`, every
