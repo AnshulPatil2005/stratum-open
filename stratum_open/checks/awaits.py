@@ -174,6 +174,71 @@ def _from_lines(file: FileDiff, added: set[int]) -> list[tuple[int, str]]:
     return hits
 
 
+SYNC_FILE_RULE = "code/await-sync-file"
+_FILE_METHODS = {"read", "readline", "readlines", "write", "writelines", "close", "flush", "seek", "tell", "truncate"}
+
+
+def check_sync_files(files: list[FileDiff], contents: dict[str, str] | None = None) -> list[Finding]:
+    """The opposite mistake: `await` on a method of a plain file from the
+    builtin `open()`. Its `read()` returns bytes and `close()` None, so the
+    `await` raises TypeError. Needs the full text, and stays quiet in a file
+    that defines or imports its own `open` (aiofiles, anyio)."""
+    findings: list[Finding] = []
+    for file in files:
+        if extension(file.path) != ".py" or file.status == "deleted":
+            continue
+        added = {number for number, _ in file.added()}
+        tree = _parse((contents or {}).get(file.path) or "") if added else None
+        if tree is None or _shadows_open(tree):
+            continue
+        for scope in [tree, *(n for n in ast.walk(tree) if isinstance(n, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)))]:
+            plain = _plain_files(scope)
+            if not plain:
+                continue
+            for node in ast.walk(scope):
+                if (isinstance(node, ast.Await) and isinstance(node.value, ast.Call) and isinstance(node.value.func, ast.Attribute)
+                        and node.value.func.attr in _FILE_METHODS and _name(node.value.func.value) in plain and node.lineno in added):
+                    findings.append(_sync_file_finding(file.path, node.lineno, f"{_name(node.value.func.value)}.{node.value.func.attr}"))
+    unique = {(f.path, f.line_start): f for f in findings}
+    return list(unique.values())
+
+
+def _shadows_open(tree: ast.Module) -> bool:
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Import, ast.ImportFrom)) and any((a.asname or a.name) == "open" for a in node.names):
+            return True
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "open" for t in node.targets):
+            return True
+    return any(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == "open" for n in tree.body)
+
+
+def _plain_files(scope: ast.AST) -> set[str]:
+    """Names (`f`, `self._fin`) this scope binds to the builtin `open()`."""
+    def is_open(call: ast.AST) -> bool:
+        return isinstance(call, ast.Call) and _name(call.func) in ("open", "io.open")
+    names = set()
+    for node in ast.walk(scope):
+        if isinstance(node, ast.Assign) and is_open(node.value):
+            names |= {n for t in node.targets for n in [_name(t)] if n}
+        elif isinstance(node, ast.With):  # a sync `with open(...) as f`; `async with` is someone else's open
+            names |= {n for item in node.items if is_open(item.context_expr) and item.optional_vars is not None
+                      for n in [_name(item.optional_vars)] if n}
+    return names
+
+
+def _sync_file_finding(path: str, number: int, call: str) -> Finding:
+    return Finding(
+        title=f"`await {call}()` on a plain file",
+        detail=(
+            f"`{call.rsplit('.', 1)[0]}` comes from the builtin `open()`, whose methods aren't coroutines: "
+            f"`{call}()` returns its result directly, so awaiting it raises TypeError."
+        ),
+        severity="high", category="bug", path=path, line_start=number, line_end=number,
+        suggestion="Drop the `await`, or open the file with an async library (aiofiles, anyio) if it must not block.",
+        source="check", rule=SYNC_FILE_RULE, confidence=0.9,
+    )
+
+
 def _finding(path: str, number: int, name: str) -> Finding:
     return Finding(
         title=f"`{name}()` isn't awaited",

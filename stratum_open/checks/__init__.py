@@ -41,6 +41,7 @@ def run_checks(
         ("protected paths", lambda: paths.check(files, policy)),
         ("risky code patterns", lambda: patterns.check(files, contents)),
         ("missing await", lambda: awaits.check(files, contents)),
+        ("await on a plain file", lambda: awaits.check_sync_files(files, contents)),
         ("workflow", lambda: workflows.check(files, contents)),
         ("coding-agent files", lambda: agents.check_instruction_files(files)),
         ("hidden Unicode", lambda: agents.check_hidden_unicode(files)),
