@@ -170,3 +170,33 @@ def test_the_prompt_lists_left_out_files_and_previous_findings():
     _, user = model.prompts[0]
     assert "Not shown, because the review's size limit was reached:" in user
     assert "`f0.py` line 2: Unbounded loop" in user and "Not listed" not in user
+
+
+def test_verify_drops_the_findings_the_model_itself_rejects():
+    policy = parse_policy("review:\n  verify: true\n")
+    second = {"file": "app/users.py", "code": "return cur.fetchone()", "line": 6, "severity": "medium", "category": "bug",
+              "title": "Missing timeout", "detail": "The query has no timeout.", "fix": "Add one."}
+    first = json.loads(answer())["findings"][0]
+    model = FakeModel(answer(findings=[first, second]), '{"real": "yes", "why": "user_id is put in the SQL."}', '{"real": "no", "why": "Optional."}')
+    result = run(model, policy=policy)
+    assert [f.title for f in result.findings] == ["SQL injection"]
+    assert result.dropped == 1
+    assert [c.get("pass") for c in result.calls] == [None, "verify", "verify"]
+    system, user = model.prompts[1]
+    assert "Most automated findings are wrong" in system
+    assert "SQL injection" in user and "SELECT * FROM users" in user
+    assert result.complete
+
+
+def test_verify_keeps_a_finding_when_its_check_fails_or_is_unclear():
+    policy = parse_policy("review:\n  verify: true\n")
+    for reply in (Reply("", "m", 0, error="timed out"), "not json", '{"real": "maybe"}'):
+        result = run(FakeModel(answer(), reply), policy=policy)
+        assert [f.title for f in result.findings] == ["SQL injection"]
+        assert result.failed_calls == 0  # the review itself was read in full
+
+
+def test_verify_is_off_by_default():
+    model = FakeModel(answer())
+    run(model)
+    assert len(model.prompts) == 1
