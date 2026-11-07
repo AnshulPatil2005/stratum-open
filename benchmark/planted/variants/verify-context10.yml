@@ -1,4 +1,4 @@
 # Both of the above.
 review:
-  verify: true
+  verify: strict
   context_lines: 10

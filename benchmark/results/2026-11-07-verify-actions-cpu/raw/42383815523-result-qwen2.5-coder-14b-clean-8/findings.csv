@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+psf/requests#7427,qwen2.5-coder:14b,verify,clean,medium,bug,src/requests/utils.py,854,yes,Incorrect domain boundary handling,"The line `host = host.lstrip('.')` removes a leading dot from the no_proxy host, which can lead to incorrect domain boundary matching. For example, if `no_proxy` contains `.d.o.t`, removing the leading dot will cause it to match `d.o.t` instead of only `.d.o.t`. The same applies to line 857.",,

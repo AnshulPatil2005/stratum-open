@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3884,dev,negated-condition,src/click/core.py,3453,qwen2.5-coder:7b,,planted,150.7,yes,1,0,0,0,
+psf/black#5645,dev,flipped-comparison,src/blackd/client.py,68,qwen2.5-coder:7b,,planted,88.4,yes,1,0,0,0,
+pydantic/pydantic#14195,test,flipped-comparison,pydantic/_internal/_typing_extra.py,279,qwen2.5-coder:7b,,planted,121.4,yes,1,0,0,0,
+encode/httpx#3673,dev,inverted-return,src/ahttpx/_parsers.py,384,qwen2.5-coder:7b,,planted,691.3,yes,1,0,2,0,
+psf/black#5626,dev,inverted-return,src/black/linegen.py,2025,qwen2.5-coder:7b,,planted,127.6,yes,1,0,0,0,

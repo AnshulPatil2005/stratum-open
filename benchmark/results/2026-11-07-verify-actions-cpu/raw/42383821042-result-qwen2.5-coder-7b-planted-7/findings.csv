@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/textual#6405,qwen2.5-coder:7b,,planted,medium,bug,src/textual/widgets/_directory_tree.py,468,,OSError instead of PermissionError,"The code catches OSError instead of PermissionError, which is a broader exception that could mask other issues. The same applies to line 508.",,

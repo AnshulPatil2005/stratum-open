@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8431,qwen2.5-coder:14b,verify,planted,medium,bug,scrapy/downloadermiddlewares/cookies.py,46,yes,Incorrect logic for __Host- prefix,"The logic for __Host- prefix is incorrect. It should return False if the cookie has a __Host- prefix but does not meet the requirements (secure, https scheme, domain specified, path=/). The current logic is inverted and does not handle the secure flag correctly.",,

@@ -1,0 +1,4 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/rich#3845,qwen2.5-coder:14b,,planted,medium,bug,rich/style.py,252,,Incorrect condition,"The condition should be `if (link or meta)` instead of `if (link and meta)` to match the original code. The same applies to lines 490, 642, 688.",,
+scrapy/scrapy#8461,qwen2.5-coder:14b,,planted,medium,bug,scrapy/extensions/feedexport.py,965,,Incorrect lock check,"The code checks if the lock is not locked before acquiring it, which can lead to race conditions. The lock might be acquired by another thread between the check and the acquire call.",,
+pallets/werkzeug#3293,qwen2.5-coder:14b,,planted,high,bug,src/werkzeug/datastructures/accept.py,302,yes,Incorrect logic,"The logic for `accept_html` is inverted. It should return `True` if `text/html` is in `self`, not if it is not in `self`.",,

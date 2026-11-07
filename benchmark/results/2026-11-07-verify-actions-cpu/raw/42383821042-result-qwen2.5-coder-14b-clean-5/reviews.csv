@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3858,test,negated-condition,src/click/types.py,1152,qwen2.5-coder:14b,,clean,176.9,yes,1,0,0,0,
+psf/black#5637,test,flipped-comparison,src/black/files.py,86,qwen2.5-coder:14b,,clean,137.5,yes,1,0,1,1,
+Textualize/rich#3905,dev,wrong-boolean,rich/progress.py,1177,qwen2.5-coder:14b,,clean,140.5,yes,1,0,2,2,
+encode/httpx#3672,test,inverted-return,src/httpx/_parsers.py,400,qwen2.5-coder:14b,,clean,210.9,yes,1,0,0,0,
+pallets/werkzeug#3270,test,off-by-one,src/werkzeug/datastructures/range.py,359,qwen2.5-coder:14b,,clean,528.5,yes,1,0,3,0,

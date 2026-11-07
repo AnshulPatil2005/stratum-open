@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8461,qwen2.5-coder:7b,,clean,medium,bug,scrapy/exporters.py,86,,Potential performance issue,"Using `type(value) in _SCALAR_TYPES` is less efficient than using `isinstance(value, _SCALAR_TYPES)`. The latter is faster and more readable.",,
+scrapy/scrapy#8461,qwen2.5-coder:7b,,clean,medium,bug,scrapy/extensions/feedexport.py,965,,Potential race condition,"The lock check and acquisition are not atomic. Another coroutine could acquire the lock between the check and the acquisition, leading to a race condition.",,
