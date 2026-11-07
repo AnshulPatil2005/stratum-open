@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       models:
-        description: Ollama models to compare, separated by spaces
+        description: Ollama models to compare, separated by spaces, or none (GitHub fills an empty field with the default)
         default: qwen2.5-coder:1.5b qwen2.5-coder:3b qwen2.5-coder:7b qwen2.5-coder:14b
       shards:
         description: Jobs per model
@@ -44,7 +44,7 @@ jobs:
           import json, os, re
           shards = int(os.environ["SHARDS"])
           jobs = [{"model": m, "safe": re.sub(r"[^A-Za-z0-9.-]", "-", m), "shard": k, "of": shards}
-                  for m in os.environ["MODELS"].split() for k in range(1, shards + 1)]
+                  for m in os.environ["MODELS"].split() if m != "none" for k in range(1, shards + 1)]
           print("matrix=" + json.dumps({"include": jobs}))
           EOF
 
@@ -69,7 +69,7 @@ jobs:
 
   review:
     needs: [plan, fetch]
-    if: inputs.models != ''  # an empty matrix is an error; hosted-model alone is a valid run
+    if: inputs.models != 'none'  # an empty matrix is an error; hosted-model alone is a valid run
     runs-on: ubuntu-latest
     timeout-minutes: 330
     strategy:
