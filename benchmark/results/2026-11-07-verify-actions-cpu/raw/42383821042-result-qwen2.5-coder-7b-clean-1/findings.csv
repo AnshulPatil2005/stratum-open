@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/rich#4006,qwen2.5-coder:7b,,clean,medium,bug,rich/cells.py,189,,Potential infinite loop,"The condition `if not spans:` can lead to an infinite loop if the input string starts with a zero-width joiner (ZWJ) or variation selector 16 (VS16). The loop will continue to append spans with zero cell lengths, causing an infinite loop.",,

@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+encode/httpx#3672,qwen2.5-coder:7b,verify,clean,medium,bug,src/ahttpx/_server.py,54,,Potential infinite loop,Resetting the parser without checking if the connection is closed can lead to an infinite loop if the connection is kept alive.,,
+encode/httpx#3672,qwen2.5-coder:7b,verify,clean,medium,bug,src/httpx/_server.py,54,,Potential infinite loop,Resetting the parser without checking if the connection is closed can lead to an infinite loop if the connection is kept alive.,,

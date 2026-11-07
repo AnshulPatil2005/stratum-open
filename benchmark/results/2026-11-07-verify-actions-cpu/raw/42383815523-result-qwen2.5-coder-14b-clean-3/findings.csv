@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/click#3777,qwen2.5-coder:14b,verify,clean,medium,security,src/click/_termui_impl.py,660,,Command injection via PAGER parameters,"If the `PAGER` environment variable or `cmd_params` contain malicious input, it could lead to command injection.",,

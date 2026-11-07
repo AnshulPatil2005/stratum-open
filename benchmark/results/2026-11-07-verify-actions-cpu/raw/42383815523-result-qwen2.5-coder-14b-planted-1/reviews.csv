@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5917,test,negated-condition,src/flask/sansio/app.py,641,qwen2.5-coder:14b,verify,planted,900.2,yes,1,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+encode/httpx#3690,test,negated-condition,src/httpx/_server.py,35,qwen2.5-coder:14b,verify,planted,900.1,yes,1,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+pydantic/pydantic#14244,dev,flipped-comparison,pydantic/json_schema.py,2967,qwen2.5-coder:14b,verify,planted,359.4,yes,1,0,0,0,
+Textualize/textual#6455,test,wrong-boolean,src/textual/screen.py,2028,qwen2.5-coder:14b,verify,planted,319.8,yes,1,0,0,0,
+Textualize/rich#4006,dev,off-by-one,rich/cells.py,197,qwen2.5-coder:14b,verify,planted,874.7,yes,3,0,0,0,

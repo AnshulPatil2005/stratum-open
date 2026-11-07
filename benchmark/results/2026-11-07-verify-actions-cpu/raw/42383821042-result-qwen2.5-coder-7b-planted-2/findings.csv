@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8464,qwen2.5-coder:7b,,planted,medium,bug,scrapy/core/_http2/stream.py,411,,Inverted condition,"The condition checks if the reason is not STOP_DOWNLOAD and not (CANCELLED and _cancel_keeps_body), which is incorrect. It should be checking if the reason is not STOP_DOWNLOAD or (CANCELLED and _cancel_keeps_body). The same applies to line 469.",,
+scrapy/scrapy#8464,qwen2.5-coder:7b,,planted,medium,bug,scrapy/core/downloader/handlers/http2.py,142,,Inverted condition,"The condition checks if the response is not a Failure and contains the 'dataloss' flag, which is incorrect. It should be checking if the response is a Failure and contains the 'dataloss' flag.",,

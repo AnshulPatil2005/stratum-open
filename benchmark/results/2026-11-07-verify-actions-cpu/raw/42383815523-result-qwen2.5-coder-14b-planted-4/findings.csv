@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+encode/httpx#3673,qwen2.5-coder:14b,verify,planted,medium,bug,src/ahttpx/_parsers.py,,,Incorrect method call,"The _reset method is called instead of _complete, which may not handle the request/response cycle correctly.",,
+encode/httpx#3673,qwen2.5-coder:14b,verify,planted,medium,bug,src/httpx/_pool.py,173,,Incorrect method call,"The _reset method is called instead of _complete, which may not handle the request/response cycle correctly.",,

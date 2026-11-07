@@ -1,0 +1,5 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/rich#3845,qwen2.5-coder:14b,,clean,medium,security,rich/style.py,22,,Potential ID Leakage,"Using a sequential counter for link IDs can expose the number of link creations over time, which might be used to infer the number of active links or the age of a link.",,
+scrapy/scrapy#8461,qwen2.5-coder:14b,,clean,medium,bug,scrapy/extensions/feedexport.py,965,,Incorrect lock check,"The code checks if the lock is not locked before acquiring it, which can lead to race conditions. The lock might be acquired by another thread between the check and the acquire call.",,
+pallets/werkzeug#3293,qwen2.5-coder:14b,,clean,medium,breaking-change,src/werkzeug/datastructures/accept.py,302,yes,Behavior change,"The `accept_html` property no longer matches XHTML or XML, which may break existing code that relies on this behavior.",,
+pallets/werkzeug#3293,qwen2.5-coder:14b,,clean,medium,bug,src/werkzeug/datastructures/accept.py,313,,Deprecation warning,"The `accept_xhtml` property is deprecated and will be removed in Werkzeug 4.0, which may cause confusion for users.",,

@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/werkzeug#3339,qwen2.5-coder:14b,verify,planted,medium,bug,src/werkzeug/http.py,1296,,Loss of functionality,Removing the `WSGIEnvironment` type from the `parse_cookie` method's parameters can lead to loss of functionality if the method is called with a `WSGIEnvironment` object.,,
