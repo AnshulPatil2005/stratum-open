@@ -1,0 +1,4 @@
+# Both of the above.
+review:
+  verify: true
+  context_lines: 10
