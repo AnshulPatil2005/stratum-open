@@ -97,6 +97,12 @@ jobs:
         with:
           name: planted-cache
           path: benchmark/.cache/
+      - name: Make room for a big model
+        # The runner's 14 GB disk holds a 14B model but not a 20B one. These
+        # preinstalled SDKs aren't used here, and the runner is thrown away after.
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          df -h / | tail -1
       - name: Start Ollama and pull the model
         env:
           MODEL: ${{ matrix.model }}
@@ -107,6 +113,9 @@ jobs:
           curl -fsSL -o "$RUNNER_TEMP/ollama.tar.zst" "https://github.com/ollama/ollama/releases/download/v0.40.13/ollama-linux-amd64.tar.zst"
           echo "c9490e0f520be21271d969e6703f012268b1d39f8b70dd58854e5bfef7a75bb6  $RUNNER_TEMP/ollama.tar.zst" | sha256sum -c -
           tar --zstd -x -C "$root" -f "$RUNNER_TEMP/ollama.tar.zst"
+          rm "$RUNNER_TEMP/ollama.tar.zst"
+          # GPU libraries the CPU runner can't use, as in action.yml.
+          find "$root/lib/ollama" -mindepth 1 -maxdepth 1 -type d \( -name 'cuda*' -o -name 'rocm*' -o -name 'mlx*' \) -exec rm -rf {} + 2>/dev/null || true
           OLLAMA_NUM_PARALLEL=1 nohup "$root/bin/ollama" serve > "$RUNNER_TEMP/ollama.log" 2>&1 &
           for _ in $(seq 1 60); do curl -sf http://localhost:11434/api/version > /dev/null && break; sleep 1; done
           "$root/bin/ollama" pull "$MODEL"
