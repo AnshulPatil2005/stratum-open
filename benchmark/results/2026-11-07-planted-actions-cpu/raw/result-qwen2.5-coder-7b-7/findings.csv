@@ -1,0 +1,3 @@
+case,model,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8413,qwen2.5-coder:7b,medium,bug,scrapy/pipelines/files.py,,,Potential infinite recursion,"The `item_completed()` method is being awaited, which could lead to infinite recursion if the method calls itself directly or indirectly.",wrong,No recursion: item_completed is awaited once.
+scrapy/scrapy#8413,qwen2.5-coder:7b,medium,bug,scrapy/pipelines/files.py,793,,Missing timeout,"The `stat_file()` call does not have a timeout, which could lead to indefinite blocking if the file does not exist or is inaccessible.",wrong,Generic: nothing here needs a timeout.

@@ -1,0 +1,2 @@
+case,model,severity,category,path,line,near,title,detail,verdict,note
+encode/httpx#3672,qwen2.5-coder:7b,medium,bug,src/ahttpx/_parsers.py,378,,Incorrect return type,"The method `_reset` is supposed to return a boolean, but it currently returns `None`.",wrong,reset returns False or True on every path.

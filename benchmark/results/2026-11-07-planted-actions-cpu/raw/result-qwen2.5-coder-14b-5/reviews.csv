@@ -1,0 +1,6 @@
+case,kind,path,line,model,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3858,negated-condition,src/click/types.py,1152,qwen2.5-coder:14b,900.2,yes,1,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+psf/black#5637,flipped-comparison,src/black/files.py,86,qwen2.5-coder:14b,300.9,yes,1,0,0,0,
+Textualize/rich#3905,wrong-boolean,rich/progress.py,1177,qwen2.5-coder:14b,376.2,yes,1,0,1,1,
+encode/httpx#3672,inverted-return,src/httpx/_parsers.py,400,qwen2.5-coder:14b,900.1,yes,1,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+psf/black#5626,inverted-return,src/black/linegen.py,2025,qwen2.5-coder:14b,361.3,yes,1,0,0,0,

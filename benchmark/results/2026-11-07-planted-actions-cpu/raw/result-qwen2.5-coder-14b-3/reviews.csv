@@ -1,0 +1,6 @@
+case,kind,path,line,model,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5700,negated-condition,src/flask/__init__.py,45,qwen2.5-coder:14b,339.4,yes,1,0,1,1,
+pallets/jinja#2026,flipped-comparison,src/jinja2/runtime.py,998,qwen2.5-coder:14b,314.9,yes,1,0,0,0,
+pydantic/pydantic#14199,flipped-comparison,pydantic/_internal/_contextlib.py,45,qwen2.5-coder:14b,513.7,yes,1,0,1,0,
+scrapy/scrapy#8431,wrong-boolean,scrapy/downloadermiddlewares/cookies.py,45,qwen2.5-coder:14b,339.2,yes,1,0,1,1,
+Textualize/rich#3953,off-by-one,rich/cells.py,58,qwen2.5-coder:14b,504.9,yes,1,0,3,1,

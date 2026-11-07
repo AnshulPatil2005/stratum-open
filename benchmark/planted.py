@@ -199,7 +199,7 @@ def _model_summary(out: Path) -> str:
         f"{len(cases)} real merged PRs, each with one bug planted on a line it adds. Each model reviewed",
         "them as the Action does: the `small` profile and an 8,192-token window. Only the model's own",
         "findings count. A finding is near the bug when it's on that file within "
-        f"{LINES_NEAR} lines; found means a person read it and it describes the bug.",
+        f"{LINES_NEAR} lines; found means it was read and it describes the bug.",
         "",
         "| Model | PRs | Bug shown to the model | Near the bug | Found | Other findings | Other findings marked right | Failed calls | Median time |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
@@ -308,7 +308,7 @@ def _checks_summary(out: Path) -> str:
     lines += [
         "",
         f"On the merged PRs: {len(merged)} finding(s) on {len({r['case'] for r in merged})} of {len(prs)} PRs. "
-        f"Marked by hand: {marked['right']} right, {marked['wrong']} wrong (false alarms), {marked['unsure']} unsure"
+        f"Marked: {marked['right']} right, {marked['wrong']} wrong (false alarms), {marked['unsure']} unsure"
         + (f", {marked['']} not marked yet." if marked[""] else "."),
     ]
     if merged:
