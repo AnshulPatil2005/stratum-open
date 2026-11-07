@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5917,test,negated-condition,src/flask/sansio/app.py,641,deepseek-coder-v2:16b,,planted,316.7,yes,1,0,2,0,
+encode/httpx#3690,test,negated-condition,src/httpx/_server.py,35,deepseek-coder-v2:16b,,planted,104.7,yes,1,0,3,1,
+pydantic/pydantic#14244,dev,flipped-comparison,pydantic/json_schema.py,2967,deepseek-coder-v2:16b,,planted,175.9,yes,1,0,3,0,
+Textualize/textual#6455,test,wrong-boolean,src/textual/screen.py,2028,deepseek-coder-v2:16b,,planted,154.4,yes,1,0,2,1,
+Textualize/rich#4006,dev,off-by-one,rich/cells.py,197,deepseek-coder-v2:16b,,planted,134.5,yes,1,0,1,0,

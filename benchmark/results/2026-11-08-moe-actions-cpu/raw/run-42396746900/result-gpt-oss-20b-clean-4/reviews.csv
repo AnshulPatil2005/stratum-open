@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3884,dev,negated-condition,src/click/core.py,3453,gpt-oss:20b,,clean,431.8,yes,1,1,0,0,the reply wasn't the JSON asked for
+psf/black#5645,dev,flipped-comparison,src/blackd/client.py,68,gpt-oss:20b,,clean,370.8,yes,1,1,0,0,the reply wasn't the JSON asked for
+pydantic/pydantic#14195,test,flipped-comparison,pydantic/_internal/_typing_extra.py,279,gpt-oss:20b,,clean,345.6,yes,1,1,0,0,the reply wasn't the JSON asked for
+encode/httpx#3673,dev,inverted-return,src/ahttpx/_parsers.py,384,gpt-oss:20b,,clean,491.2,yes,1,1,0,0,the reply wasn't the JSON asked for
+psf/black#5626,dev,inverted-return,src/black/linegen.py,2025,gpt-oss:20b,,clean,412.9,yes,1,1,0,0,the reply wasn't the JSON asked for

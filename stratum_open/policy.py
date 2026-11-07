@@ -48,6 +48,7 @@ class Review:
     max_inline_comments: int = 12
     min_severity: str = "medium"  # the model's findings below this aren't shown; the checks' always are
     verify: str = "none"  # none | strict | lenient: one more short call per model finding, dropping those the model rejects
+    reasoning: str = "default"  # default | low | off: how much a thinking model (gpt-oss, Qwen3) thinks before answering
     rules: tuple[str, ...] = ()  # the project's own review rules, in plain words, added to the prompt
     ignore_paths: tuple[str, ...] = DEFAULT_IGNORED
     log_prompts: bool = False
@@ -179,6 +180,7 @@ _CHOICES = {
     ("review", "mode"): ("general", "security", "performance", "maintainability"),
     ("review", "conclusion"): ("severity", "score"),
     ("review", "verify"): ("none", "strict", "lenient"),
+    ("review", "reasoning"): ("default", "low", "off"),
     ("boundaries", "severity"): ("low", "medium", "high", "critical"),
     ("boundaries", "new_edges"): ("off", "warn", "fail"),
     **{("commands", name): _WHO for name in ("review", "ignore", "mute", "explain", "triage", "record")},
@@ -320,7 +322,7 @@ _INVALID = object()
 
 def _check(path: tuple[str, ...], value: Any, default: Any, errors: list[str]) -> Any:
     name = _dotted(path)
-    if path == ("boundaries", "new_edges") and value is False:
+    if path in (("boundaries", "new_edges"), ("review", "reasoning")) and value is False:
         return "off"  # YAML reads an unquoted `off` as false
     if path == ("boundaries", "forbid"):
         entries = _forbid_entries(value)

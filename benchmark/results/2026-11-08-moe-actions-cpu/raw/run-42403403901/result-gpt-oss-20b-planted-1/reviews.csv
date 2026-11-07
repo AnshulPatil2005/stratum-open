@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5917,test,negated-condition,src/flask/sansio/app.py,641,gpt-oss:20b,reasoning-low,planted,352.2,yes,1,0,1,1,
+encode/httpx#3690,test,negated-condition,src/httpx/_server.py,35,gpt-oss:20b,reasoning-low,planted,393.5,yes,1,1,0,0,the reply wasn't the JSON asked for
+pydantic/pydantic#14244,dev,flipped-comparison,pydantic/json_schema.py,2967,gpt-oss:20b,reasoning-low,planted,167.9,yes,1,0,0,0,
+Textualize/textual#6455,test,wrong-boolean,src/textual/screen.py,2028,gpt-oss:20b,reasoning-low,planted,154.5,yes,1,0,0,0,
+Textualize/rich#4006,dev,off-by-one,rich/cells.py,197,gpt-oss:20b,reasoning-low,planted,148.3,yes,1,0,0,0,

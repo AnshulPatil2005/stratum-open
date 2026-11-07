@@ -1,0 +1,4 @@
+# A thinking model with less thinking, and the lenient verify pass.
+review:
+  reasoning: low
+  verify: lenient

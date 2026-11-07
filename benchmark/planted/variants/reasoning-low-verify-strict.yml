@@ -1,0 +1,4 @@
+# A thinking model with less thinking, and the strict verify pass.
+review:
+  reasoning: low
+  verify: strict
