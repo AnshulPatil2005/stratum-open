@@ -216,3 +216,19 @@ def test_a_failed_walkthrough_still_publishes_its_fallbacks():
     assert "**What this PR does:** Adds token checks." in body  # the chunked review's, not the fallback's generic sentence
     assert "**Check first:**" in body and "\n- Signature not verified in app/auth/session.py" in body
     assert "<details><summary>Walkthrough</summary>\n\nThis PR touches:\n- app/auth/session.py: Adds check()." in body
+
+
+def test_verify_checks_the_per_file_passes_findings_too():
+    # One file pass (the auth file ranks first), no lenses, no walkthrough:
+    # the file pass, the chunked review, then the verifier on the file pass's finding.
+    jwt_line = 'return jwt.decode(token, options={"verify_signature": False})'
+    model = FakeModel(
+        file_answer([finding("app/auth/session.py", jwt_line)]),
+        json.dumps({"summary": "s", "matches_description": "yes", "findings": []}),
+        '{"real": "no", "why": "Checked elsewhere."}',
+    )
+    result = analyze(title="t", description="d", files=parse_diff(DIFF), model=model,
+                     policy=policy("  file_reviews: 1\n  lens_files: 0\n  walkthrough: false\n  verify: strict\n"))
+    assert not any(f.source == "model" for f in result.findings)
+    assert result.large.dropped == 1
+    assert any(c.get("pass") == "verify" for c in result.large.calls)

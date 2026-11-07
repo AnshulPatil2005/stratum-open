@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5899,dev,negated-condition,src/flask/app.py,1590,qwen2.5-coder:14b,,planted,332.2,yes,1,0,2,0,
+pallets/jinja#2098,test,flipped-comparison,src/jinja2/__init__.py,44,qwen2.5-coder:14b,,planted,150.8,yes,1,0,1,0,
+pydantic/pydantic#14213,test,flipped-comparison,pydantic/plugin/_loader.py,43,qwen2.5-coder:14b,,planted,255.2,yes,1,0,1,1,
+scrapy/scrapy#8464,test,wrong-boolean,scrapy/core/_http2/stream.py,469,qwen2.5-coder:14b,,planted,354.8,yes,1,0,3,0,
+Textualize/rich#3953,test,off-by-one,rich/cells.py,58,qwen2.5-coder:14b,,planted,333.3,yes,1,0,1,1,

@@ -1,0 +1,8 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+encode/httpx#3690,qwen2.5-coder:14b,,clean,medium,bug,src/ahttpx/_parsers.py,232,,Potential AttributeError,"If `self.parser` does not have a `wait_ready` method, this will raise an AttributeError. The same applies to line 468.",,
+encode/httpx#3690,qwen2.5-coder:14b,,clean,medium,bug,src/ahttpx/_server.py,35,,Potential AttributeError,"If `self._parser` does not have a `wait_ready` method, this will raise an AttributeError.",,
+encode/httpx#3690,qwen2.5-coder:14b,,clean,medium,bug,src/httpx/_parsers.py,232,,Potential AttributeError,"If `self.parser` does not have a `wait_ready` method, this will raise an AttributeError. The same applies to line 468.",,
+encode/httpx#3690,qwen2.5-coder:14b,,clean,medium,bug,src/httpx/_server.py,35,yes,Potential AttributeError,"If `self._parser` does not have a `wait_ready` method, this will raise an AttributeError.",,
+Textualize/rich#4006,qwen2.5-coder:14b,,clean,medium,bug,rich/cells.py,189,,Handling of special characters at the start,"If the string starts with a special character like ZWJ or variation selector, it might not be handled correctly.",,
+Textualize/rich#4006,qwen2.5-coder:14b,,clean,medium,bug,rich/cells.py,197,yes,Potential off-by-one error,"The condition `index < (codepoint_count - 1)` might not correctly handle the last character, leading to an off-by-one error.",,
+Textualize/rich#4006,qwen2.5-coder:14b,,clean,medium,bug,rich/cells.py,203,,Handling of variation selectors without a previous character,"If a variation selector is encountered without a previous character, it might not be handled correctly.",,

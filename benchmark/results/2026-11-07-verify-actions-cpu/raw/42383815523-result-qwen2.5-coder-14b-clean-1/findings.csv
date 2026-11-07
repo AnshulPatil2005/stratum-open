@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+encode/httpx#3690,qwen2.5-coder:14b,verify,clean,medium,bug,src/ahttpx/_parsers.py,232,,Potential AttributeError,"If `self.parser` does not have a `wait_ready` method, this will raise an AttributeError. The same applies to line 468.",,
+encode/httpx#3690,qwen2.5-coder:14b,verify,clean,medium,bug,src/httpx/_parsers.py,232,,Potential AttributeError,"If `self.parser` does not have a `wait_ready` method, this will raise an AttributeError. The same applies to line 468.",,

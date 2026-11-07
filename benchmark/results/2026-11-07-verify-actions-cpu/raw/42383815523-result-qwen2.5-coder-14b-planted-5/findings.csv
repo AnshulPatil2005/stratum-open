@@ -1,0 +1,4 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+encode/httpx#3672,qwen2.5-coder:14b,verify,planted,medium,bug,src/ahttpx/_parsers.py,,,Potential blocking call,Calling `await self._parser.reset()` without a timeout can block the server indefinitely.,,
+encode/httpx#3672,qwen2.5-coder:14b,verify,planted,medium,bug,src/httpx/_network.py,,,Potential blocking call,Calling `await self.stream.close()` without a timeout can block the server indefinitely.,,
+encode/httpx#3672,qwen2.5-coder:14b,verify,planted,medium,bug,src/httpx/_server.py,53,,Potential blocking call,Calling `stream.read()` without a timeout can block the server indefinitely.,,

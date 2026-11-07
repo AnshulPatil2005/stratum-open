@@ -1,0 +1,7 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+psf/black#5637,qwen2.5-coder:14b,,clean,medium,bug,src/black/files.py,86,yes,Incorrect root detection,"The function incorrectly identifies the root by comparing the resolved path to its parent. This will fail on filesystems where the root does not have a parent (e.g., some network filesystems or certain mount points).",,
+Textualize/rich#3905,qwen2.5-coder:14b,,clean,medium,bug,rich/progress.py,1175,yes,Incorrect condition check,The condition `if not self.disable:` should be `if self.disable:` to correctly handle the disabled state.,,
+Textualize/rich#3905,qwen2.5-coder:14b,,clean,medium,bug,rich/progress.py,1178,yes,Unnecessary print call,The `self.console.print()` call should be removed as it is not needed when the progress is disabled.,,
+pallets/werkzeug#3270,qwen2.5-coder:14b,,clean,medium,bug,src/werkzeug/datastructures/range.py,257,,Off-by-one error,"The stop value is set without adding 1, which is incorrect for byte ranges. The same applies to lines 359, 368.",,
+pallets/werkzeug#3270,qwen2.5-coder:14b,,clean,medium,bug,src/werkzeug/datastructures/range.py,320,,Incorrect handling of invalid ranges,"Returns an empty `ContentRange` instead of `None` for invalid ranges. The same applies to lines 326, 334, 348.",,
+pallets/werkzeug#3270,qwen2.5-coder:14b,,clean,medium,bug,src/werkzeug/datastructures/range.py,378,,Incorrect representation,"The representation includes the header value, which may not be suitable for debugging.",,
