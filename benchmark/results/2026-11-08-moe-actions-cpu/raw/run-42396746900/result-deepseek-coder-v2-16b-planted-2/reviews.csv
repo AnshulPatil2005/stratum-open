@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5899,dev,negated-condition,src/flask/app.py,1590,deepseek-coder-v2:16b,,planted,97.7,yes,1,0,3,1,
+pallets/jinja#2098,test,flipped-comparison,src/jinja2/__init__.py,44,deepseek-coder-v2:16b,,planted,81.5,yes,1,0,3,1,
+pydantic/pydantic#14213,test,flipped-comparison,pydantic/plugin/_loader.py,43,deepseek-coder-v2:16b,,planted,95.9,yes,1,0,2,0,
+scrapy/scrapy#8464,test,wrong-boolean,scrapy/core/_http2/stream.py,469,deepseek-coder-v2:16b,,planted,72.3,yes,1,0,2,0,
+Textualize/rich#3953,test,off-by-one,rich/cells.py,58,deepseek-coder-v2:16b,,planted,113.0,yes,1,0,1,1,

@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3818,dev,negated-condition,src/click/core.py,1591,gpt-oss:20b,,planted,1332.0,yes,2,2,0,0,the reply wasn't the JSON asked for
+psf/black#5634,dev,flipped-comparison,src/black/comments.py,698,gpt-oss:20b,,planted,612.0,yes,1,1,0,0,the reply wasn't the JSON asked for
+Textualize/rich#3845,test,wrong-boolean,rich/style.py,202,gpt-oss:20b,,planted,503.9,yes,1,1,0,0,the reply wasn't the JSON asked for
+scrapy/scrapy#8461,dev,missing-await,scrapy/extensions/feedexport.py,969,gpt-oss:20b,,planted,398.4,yes,1,0,3,2,
+pallets/werkzeug#3293,dev,not-in,src/werkzeug/datastructures/accept.py,302,gpt-oss:20b,,planted,392.5,yes,1,0,1,1,

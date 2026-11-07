@@ -1,0 +1,5 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/werkzeug#3337,dev,negated-condition,src/werkzeug/http.py,1356,deepseek-coder-v2:16b,,planted,379.9,yes,2,0,3,0,
+psf/requests#7427,test,flipped-comparison,src/requests/utils.py,855,deepseek-coder-v2:16b,,planted,56.3,yes,1,0,2,1,
+Textualize/textual#6464,dev,wrong-boolean,src/textual/screen.py,1532,deepseek-coder-v2:16b,,planted,136.5,yes,1,0,0,0,
+pypa/pip#14349,dev,off-by-one,src/pip/_internal/cli/autocompletion.py,144,deepseek-coder-v2:16b,,planted,197.1,yes,1,0,4,1,

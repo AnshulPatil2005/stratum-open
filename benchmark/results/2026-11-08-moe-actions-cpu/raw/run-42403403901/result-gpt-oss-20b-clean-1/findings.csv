@@ -1,0 +1,4 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/flask#5917,gpt-oss:20b,reasoning-low,clean,high,tests,tests/test_blueprints.py,233,,Response used as context manager,"blueprint.send_static_file returns a Response object, which does not implement the context manager protocol. Using it in a with statement causes a TypeError at runtime, breaking the test.",,
+encode/httpx#3690,gpt-oss:20b,reasoning-low,clean,high,bug,src/ahttpx/_server.py,,,Missing import for sleep,"The async server loop calls sleep(1) without importing sleep, leading to a NameError at runtime.",,
+encode/httpx#3690,gpt-oss:20b,reasoning-low,clean,high,bug,src/httpx/_server.py,113,,Missing import for sleep,"The code calls sleep(1) but the module 'time' (or any sleep function) is not imported, causing a NameError when the server starts.",,

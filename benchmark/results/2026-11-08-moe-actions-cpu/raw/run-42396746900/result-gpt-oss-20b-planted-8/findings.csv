@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+psf/requests#7427,gpt-oss:20b,,planted,medium,bug,src/requests/utils.py,855,yes,Incorrect no_proxy matching logic,"The condition uses `hostname != host` instead of `hostname == host`, causing the function to return True for any hostname that does not exactly match the no_proxy entry. This incorrectly bypasses proxies for URLs that should not be matched, breaking the intended domain boundary behavior.",right,Describes the planted flip in the no_proxy match.
