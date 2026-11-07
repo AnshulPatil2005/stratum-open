@@ -1,6 +1,6 @@
 # The planted-bug benchmark (benchmark/planted.py) on GitHub's free runners
-# (4 CPUs, no GPU), the machine the Action reviews on. Each model's 40 cases
-# are split across `shards` jobs, since a 14B model takes about 10 minutes a
+# (4 CPUs, no GPU), the machine the Action reviews on. Each model's cases, with
+# the bug and (with `clean`) without it, are split across `shards` jobs, since a 14B model takes about 10 minutes a
 # PR on a CPU. Start it by hand from the Actions tab; the results come back
 # as the planted-results artifact, to mark by hand and commit under
 # benchmark/results/.
@@ -25,6 +25,16 @@ on:
       hosted-endpoint:
         description: Its OpenAI-compatible endpoint
         default: https://openrouter.ai/api/v1
+      set:
+        description: Which cases (all | dev | test); tune on dev, report test
+        default: all
+      clean:
+        description: Also review each PR as merged, without the bug (the control)
+        type: boolean
+        default: true
+      policy:
+        description: A policy file in the repo merged over the Action's settings, e.g. benchmark/planted/variants/verify.yml (empty for none)
+        default: ""
 
 permissions:
   contents: read
@@ -39,12 +49,14 @@ jobs:
         env:
           MODELS: ${{ inputs.models }}
           SHARDS: ${{ inputs.shards }}
+          CLEAN: ${{ inputs.clean }}
         run: |
           python3 - <<'EOF' >> "$GITHUB_OUTPUT"
           import json, os, re
           shards = int(os.environ["SHARDS"])
-          jobs = [{"model": m, "safe": re.sub(r"[^A-Za-z0-9.-]", "-", m), "shard": k, "of": shards}
-                  for m in os.environ["MODELS"].split() if m != "none" for k in range(1, shards + 1)]
+          versions = ["planted", "clean"] if os.environ["CLEAN"] == "true" else ["planted"]
+          jobs = [{"model": m, "safe": re.sub(r"[^A-Za-z0-9.-]", "-", m), "version": v, "shard": k, "of": shards}
+                  for m in os.environ["MODELS"].split() if m != "none" for v in versions for k in range(1, shards + 1)]
           print("matrix=" + json.dumps({"include": jobs}))
           EOF
 
@@ -102,15 +114,22 @@ jobs:
         env:
           MODEL: ${{ matrix.model }}
           SHARD: ${{ matrix.shard }}/${{ matrix.of }}
-          OUT: raw/${{ matrix.safe }}-${{ matrix.shard }}
-        run: python benchmark/planted.py run --bugs benchmark/planted/bugs.json --model "$MODEL@http://localhost:11434/v1" --shard "$SHARD" --out "$OUT"
+          VERSION: ${{ matrix.version }}
+          SET: ${{ inputs.set }}
+          POLICY: ${{ inputs.policy }}
+          OUT: raw/${{ matrix.safe }}-${{ matrix.version }}-${{ matrix.shard }}
+        run: |
+          args=(--bugs benchmark/planted/bugs.json --model "$MODEL@http://localhost:11434/v1" --shard "$SHARD" --set "$SET" --out "$OUT")
+          if [ "$VERSION" = clean ]; then args+=(--clean); fi
+          if [ -n "$POLICY" ]; then args+=(--policy "$POLICY" --variant "$(basename "$POLICY" .yml)"); fi
+          python benchmark/planted.py run "${args[@]}"
       - if: always()
         run: tail -n 50 "$RUNNER_TEMP/ollama.log" || true
       - if: always()  # a stopped shard's partial results are still worth keeping
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: result-${{ matrix.safe }}-${{ matrix.shard }}
-          path: raw/${{ matrix.safe }}-${{ matrix.shard }}/
+          name: result-${{ matrix.safe }}-${{ matrix.version }}-${{ matrix.shard }}
+          path: raw/${{ matrix.safe }}-${{ matrix.version }}-${{ matrix.shard }}/
           if-no-files-found: ignore
 
   hosted:
@@ -133,9 +152,15 @@ jobs:
           STRATUM_MODEL_API_KEY: ${{ secrets.STRATUM_EVAL_API_KEY }}
           MODEL: ${{ inputs.hosted-model }}
           ENDPOINT: ${{ inputs.hosted-endpoint }}
+          CLEAN: ${{ inputs.clean }}
+          SET: ${{ inputs.set }}
+          POLICY: ${{ inputs.policy }}
         run: |
           if [ -z "$STRATUM_MODEL_API_KEY" ]; then echo "::error::Add the STRATUM_EVAL_API_KEY secret first."; exit 1; fi
-          python benchmark/planted.py run --bugs benchmark/planted/bugs.json --model "$MODEL@$ENDPOINT" --out raw/hosted
+          args=(--bugs benchmark/planted/bugs.json --model "$MODEL@$ENDPOINT" --set "$SET")
+          if [ -n "$POLICY" ]; then args+=(--policy "$POLICY" --variant "$(basename "$POLICY" .yml)"); fi
+          python benchmark/planted.py run "${args[@]}" --out raw/hosted/planted
+          if [ "$CLEAN" = true ]; then python benchmark/planted.py run "${args[@]}" --clean --out raw/hosted/clean; fi
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
