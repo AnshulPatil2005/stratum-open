@@ -49,6 +49,23 @@ def test_the_quoted_code_decides_the_line_not_the_number():
     assert result.complete and result.ran
 
 
+def test_a_replacement_the_model_left_unindented_gets_the_lines_indentation():
+    data = json.loads(answer())
+    data["findings"][0]["replacement"] = 'cur = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))'
+    [finding] = run(FakeModel(json.dumps(data))).findings
+    assert finding.replacement == '    cur = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))'
+
+
+def test_reindent_keeps_the_shape_of_a_multi_line_replacement():
+    from stratum_open.review import _reindent
+    original = "    if x:\n        return y"
+    assert _reindent("if x:\nreturn z", original) == "    if x:\n    return z"  # every line bare: one indent for all
+    assert _reindent("if x:\n        return z", original) == "    if x:\n        return z"  # only the first trimmed
+    assert _reindent("    if x:\n        return z", original) == "    if x:\n        return z"  # already right
+    assert _reindent("if x:", "if y:") == "if x:"  # nothing to restore
+    assert _reindent("\tif x:", "\tif y:") == "\tif x:"
+
+
 def test_without_a_quote_a_replacement_is_never_offered():
     data = json.loads(answer())
     del data["findings"][0]["code"]

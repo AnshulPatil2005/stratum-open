@@ -426,6 +426,8 @@ def _to_finding(raw: Any, by_path: dict[str, FileDiff]) -> Finding | None:
     # the model showed which lines it meant.
     if replacement is not None and (not quoted or "..." in replacement or _norm(replacement) == _norm(file.snippet(start, end))):
         replacement = None
+    if replacement is not None:
+        replacement = _reindent(replacement, file.snippet(start, end))
     category = _text(raw.get("category"), 40).lower()
     severity = _text(raw.get("severity"), 10).lower()
     return Finding(
@@ -448,6 +450,22 @@ _NUMBERED = re.compile(r"^\s*\d+\s+[+ -]\s?")
 
 def _norm(text: str) -> str:
     return " ".join(text.split())
+
+
+def _reindent(replacement: str, original: str) -> str:
+    """The replacement with the original's indentation, where the model left it
+    off: a suggestion replaces whole lines, so an unindented one breaks Python
+    and YAML when it's committed. Models drop either every line's indentation
+    or only the first line's, as when a JSON string is trimmed."""
+    indent = original[: len(original) - len(original.lstrip(" \t"))]
+    lines = replacement.split("\n")
+    first = next((i for i, line in enumerate(lines) if line.strip()), None)
+    if not indent or first is None or lines[first][:1] in (" ", "\t"):
+        return replacement
+    if all(not line.strip() or line[:1] not in (" ", "\t") for line in lines):
+        return "\n".join(indent + line if line.strip() else line for line in lines)
+    lines[first] = indent + lines[first]
+    return "\n".join(lines)
 
 
 def _locate(code: str, file: FileDiff, near: int | None) -> tuple[int, int] | None:
