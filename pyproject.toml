@@ -21,7 +21,7 @@ classifiers = [
 Source = "https://github.com/AnshulPatil2005/stratum-open"
 
 [project.scripts]
-stratum = "stratum_open.cli:main"
+stratum-open = "stratum_open.cli:main"
 
 [project.optional-dependencies]
 test = ["pytest>=8"]

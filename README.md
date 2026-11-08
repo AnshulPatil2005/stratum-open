@@ -79,12 +79,12 @@ Comment on a PR:
 - **Run it:** `docker build -t stratum-open .` and run it with `STRATUM_APP_ID`, `STRATUM_APP_PRIVATE_KEY_FILE`, `STRATUM_WEBHOOK_SECRET` and `STRATUM_MODEL_ENDPOINT` set (see the [Dockerfile](Dockerfile)). Point the App's webhook at `https://your-host/webhook`.
 
 **CLI.** `pip install git+https://github.com/AnshulPatil2005/stratum-open` for:
-- `stratum review --local main`: review your branch against `main` before you open a PR. Handy for contributors too.
-- `stratum review owner/repo#123`: a dry run on any PR; `--post` publishes it.
-- `stratum record <login>`: a record from a local clone's history.
-- `stratum policy check`: validate a policy file.
-- `stratum triage owner/repo`: the sorted queue.
-- `stratum data …`: see or delete what the App stored.
+- `stratum-open review --local main`: review your branch against `main` before you open a PR. Handy for contributors too.
+- `stratum-open review owner/repo#123`: a dry run on any PR; `--post` publishes it.
+- `stratum-open record <login>`: a record from a local clone's history.
+- `stratum-open policy check`: validate a policy file.
+- `stratum-open triage owner/repo`: the sorted queue.
+- `stratum-open data …`: see or delete what the App stored.
 
 ## Models
 
@@ -127,6 +127,10 @@ The [benchmark](benchmark/) reviews real merged PRs with each model, and maintai
 ## Data
 
 [DATA.md](DATA.md) lists every field stored, where it lives and for how long, and everything that leaves your infrastructure. A test fails when a stored field is added without a line there.
+
+## Upgrading to 0.3.0
+
+The command is now `stratum-open`, or `python -m stratum_open`; it was `stratum`. Hosted Stratum's client also installs a `stratum` command, and the new name lets the two sit side by side. Change any script, cron job or container command that runs `stratum`, such as `stratum serve` or `stratum data purge`. Nothing else is renamed: the Action, the `@stratum` comment commands, `.stratum/policy.yml` and the `STRATUM_*` settings work as before.
 
 ## Status
 
