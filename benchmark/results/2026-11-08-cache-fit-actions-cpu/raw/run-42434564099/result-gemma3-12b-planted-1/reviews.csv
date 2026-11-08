@@ -1,0 +1,4 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5899,dev,negated-condition,src/flask/app.py,1590,gemma3:12b,reasoning-off,planted,269.3,yes,1,0,0,0,
+pydantic/pydantic#14244,dev,flipped-comparison,pydantic/json_schema.py,2967,gemma3:12b,reasoning-off,planted,492.0,yes,1,0,1,0,
+Textualize/rich#4006,dev,off-by-one,rich/cells.py,197,gemma3:12b,reasoning-off,planted,420.3,yes,1,0,1,1,

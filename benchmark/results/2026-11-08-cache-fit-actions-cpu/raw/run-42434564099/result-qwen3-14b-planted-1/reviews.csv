@@ -1,0 +1,4 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5899,dev,negated-condition,src/flask/app.py,1590,qwen3:14b,reasoning-off,planted,491.9,yes,1,0,3,0,
+pydantic/pydantic#14244,dev,flipped-comparison,pydantic/json_schema.py,2967,qwen3:14b,reasoning-off,planted,459.3,yes,1,0,0,0,
+Textualize/rich#4006,dev,off-by-one,rich/cells.py,197,qwen3:14b,reasoning-off,planted,900.1,yes,1,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout

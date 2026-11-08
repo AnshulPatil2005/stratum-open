@@ -1,0 +1,3 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/jinja#2026,dev,flipped-comparison,src/jinja2/runtime.py,998,gemma3:12b,reasoning-off,clean,573.2,yes,1,0,0,0,
+scrapy/scrapy#8431,dev,wrong-boolean,scrapy/downloadermiddlewares/cookies.py,45,gemma3:12b,reasoning-off,clean,446.0,yes,1,0,1,1,

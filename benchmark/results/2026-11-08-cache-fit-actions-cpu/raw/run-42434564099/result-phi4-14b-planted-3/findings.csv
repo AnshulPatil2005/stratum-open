@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/rich#3905,phi4:14b,reasoning-off,planted,medium,bug,rich/progress.py,1175,yes,Redundant console print call,"The condition `if not self.console.is_interactive or not self.console.is_jupyter:` will always be true if `self.console.is_interactive` is `False`, leading to unnecessary console output. This can cause extraneous blank lines when the progress is disabled.",right,"names the or, and the blank lines it prints where it shouldn't"

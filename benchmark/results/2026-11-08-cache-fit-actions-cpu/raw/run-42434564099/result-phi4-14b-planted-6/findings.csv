@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+psf/black#5645,phi4:14b,reasoning-off,planted,medium,bug,src/blackd/client.py,70,yes,Incorrect header name normalization,"The code attempts to normalize header names to 'Content-Type' if they are not already in lowercase. This can lead to incorrect behavior if a header other than 'Content-Type' is provided, as it will be overwritten.",right,headers other than Content-Type get overwritten
+psf/black#5645,phi4:14b,reasoning-off,planted,medium,bug,src/blackd/client.py,77,,Assumes 'Content-Type' header is always present,"The code assumes that the 'Content-Type' header is always present in self.headers, which may not be the case, leading to a KeyError.",,

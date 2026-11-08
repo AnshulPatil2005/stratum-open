@@ -1,0 +1,4 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3818,dev,negated-condition,src/click/core.py,1591,phi4:14b,reasoning-off,clean,1034.2,yes,2,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+Textualize/rich#3905,dev,wrong-boolean,rich/progress.py,1177,phi4:14b,reasoning-off,clean,299.4,yes,1,0,2,1,
+pallets/werkzeug#3293,dev,not-in,src/werkzeug/datastructures/accept.py,302,phi4:14b,reasoning-off,clean,177.7,yes,1,0,2,1,

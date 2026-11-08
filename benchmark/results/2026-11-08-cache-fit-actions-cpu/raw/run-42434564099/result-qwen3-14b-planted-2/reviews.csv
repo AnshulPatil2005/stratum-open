@@ -1,0 +1,4 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3884,dev,negated-condition,src/click/core.py,3453,qwen3:14b,reasoning-off,planted,851.6,yes,1,0,2,0,
+pydantic/pydantic#14199,dev,flipped-comparison,pydantic/_internal/_contextlib.py,45,qwen3:14b,reasoning-off,planted,710.9,yes,1,0,3,1,
+psf/black#5626,dev,inverted-return,src/black/linegen.py,2025,qwen3:14b,reasoning-off,planted,371.5,yes,1,0,0,0,

@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8431,gemma3:12b,reasoning-off,clean,medium,bug,scrapy/downloadermiddlewares/cookies.py,46,yes,Potential for unexpected behavior with cookie paths,"The condition `not cookie.domain_specified and cookie.path_specified and cookie.path == ""/""` might lead to unexpected behavior if a cookie is intended to be domain-specific but the domain is not explicitly set. This could result in the cookie being accepted when it shouldn't be.",,

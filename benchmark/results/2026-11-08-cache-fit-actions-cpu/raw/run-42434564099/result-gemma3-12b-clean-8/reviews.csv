@@ -1,0 +1,3 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+psf/requests#7496,dev,flipped-comparison,src/requests/models.py,241,gemma3:12b,reasoning-off,clean,726.2,yes,1,0,0,0,
+pypa/pip#14349,dev,off-by-one,src/pip/_internal/cli/autocompletion.py,144,gemma3:12b,reasoning-off,clean,868.2,yes,1,0,1,0,

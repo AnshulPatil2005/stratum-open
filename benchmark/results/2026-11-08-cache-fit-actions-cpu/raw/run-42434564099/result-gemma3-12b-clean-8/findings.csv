@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pypa/pip#14349,gemma3:12b,reasoning-off,clean,medium,security,src/pip/_internal/commands/debug.py,58,,Unvalidated Module Import,"The `module_name` is used directly in `importlib.import_module` without validation. A malicious user could potentially inject arbitrary module names, leading to unintended imports and potential security vulnerabilities.",,

@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/werkzeug#3293,qwen3:14b,reasoning-off,clean,medium,maintainability,src/werkzeug/datastructures/accept.py,313,,Missing stacklevel in deprecation warning,"The deprecation warning does not specify the ``stacklevel`` parameter, which may cause the warning to be issued from the wrong stack frame, making it harder to trace the source of the deprecation.",,

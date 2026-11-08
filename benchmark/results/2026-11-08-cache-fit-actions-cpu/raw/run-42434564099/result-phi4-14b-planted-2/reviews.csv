@@ -1,0 +1,4 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3884,dev,negated-condition,src/click/core.py,3453,phi4:14b,reasoning-off,planted,689.9,yes,1,0,1,0,
+pydantic/pydantic#14199,dev,flipped-comparison,pydantic/_internal/_contextlib.py,45,phi4:14b,reasoning-off,planted,900.3,yes,1,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+psf/black#5626,dev,inverted-return,src/black/linegen.py,2025,phi4:14b,reasoning-off,planted,533.5,yes,1,0,2,1,

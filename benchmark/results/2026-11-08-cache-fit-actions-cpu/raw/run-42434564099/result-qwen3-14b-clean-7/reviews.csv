@@ -1,0 +1,3 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+psf/black#5634,dev,flipped-comparison,src/black/comments.py,698,qwen3:14b,reasoning-off,clean,837.8,yes,1,0,3,2,
+scrapy/scrapy#8461,dev,missing-await,scrapy/extensions/feedexport.py,969,qwen3:14b,reasoning-off,clean,242.1,yes,1,0,2,0,
