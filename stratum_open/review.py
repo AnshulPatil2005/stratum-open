@@ -521,8 +521,12 @@ def _int(value: Any) -> int | None:
     return None
 
 
-# An @name, as GitHub would link it: not already in code, not part of an email or a path.
-_MENTION = re.compile(r"(?<![\w`/.@-])@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))\b")
+# An @name, as GitHub would link it. GitHub links any @name that doesn't
+# follow an ASCII letter, digit or "_" (so "user@example.com" isn't one, but
+# "x-@name", "x/@name" and "é@name" are). An "_" that starts italics or bold,
+# as in "_@name_", isn't part of the text, so it doesn't count; one inside a
+# word, as in "a_@name", does. A backtick before it means it's already in code.
+_MENTION = re.compile(r"(?<![A-Za-z0-9`])(?<![A-Za-z0-9]_)@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))(?![A-Za-z0-9])")
 
 
 def demention(text: str) -> str:
