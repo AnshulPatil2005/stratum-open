@@ -1,5 +1,6 @@
-"""`stratum`: review a PR or local changes, see a track record, check a
-policy file, sort the PR queue, manage the App's data, run the App.
+"""`stratum-open` (or `python -m stratum_open`): review a PR or local
+changes, see a track record, check a policy file, sort the PR queue, manage
+the App's data, run the App.
 
 The CLI keeps nothing: results go to the terminal or a JSON file.
 """
@@ -29,7 +30,7 @@ MAX_LOCAL_CONTENTS = 40  # files whose full text the checks get on a local revie
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(prog="stratum", description="PR review and triage on a model you run yourself.")
+    parser = argparse.ArgumentParser(prog="stratum-open", description="PR review and triage on a model you run yourself.")
     parser.add_argument("--version", action="version", version=f"stratum-open {__version__}")
     sub = parser.add_subparsers(dest="command", required=True)
 

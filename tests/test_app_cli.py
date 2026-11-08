@@ -4,6 +4,8 @@ import io
 import json
 import os
 import subprocess
+import tomllib
+from pathlib import Path
 
 import pytest
 
@@ -82,6 +84,12 @@ def test_uninstalling_deletes_the_repos_rows_and_clone(server, tmp_path):
 
 
 # ── CLI ──────────────────────────────────────────────────────────────────
+
+
+def test_the_command_is_stratum_open_not_hosted_stratums_stratum():
+    """Hosted Stratum's client installs `stratum`; this one must not take that name."""
+    scripts = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text(encoding="utf-8"))["project"]["scripts"]
+    assert scripts == {"stratum-open": "stratum_open.cli:main"}
 
 
 def test_policy_check(tmp_path, capsys):

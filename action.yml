@@ -41,7 +41,7 @@ runs:
       # Comment commands like triage and record don't, so they skip starting Ollama.
       id: need
       shell: bash
-      run: echo "model=$(stratum needs-model)" >> "$GITHUB_OUTPUT"
+      run: echo "model=$(stratum-open needs-model)" >> "$GITHUB_OUTPUT"
 
     - name: Cache Ollama and the model
       if: inputs.ollama-model != '' && steps.need.outputs.model == 'true'
@@ -71,4 +71,4 @@ runs:
         STRATUM_CONTEXT_TOKENS: ${{ inputs.ollama-model != '' && '8192' || '' }}
         STRATUM_MODEL_NAME: ${{ inputs.ollama-model != '' && inputs.ollama-model || inputs.model-name }}
         STRATUM_MODEL_API_KEY: ${{ inputs.model-api-key }}
-      run: stratum action
+      run: stratum-open action
