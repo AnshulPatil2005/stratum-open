@@ -66,7 +66,7 @@ Comment on a PR:
 | `@stratum ignore` | write access | As a reply to an inline comment: hide that finding on this PR |
 | `@stratum ignore <rule>` | write access | Hide a rule on this PR |
 | `@stratum mute <rule>` / `unmute` | write access | Hide a rule on every PR (GitHub App only, since it stores it) |
-| `@stratum explain` | anyone | As a reply to an inline comment: explain that finding in more detail |
+| `@stratum explain` | the PR's author or write access, a few a day | As a reply to an inline comment: explain that finding in more detail |
 | `@stratum triage` | anyone | Why the PR got its label |
 | `@stratum record` | anyone | Your own track record in this repo |
 
@@ -132,6 +132,10 @@ The [benchmark](benchmark/) reviews real merged PRs with each model, and maintai
 ## Upgrading to 0.3.0
 
 The command is now `stratum-open`, or `python -m stratum_open`; it was `stratum`. Hosted Stratum's client also installs a `stratum` command, and the new name lets the two sit side by side. Change any script, cron job or container command that runs `stratum`, such as `stratum serve` or `stratum data purge`. Nothing else is renamed: the Action, the `@stratum` comment commands, `.stratum/policy.yml` and the `STRATUM_*` settings work as before.
+
+## Stratum Open and hosted Stratum
+
+Stratum Open is the engine and the ways to run it yourself. Hosted Stratum runs the same engine as a service, with managed models and features that need a database (incidents, Drift, Insights). [How Stratum and Stratum Open fit together](docs/stratum-and-stratum-open.md) explains which does what, the commands in each, and which repository owns what.
 
 ## Status
 
