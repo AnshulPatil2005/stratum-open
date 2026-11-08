@@ -426,6 +426,8 @@ def _to_finding(raw: Any, by_path: dict[str, FileDiff]) -> Finding | None:
     # the model showed which lines it meant.
     if replacement is not None and (not quoted or "..." in replacement or _norm(replacement) == _norm(file.snippet(start, end))):
         replacement = None
+    if replacement is not None:
+        replacement = _reindent(replacement, file, start, end)
     category = _text(raw.get("category"), 40).lower()
     severity = _text(raw.get("severity"), 10).lower()
     return Finding(
@@ -448,6 +450,33 @@ _NUMBERED = re.compile(r"^\s*\d+\s+[+ -]\s?")
 
 def _norm(text: str) -> str:
     return " ".join(text.split())
+
+
+def _reindent(replacement: str, file: FileDiff, start: int, end: int) -> str:
+    """The replacement with the original's indentation, where the model left it
+    off: a suggestion replaces whole lines, so an unindented one breaks Python
+    and YAML when it's committed. Models drop either every line's indentation
+    or only the first line's, as when a JSON string is trimmed.
+
+    A bare line can also be a fix that moves code out of its block. That's
+    only valid where the block ends, so the indentation is restored only
+    where the next line in the diff carries on at the same depth or deeper;
+    anywhere else the replacement is left as the model wrote it."""
+    original = file.snippet(start, end)
+    indent = original[: len(original) - len(original.lstrip(" \t"))]
+    lines = replacement.split("\n")
+    first = next((i for i, line in enumerate(lines) if line.strip()), None)
+    if not indent or first is None or lines[first][:1] in (" ", "\t"):
+        return replacement
+    side, n = file.new_side(), end + 1
+    while n in side and not side[n].strip():  # the next line with code, within the same hunk
+        n += 1
+    if n not in side or not side[n].startswith(indent):
+        return replacement
+    if all(not line.strip() or line[:1] not in (" ", "\t") for line in lines):
+        return "\n".join(indent + line if line.strip() else line for line in lines)
+    lines[first] = indent + lines[first]
+    return "\n".join(lines)
 
 
 def _locate(code: str, file: FileDiff, near: int | None) -> tuple[int, int] | None:

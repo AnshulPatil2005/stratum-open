@@ -49,6 +49,41 @@ def test_the_quoted_code_decides_the_line_not_the_number():
     assert result.complete and result.ran
 
 
+def test_a_replacement_the_model_left_unindented_gets_the_lines_indentation():
+    data = json.loads(answer())
+    data["findings"][0]["replacement"] = 'cur = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))'
+    [finding] = run(FakeModel(json.dumps(data))).findings
+    assert finding.replacement == '    cur = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,))'
+
+
+BLOCK = """diff --git a/app/flags.py b/app/flags.py
+--- a/app/flags.py
++++ b/app/flags.py
+@@ -0,0 +1,7 @@
++def total(x, y):
++    if x:
++        return y
++    return 0
++if enabled:
++    result = calculate()
++print(result)
+"""
+
+
+def test_reindent_restores_indentation_only_where_the_block_carries_on():
+    from stratum_open.review import _reindent
+    [file] = parse_diff(BLOCK)
+    # Lines 2-3 are followed by line 4 at the same depth: a bare first line can only be a trimmed one.
+    assert _reindent("if x:\nreturn z", file, 2, 3) == "    if x:\n    return z"  # every line bare: one indent for all
+    assert _reindent("if x:\n        return z", file, 2, 3) == "    if x:\n        return z"  # only the first trimmed
+    assert _reindent("    if x:\n        return z", file, 2, 3) == "    if x:\n        return z"  # already right
+    assert _reindent("def total(a, b):", file, 1, 1) == "def total(a, b):"  # nothing to restore
+    # Line 6 ends its block, so a bare line may be a fix that moves it out: left as written.
+    assert _reindent("result = calculate_fixed()", file, 6, 6) == "result = calculate_fixed()"
+    # Line 7 is the last line in the diff: nothing to tell by, so left as written.
+    assert _reindent("print(result)", file, 7, 7) == "print(result)"
+
+
 def test_without_a_quote_a_replacement_is_never_offered():
     data = json.loads(answer())
     del data["findings"][0]["code"]
