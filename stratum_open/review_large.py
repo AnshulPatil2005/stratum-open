@@ -30,7 +30,7 @@ from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding, severity_rank, slug
 from stratum_open.model import Reply, parse_json, salvage
 from stratum_open.policy import Policy
-from stratum_open.review import GUIDANCE_CHARS, LEGEND, MAX_DESCRIPTION_CHARS, OUTPUT_RESERVE_TOKENS, _NARRATION, _text, _to_finding, shown
+from stratum_open.review import GUIDANCE_CHARS, LEGEND, MAX_DESCRIPTION_CHARS, OUTPUT_RESERVE_TOKENS, _NARRATION, _text, _to_finding, demention, shown
 
 REVIEW_MODES = {
     "general": "General code review with balanced focus on correctness, quality, and maintainability.",
@@ -257,7 +257,7 @@ def review_files(
         review.status = "reviewed"
         primary = max(datas, key=lambda d: _score(d.get("risk_score")))
         review.risk_score = _score(primary.get("risk_score"))
-        review.change_summary = _text(primary.get("change_summary"), 300) or "Changed in this PR."
+        review.change_summary = demention(_text(primary.get("change_summary"), 300)) or "Changed in this PR."
         review.why_it_matters = _text(primary.get("why_it_matters"), 300) or review.why_it_matters
         result.findings += _file_findings(file, datas, policy, result)
     return result
@@ -289,12 +289,12 @@ def synthesize(large: LargeReview, findings: list[Finding], *, title: str, descr
     else:
         large.synthesized = True
     priorities = data.get("top_priorities")
-    priorities = [_text(p, 200) for p in priorities if _text(p, 200)][:3] if isinstance(priorities, list) else []
+    priorities = [demention(_text(p, 200)) for p in priorities if _text(p, 200)][:3] if isinstance(priorities, list) else []
     mode = _mode(policy)
-    large.summary = _text(data.get("summary"), 800) or fallback_summary(title, mode, findings, reviewed)
+    large.summary = demention(_text(data.get("summary"), 800)) or fallback_summary(title, mode, findings, reviewed)
     large.top_priorities = priorities or fallback_priorities(findings)
     large.executive_summary = _text(data.get("executive_summary"), 800) or fallback_executive_summary(mode, findings, reviewed)
-    large.walkthrough = _text(data.get("walkthrough"), 4000) or fallback_walkthrough(reviewed)
+    large.walkthrough = demention(_text(data.get("walkthrough"), 4000)) or fallback_walkthrough(reviewed)
 
 
 # ── which files, and in what order ──────────────────────────────────────

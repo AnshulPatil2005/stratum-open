@@ -218,6 +218,36 @@ def test_a_failed_walkthrough_still_publishes_its_fallbacks():
     assert "<details><summary>Walkthrough</summary>\n\nThis PR touches:\n- app/auth/session.py: Adds check()." in body
 
 
+def _posted_summary(*replies):
+    from fakes import FakeGitHub
+
+    from stratum_open.runner import Context, review_pull
+
+    gh = FakeGitHub(diff=DIFF)
+    review_pull(Context(gh=gh, policy=parse_policy("review:\n  profile: large\n  parallel_calls: 1\n  lens_files: 0\n"),
+                        model=FakeModel(*replies), bot="stratum[bot]", log=lambda line: None), 7)
+    return gh.issue_comments_[7][0]["body"]
+
+
+def test_mentions_in_the_walkthrough_are_neutralised():
+    synthesis = json.dumps({"summary": "Adds auth. cc @octocat please look", "top_priorities": ["Ask @torvalds about the lock"],
+                            "executive_summary": "x", "walkthrough": "- session.py: pings @some-org/security-team"})
+    body = _posted_summary(file_answer(), file_answer(), file_answer(),
+                           json.dumps({"summary": "", "findings": []}), synthesis)
+    assert "**What this PR does:** Adds auth. cc `@octocat` please look" in body
+    assert "\n- Ask `@torvalds` about the lock" in body
+    assert "- session.py: pings `@some-org`/security-team" in body
+    assert not re.search(r"(?<!`)@(octocat|torvalds|some-org)", body)
+
+
+def test_mentions_in_a_files_change_summary_are_neutralised():
+    # The walkthrough call fails, so the fallback lists each file's change_summary.
+    body = _posted_summary(file_answer(summary="Adds check(), cc @octocat."), file_answer(), file_answer(),
+                           json.dumps({"summary": "", "findings": []}), "not json")
+    assert "- app/auth/session.py: Adds check(), cc `@octocat`." in body
+    assert not re.search(r"(?<!`)@octocat", body)
+
+
 def test_verify_checks_the_per_file_passes_findings_too():
     # One file pass (the auth file ranks first), no lenses, no walkthrough:
     # the file pass, the chunked review, then the verifier on the file pass's finding.
