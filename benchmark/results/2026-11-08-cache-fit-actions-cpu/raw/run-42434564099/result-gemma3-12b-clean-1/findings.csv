@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pydantic/pydantic#14244,gemma3:12b,reasoning-off,clean,medium,maintainability,pydantic/json_schema.py,2967,yes,Complex conditional,The nested conditional logic makes the pattern generation harder to understand. Consider refactoring to simplify the logic.,,
+Textualize/rich#4006,gemma3:12b,reasoning-off,clean,medium,bug,rich/cells.py,197,yes,Potential index out of bounds,"If `index` is the last character in the string, `index < (codepoint_count - 1)` will be false, and `index` will be incremented by 1. This could lead to an index out of bounds error if the subsequent character is also a ZWJ.",,

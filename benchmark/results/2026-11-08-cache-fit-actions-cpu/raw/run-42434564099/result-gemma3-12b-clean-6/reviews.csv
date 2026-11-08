@@ -1,0 +1,3 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+psf/black#5645,dev,flipped-comparison,src/blackd/client.py,68,gemma3:12b,reasoning-off,clean,370.2,yes,1,0,1,0,
+encode/httpx#3673,dev,inverted-return,src/ahttpx/_parsers.py,384,gemma3:12b,reasoning-off,clean,900.2,yes,1,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout

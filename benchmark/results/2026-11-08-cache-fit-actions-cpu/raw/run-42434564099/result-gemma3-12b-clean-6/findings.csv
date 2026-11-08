@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+psf/black#5645,gemma3:12b,reasoning-off,clean,medium,bug,src/blackd/client.py,78,,Missing Content-Type check,"If the `Content-Type` header is not present in the `headers` dictionary, accessing `self.headers[""Content-Type""]` will raise a KeyError. This can happen if the client is initialized without a Content-Type header, or if the header is removed later.",,

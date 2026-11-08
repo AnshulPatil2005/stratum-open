@@ -1,0 +1,3 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/werkzeug#3337,dev,negated-condition,src/werkzeug/http.py,1356,qwen3:14b,reasoning-off,planted,773.0,yes,2,0,7,0,
+Textualize/textual#6464,dev,wrong-boolean,src/textual/screen.py,1532,qwen3:14b,reasoning-off,planted,404.2,yes,1,0,4,2,

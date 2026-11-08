@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8461,qwen3:14b,reasoning-off,planted,high,bug,scrapy/extensions/feedexport.py,965,,Incorrect lock state check,"The code checks if the lock is not locked, but the lock's 'locked' property may not be reliable for determining the current state of the lock. This could lead to incorrect behavior when acquiring the lock.",,
+scrapy/scrapy#8461,qwen3:14b,reasoning-off,planted,medium,performance,scrapy/exporters.py,86,,Inefficient type checking,"Using 'type(value)' for checking if a value is in a set of scalar types may be less efficient than using 'isinstance(value, ...)' for type checking, especially for complex or subclassed types.",,

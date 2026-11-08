@@ -1,0 +1,4 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3818,dev,negated-condition,src/click/core.py,1591,qwen3:14b,reasoning-off,planted,1100.4,yes,2,1,0,0,couldn't reach the model at http://localhost:11434/v1: ReadTimeout
+Textualize/rich#3905,dev,wrong-boolean,rich/progress.py,1177,qwen3:14b,reasoning-off,planted,447.9,yes,1,0,2,2,
+pallets/werkzeug#3293,dev,not-in,src/werkzeug/datastructures/accept.py,302,qwen3:14b,reasoning-off,planted,224.5,yes,1,0,1,1,

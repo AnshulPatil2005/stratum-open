@@ -1,0 +1,3 @@
+# A thinking model with its thinking turned off, for models that think by default (qwen3).
+review:
+  reasoning: "off"

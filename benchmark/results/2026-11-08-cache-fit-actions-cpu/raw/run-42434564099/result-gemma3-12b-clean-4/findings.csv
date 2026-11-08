@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/werkzeug#3337,gemma3:12b,reasoning-off,clean,medium,bug,src/werkzeug/debug/__init__.py,444,,Missing error handling for missing HTTP_COOKIE,"If the `HTTP_COOKIE` header is missing from the WSGI environment, `environ.get(""HTTP_COOKIE"")` will return `None`, and `parse_cookie` will likely raise an exception. This could lead to an unhandled error.",,

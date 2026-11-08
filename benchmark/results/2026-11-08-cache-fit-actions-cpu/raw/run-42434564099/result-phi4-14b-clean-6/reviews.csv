@@ -1,0 +1,3 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+psf/black#5645,dev,flipped-comparison,src/blackd/client.py,68,phi4:14b,reasoning-off,clean,320.9,yes,1,0,2,1,
+encode/httpx#3673,dev,inverted-return,src/ahttpx/_parsers.py,384,phi4:14b,reasoning-off,clean,758.2,yes,1,0,6,0,

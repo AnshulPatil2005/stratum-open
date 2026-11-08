@@ -1,0 +1,4 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3818,dev,negated-condition,src/click/core.py,1591,gemma3:12b,reasoning-off,planted,1233.9,yes,2,0,1,1,
+Textualize/rich#3905,dev,wrong-boolean,rich/progress.py,1177,gemma3:12b,reasoning-off,planted,354.9,yes,1,0,0,0,
+pallets/werkzeug#3293,dev,not-in,src/werkzeug/datastructures/accept.py,302,gemma3:12b,reasoning-off,planted,270.6,yes,1,0,1,1,

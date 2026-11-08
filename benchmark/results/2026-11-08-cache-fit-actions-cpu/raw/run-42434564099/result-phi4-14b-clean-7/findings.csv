@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8461,phi4:14b,reasoning-off,clean,medium,bug,scrapy/extensions/feedexport.py,965,,Potential race condition,"The check for `self._export_lock.locked` is not atomic with the `acquire()` call, which could lead to a race condition where multiple coroutines pass the check and attempt to acquire the lock.",,
