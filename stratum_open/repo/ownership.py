@@ -10,6 +10,10 @@ Authors are `author_identity` of the `.mailmap`'d email, so someone who
 commits under a personal email shows as that email and can't be matched to
 their GitHub login; the note then names them by email, possibly to
 themselves. Bots (`…[bot]`) and `exclude`d identities aren't counted.
+
+`bus_factor` puts a number on the same risk for any commit counts, these or
+an embedder's own: the fewest authors who together made at least half of
+the commits.
 """
 
 from __future__ import annotations
@@ -23,6 +27,7 @@ from stratum_open.track_record import author_identity
 
 SOLE_SHARE = 0.8  # of a module's commits, for one author to count as its only expert
 MIN_COMMITS = 5  # fewer than this says too little about who knows a module
+BUS_FACTOR_SHARE = 0.5  # of the commits, that the bus factor's authors made together
 
 
 @dataclass
@@ -37,7 +42,23 @@ class ModuleOwners:
 
     def top(self) -> tuple[str, int]:
         """The author with the most commits; a tie goes to the first by name."""
-        return min(self.authors.items(), key=lambda item: (-item[1], item[0]))
+        return ranked(self.authors)[0]
+
+
+def ranked(authors: dict[str, int]) -> list[tuple[str, int]]:
+    """(author, commits), most commits first; a tie goes to the first by name."""
+    return sorted(authors.items(), key=lambda item: (-item[1], item[0]))
+
+
+def bus_factor(authors: dict[str, int]) -> int:
+    """The fewest authors who together made at least half of the commits:
+    1 when one person made half or more of them, 0 when nobody committed."""
+    total, covered = sum(authors.values()), 0
+    for count, (_, commits) in enumerate(ranked(authors), start=1):
+        covered += commits
+        if total and covered >= BUS_FACTOR_SHARE * total:
+            return count
+    return 0
 
 
 def module_of(path: str) -> str:

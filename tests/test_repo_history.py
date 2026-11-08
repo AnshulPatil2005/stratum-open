@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from stratum_open.repo.hotspots import Hotspot, decision_points, hotspot_note, hotspot_paths, hotspots, is_source
-from stratum_open.repo.ownership import ModuleOwners, bus_factor_notes, module_of, owners
+from stratum_open.repo.ownership import ModuleOwners, bus_factor, bus_factor_notes, module_of, owners, ranked
 
 NOW = datetime(2026, 11, 1, tzinfo=timezone.utc)
 START = NOW - timedelta(days=100)
@@ -126,6 +126,27 @@ def test_bus_factor_threshold(counts, noted):
 
 def test_no_bus_factor_note_when_the_pr_author_is_the_only_author():
     assert bus_factor_notes(billing(("alice", 9)), ["backend/billing/x.py"], "Alice") == []
+
+
+@pytest.mark.parametrize(
+    "authors, expected",
+    [
+        ({}, 0),
+        ({"alice": 0}, 0),  # nobody committed
+        ({"alice": 10}, 1),
+        ({"alice": 90, "bob": 5, "carol": 5}, 1),
+        ({"alice": 5, "bob": 5}, 1),  # exactly half
+        ({"alice": 10, "bob": 10, "carol": 10}, 2),  # 20 of 30
+        ({f"dev{i}": 1 for i in range(10)}, 5),
+    ],
+)
+def test_bus_factor_is_the_fewest_authors_with_half_the_commits(authors, expected):
+    assert bus_factor(authors) == expected
+
+
+def test_authors_rank_by_commits_then_name():
+    assert ranked({"carol": 2, "bob": 5, "alice": 2}) == [("bob", 5), ("alice", 2), ("carol", 2)]
+    assert ModuleOwners("m", 30, {"carol": 2, "alice": 2}).top() == ("alice", 2)
 
 
 def test_bus_factor_note_uses_the_email_when_there_is_no_login():
