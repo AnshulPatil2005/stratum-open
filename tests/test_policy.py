@@ -74,6 +74,15 @@ def test_unknown_keys_are_warnings_not_errors():
     assert policy.warnings == ("Unknown key extra is ignored.", "Unknown key review.modle is ignored.")
 
 
+def test_services_is_hosted_stratums_section_and_is_accepted_unread():
+    policy = parse_policy("services:\n  web:\n    calls: [api]\n  api: 7\nreview:\n  mode: security\nextra: 1\n")
+    assert (policy.source, policy.errors, policy.warnings) == ("file", (), ("Unknown key extra is ignored.",))
+    assert policy.review.mode == "security" and policy.explicit == frozenset({"review.mode"})
+    # Whatever it holds, the review runs with the rest of the file.
+    assert replace(parse_policy("services: [not, a, mapping]\n"), explicit=frozenset()) == replace(Policy(), source="file")
+    assert not hasattr(policy, "services")
+
+
 @pytest.mark.parametrize(
     "text, error",
     [

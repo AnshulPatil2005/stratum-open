@@ -28,8 +28,10 @@ HEAD = head_of(7)
     ("boundaries:\n  modules: {a: ['nothing/matches/this/**']}\n  forbid: []\n", "file"),
     ("boundaries:\n  forbid: ['a b c']\n", "defaults (file unusable)"),
     ("always_human:\n  paths: ['/abs/**', 'abs/**', 'abs/x/**']\n", "file"),
+    ("services:\n  web: {calls: [api]}\n  api: 7\n", "file"),
 ], ids=["no-file", "empty", "comments", "version-only", "wrong-type", "list", "text", "invalid-yaml", "null-int", "null-str", "string-bool", "version-2",
-        "unknown-keys", "bom", "rules-not-text", "forbid-unknown-module", "self-reference", "cycle", "glob-matches-nothing", "bad-forbid", "overlapping-paths"])
+        "unknown-keys", "bom", "rules-not-text", "forbid-unknown-module", "self-reference", "cycle", "glob-matches-nothing", "bad-forbid", "overlapping-paths",
+        "hosted-services"])
 def test_every_policy_shape_gives_a_usable_policy(text, source):
     policy = parse_policy(text)
     assert isinstance(policy, Policy) and policy.source == source
@@ -38,6 +40,8 @@ def test_every_policy_shape_gives_a_usable_policy(text, source):
         assert policy.review == Policy().review
     if text and "unknown_key" in text:
         assert len(policy.warnings) == 2
+    if text and text.startswith("services:"):  # hosted Stratum's section: no warning here
+        assert policy.warnings == ()
     assert isinstance(policy.ignored("any/path.py"), bool)  # the globs compile and answer
     assert isinstance(policy.needs_human("abs/x/y.py"), bool)
 

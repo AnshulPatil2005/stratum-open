@@ -202,6 +202,9 @@ _MINIMUMS = {
 }
 _MAPPINGS = {("boundaries", "modules")}  # name -> list of text values
 _META = {"source", "warnings", "errors", "explicit"}
+# Top-level sections that hosted Stratum reads from this file and this engine
+# doesn't: accepted unread, so one file serves both. Their reader checks them.
+_HOSTED = {"services"}  # hosted Stratum's service map: which service calls, uses, publishes to or consumes from which
 
 
 def parse_policy(text: str | None) -> Policy:
@@ -222,7 +225,7 @@ def parse_policy(text: str | None) -> Policy:
     warnings: list[str] = []
     errors: list[str] = []
     explicit: set[str] = set()
-    policy = _build(Policy, raw, (), warnings, errors, explicit)
+    policy = _build(Policy, {k: v for k, v in raw.items() if k not in _HOSTED}, (), warnings, errors, explicit)
     if not errors:
         errors.extend(_boundary_errors(policy.boundaries))
         errors.extend(f"review.events can't include {e!r}; it can include: {', '.join(REVIEW_EVENTS)}."
