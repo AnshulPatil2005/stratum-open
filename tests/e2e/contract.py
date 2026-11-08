@@ -82,7 +82,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def run_stratum(args: list[str], *, env: dict[str, str], timeout: float = 120, dev: bool = True, cwd: str | None = None) -> subprocess.CompletedProcess:
-    """`python -m stratum_open.cli ARGS` with a clean environment plus `env`.
+    """`python -m stratum_open ARGS` with a clean environment plus `env`.
     `dev` turns on -X dev, and makes a warning raised from Stratum's own
     modules an error; a dependency's warning on a newer Python is shown, not
     failed on, so one noisy library can't take the whole process suite down."""
@@ -90,5 +90,5 @@ def run_stratum(args: list[str], *, env: dict[str, str], timeout: float = 120, d
     base.update({"PYTHONPATH": str(REPO_ROOT), "PYTHONIOENCODING": os.environ.get("STRATUM_E2E_IOENCODING", "cp1252"), "NO_COLOR": "1"})
     base.update(env)
     flags = ["-X", "dev", "-W", "error::Warning:stratum_open"] if dev else []
-    return subprocess.run([sys.executable, *flags, "-m", "stratum_open.cli", *args], capture_output=True, text=True, encoding="utf-8",
+    return subprocess.run([sys.executable, *flags, "-m", "stratum_open", *args], capture_output=True, text=True, encoding="utf-8",
                           errors="replace", env=base, timeout=timeout, cwd=cwd or str(REPO_ROOT))
