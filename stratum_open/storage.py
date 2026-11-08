@@ -196,7 +196,7 @@ _EXPORT = {
 
 class SQLiteStorage:
     """One connection shared by the server's threads behind a lock. WAL lets
-    a second process, such as `stratum data delete`, work while it runs."""
+    a second process, such as `stratum-open data delete`, work while it runs."""
 
     def __init__(self, path: str) -> None:
         self._lock = threading.Lock()

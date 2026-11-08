@@ -3,8 +3,8 @@ that would rather install an App than add a workflow to each repo.
 
 It's the only mode that stores anything (findings, 👍/👎 votes, a short job
 log; see DATA.md), and the only one that keeps a clone of each repo's default
-branch between runs. Run it with `stratum serve`, or any WSGI server pointed
-at `stratum_open.app:application`.
+branch between runs. Run it with `stratum-open serve`, or any WSGI server
+pointed at `stratum_open.app:application`.
 
 Settings, all from the environment:
   STRATUM_APP_ID, STRATUM_APP_PRIVATE_KEY (or STRATUM_APP_PRIVATE_KEY_FILE),

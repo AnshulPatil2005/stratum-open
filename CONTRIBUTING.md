@@ -27,7 +27,7 @@ pytest
 ```
 
 To try a review against a real model, install [Ollama](https://ollama.com), run
-`ollama pull qwen2.5-coder:7b`, then `stratum review --local main` in any repo.
+`ollama pull qwen2.5-coder:7b`, then `stratum-open review --local main` in any repo.
 
 ## Reporting a security problem
 

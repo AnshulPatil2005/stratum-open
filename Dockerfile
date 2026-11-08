@@ -16,4 +16,4 @@ USER stratum
 ENV STRATUM_DB=/data/stratum.db STRATUM_WORKDIR=/data/repos PORT=8080
 VOLUME /data
 EXPOSE 8080
-CMD ["stratum", "serve"]
+CMD ["stratum-open", "serve"]
