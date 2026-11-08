@@ -54,6 +54,7 @@ Every key, with its default, is in [policy.example.yml](policy.example.yml).
   - `always_human.paths` lists paths that always need a maintainer;
   - `boundaries` holds module rules such as `api -> db`;
   - `track_record.affects_triage` lets an author's record move their PR's label.
+- `services` is used by hosted Stratum's service map (which service calls, uses, publishes to or consumes from which); Stratum Open ignores it, so the same file works for both. The example file shows it commented out.
 
 ## Commands
 

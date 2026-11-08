@@ -90,3 +90,14 @@ boundaries:                    # module rules; a PR that breaks one gets a findi
 
 data:                          # GitHub App only
   findings_retention_days: 180
+
+# services: is used by hosted Stratum's service map; Stratum Open ignores it.
+# Names are the services of your Stratum project. Each key takes a name or a list.
+# services:
+#   web:
+#     calls: [api]             # http
+#   api:
+#     uses: [db]               # database
+#     publishes: [jobs]        # queue
+#   worker:
+#     consumes: [jobs]         # queue
