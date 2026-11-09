@@ -51,8 +51,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # Pin to a commit SHA (AnshulPatil2005/stratum-open@<sha>) so a new release reaches you only when you choose.
-      - uses: AnshulPatil2005/stratum-open@v0.2.0
+      # Pin to a commit SHA (stratum-org/stratum-open@<sha>) so a new release reaches you only when you choose.
+      - uses: stratum-org/stratum-open@v0.2.0
         with:
           # Runs the model on the runner: no server needed, but slow on CPU.
           # For reviews that find far more, use gpt-oss:20b and set review.reasoning: low

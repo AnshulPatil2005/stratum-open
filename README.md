@@ -79,7 +79,7 @@ Comment on a PR:
   - Events: pull request, issue comment, pull request review comment.
 - **Run it:** `docker build -t stratum-open .` and run it with `STRATUM_APP_ID`, `STRATUM_APP_PRIVATE_KEY_FILE`, `STRATUM_WEBHOOK_SECRET` and `STRATUM_MODEL_ENDPOINT` set (see the [Dockerfile](Dockerfile)). Point the App's webhook at `https://your-host/webhook`.
 
-**CLI.** `pip install git+https://github.com/AnshulPatil2005/stratum-open` for:
+**CLI.** `pip install git+https://github.com/stratum-org/stratum-open` for:
 - `stratum-open review --local main`: review your branch against `main` before you open a PR. Handy for contributors too.
 - `stratum-open review owner/repo#123`: a dry run on any PR; `--post` publishes it.
 - `stratum-open record <login>`: a record from a local clone's history.

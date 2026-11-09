@@ -7,5 +7,5 @@ state only in comments Stratum wrote itself.
 
 If you find a way around any of that, or any other security problem, please
 report it privately through
-[GitHub's private vulnerability reporting](https://github.com/AnshulPatil2005/stratum-open/security/advisories/new)
+[GitHub's private vulnerability reporting](https://github.com/stratum-org/stratum-open/security/advisories/new)
 rather than in a public issue. You'll get a reply within a week.

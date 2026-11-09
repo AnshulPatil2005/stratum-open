@@ -18,7 +18,7 @@ classifiers = [
 ]
 
 [project.urls]
-Source = "https://github.com/AnshulPatil2005/stratum-open"
+Source = "https://github.com/stratum-org/stratum-open"
 
 [project.scripts]
 stratum-open = "stratum_open.cli:main"
