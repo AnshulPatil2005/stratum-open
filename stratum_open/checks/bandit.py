@@ -7,6 +7,12 @@ and confidence: its low-severity tests (an `assert`, importing `subprocess`)
 fire all over most codebases and would bury the rest. `keep_low` keeps them,
 for reviews that want everything. Test files are skipped.
 
+Bandit runs with `--ignore-nosec`. The files are the PR's own versions, so a
+`# nosec` on an added line was written by the PR's author, and following it
+would let the author decide what Bandit reports. A finding on a line marked
+that way says so, so the reviewer sees the author meant to skip it. A `# nosec`
+already on the default branch doesn't matter, since only added lines count.
+
 It runs as its own process with a time limit, so a file that sends Bandit
 into a long parse can't hold up the review.
 """
@@ -16,6 +22,7 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -40,6 +47,8 @@ _LOW = {
     ("LOW", "HIGH"): "low", ("LOW", "MEDIUM"): "low", ("LOW", "LOW"): "low",
 }
 _CONFIDENCE = {"HIGH": 0.9, "MEDIUM": 0.6, "LOW": 0.4}
+# How Bandit spots a `# nosec` comment (bandit.core.manager.NOSEC_COMMENT).
+_NOSEC = re.compile(r"#\s*nosec")
 
 
 class BanditTimeout(RuntimeError):
@@ -61,20 +70,23 @@ def check(files: list[FileDiff], contents: dict[str, str] | None = None, *, keep
     targets = sorted(targets, key=lambda file: -file.additions)[:MAX_FILES]
     if not targets:
         return []
-    added = {file.path: {number for number, _ in file.added()} for file in targets}
+    added = {file.path: dict(file.added()) for file in targets}
     levels = {**_SEVERITY, **(_LOW if keep_low else {})}
     findings = []
     for issue in run_bandit({file.path: contents[file.path] for file in targets}):
         severity = levels.get((issue["severity"], issue["confidence"]))
-        mine = added.get(issue["path"], set())
+        mine = added.get(issue["path"], {})
         lines = [issue["line"]] + [n for n in issue["lines"] if n != issue["line"]]
         on_added = [n for n in lines if n in mine]
         if severity is None or not on_added:
             continue
         test_id, name = issue["test_id"], issue["test_name"].replace("_", " ")
+        detail = f"Bandit flags this line: {issue['text']}"
+        if any(_NOSEC.search(mine[n]) for n in on_added):
+            detail += " The PR marks it `# nosec`. Stratum reports it anyway, because the PR's author added that comment."
         findings.append(Finding(
             title=f"Bandit {test_id}: {name}",
-            detail=f"Bandit flags this line: {issue['text']}",
+            detail=detail,
             severity=severity,
             category="security",
             path=issue["path"],
@@ -102,7 +114,7 @@ def run_bandit(sources: dict[str, str], *, timeout: float = TIMEOUT_SECONDS) -> 
             paths[name] = path
         try:
             result = subprocess.run(
-                [sys.executable, "-m", "bandit", "-f", "json", "-q", *[os.path.join(folder, name) for name in paths]],
+                [sys.executable, "-m", "bandit", "-f", "json", "-q", "--ignore-nosec", *[os.path.join(folder, name) for name in paths]],
                 capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
             )
         except subprocess.TimeoutExpired:
