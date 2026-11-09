@@ -1,11 +1,12 @@
 import json
 
+import pytest
 from fakes import FakeModel
 
 from stratum_open.diff import parse_diff
 from stratum_open.model import Reply, parse_json
 from stratum_open.policy import parse_policy
-from stratum_open.review import review
+from stratum_open.review import demention, review
 
 DIFF = """diff --git a/app/users.py b/app/users.py
 --- a/app/users.py
@@ -255,3 +256,26 @@ def test_the_verifier_is_shown_the_flagged_line_even_in_a_long_hunk():
     text = _excerpt(file, 380, "interleaved")
     assert len(text) <= VERIFY_CHARS
     assert "value_380 = " in text and text.startswith("## big.py")
+
+
+@pytest.mark.parametrize("text, escaped", [
+    # GitHub links these (checked against its Markdown API), so each must be put in code.
+    ("cc @alice", "cc `@alice`"),
+    ("_@alice_", "_`@alice`_"),
+    ("__@alice__", "__`@alice`__"),
+    ("x _@alice_ y", "x _`@alice`_ y"),
+    ("x-@alice", "x-`@alice`"),
+    ("end.@alice", "end.`@alice`"),
+    ("x/@alice", "x/`@alice`"),
+    ("x@@alice", "x@`@alice`"),
+    ("é@alice", "é`@alice`"),
+    # A team: GitHub links it when the team exists.
+    ("@some-org/security-team", "`@some-org`/security-team"),
+    # GitHub doesn't link these, so they stay as they are.
+    ("user@example.com", "user@example.com"),
+    ("a_@alice_b", "a_@alice_b"),
+    ("1_@alice", "1_@alice"),
+    ("x `@alice` y", "x `@alice` y"),
+])
+def test_demention_escapes_every_mention_github_would_link(text, escaped):
+    assert demention(text) == escaped
