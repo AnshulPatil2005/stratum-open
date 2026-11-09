@@ -85,3 +85,25 @@ def test_real_bandit_finds_issues_on_added_lines_only():
     text = diff("tools/run.py", ["    subprocess.call(cmd, shell=True)"], context=["import subprocess", "import hashlib", "", "", "def run(cmd):"])
     findings = bandit.check(parse_diff(text), {"tools/run.py": source})
     assert [(f.rule, f.severity, f.line_start) for f in findings] == [("bandit/B602", "high", 6)]
+
+
+def test_a_finding_on_a_line_the_pr_marks_nosec_says_so(monkeypatch):
+    monkeypatch.setattr(bandit, "available", lambda: True)
+    monkeypatch.setattr(bandit, "run_bandit", lambda sources: [issue(1), issue(2), issue(3)])
+    files = parse_diff(diff("app.py", ["a()  # nosec", "b()  #nosec B602", "c()"]))
+    notes = ["`# nosec`" in f.detail for f in bandit.check(files, {"app.py": "a()  # nosec\nb()  #nosec B602\nc()\n"})]
+    assert notes == [True, True, False]
+
+
+def test_real_bandit_ignores_nosec_the_pr_adds():
+    pytest.importorskip("bandit")
+    context = ["import hashlib, pickle, tempfile", "", "", "def load(blob):"]
+    added = [
+        "    data = pickle.loads(blob)  # nosec",
+        "    path = tempfile.mktemp()  # nosec B306",
+        "    return hashlib.md5(blob).hexdigest()  # nosec: B324",
+    ]
+    source = "\n".join(context + added) + "\n"
+    findings = bandit.check(parse_diff(diff("app/load.py", added, context=context)), {"app/load.py": source})
+    assert [(f.rule, f.line_start) for f in findings] == [("bandit/B301", 5), ("bandit/B306", 6), ("bandit/B324", 7)]
+    assert all("`# nosec`" in f.detail for f in findings)
