@@ -76,7 +76,7 @@ Comment on a PR, with the command at the start of a line:
 | `/stratum triage` | anyone | Why the PR got its label |
 | `/stratum record` | anyone | Your own track record in this repo |
 
-`@stratum review` and the rest still work, but `stratum` is an unrelated GitHub organization, so GitHub turns each one into a mention of it. Use `/stratum`.
+Commands used to be written `@stratum review`. They aren't read any more: `stratum` is an unrelated GitHub organization, and GitHub turned each one into a mention of it.
 
 ## Other ways to run it
 
@@ -161,7 +161,7 @@ The [benchmark](benchmark/) reviews real merged PRs with each model, and maintai
 
 The command is now `stratum-open`, or `python -m stratum_open`; it was `stratum`. Hosted Stratum's client also installs a `stratum` command, and the new name lets the two sit side by side. Change any script, cron job or container command that runs `stratum`, such as `stratum serve` or `stratum data purge`. Nothing else is renamed: the Action, `.stratum/policy.yml` and the `STRATUM_*` settings work as before.
 
-Comment commands are now written `/stratum review`, `/stratum ignore` and so on; `@stratum` still works (see [Commands](#commands)). If you copied [examples/stratum.yml](examples/stratum.yml), update its job's `if:` filter, or `/stratum` comments won't start the job: replace `contains(github.event.comment.body, '@stratum')` with `contains(github.event.comment.body, '/stratum ') || contains(github.event.comment.body, '@stratum')`. The GitHub App needs no change.
+Comment commands are now written `/stratum review`, `/stratum ignore` and so on (see [Commands](#commands)); `@stratum review` no longer does anything. If you copied [examples/stratum.yml](examples/stratum.yml), update its job's `if:` filter, or `/stratum` comments won't start the job: replace `contains(github.event.comment.body, '@stratum')` with `contains(github.event.comment.body, '/stratum ')`. The GitHub App needs no change.
 
 If your code embeds the engine (`stratum_open.analyze`): a check's finding can now have a line the diff doesn't show, when a file moves to where a check does more (out of `tests/`, or into `.github/workflows/`) and the check reads all of it. GitHub refuses an inline comment on such a line. Post inline only the findings `stratum_open.placeable(findings, files)` returns, and list the rest in the summary.
 

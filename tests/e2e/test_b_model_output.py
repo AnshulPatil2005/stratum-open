@@ -224,7 +224,7 @@ def test_mentions_and_commands_in_model_text_are_neutralised(fake_github, make_c
     assert "`@alice`" in posted and " @alice" not in posted.replace("`@alice`", "")
     assert "`@stratum` review" in posted and "user@example.com" in posted
     assert "`/stratum` review" in posted and "`/stratum` ignore" in posted
-    # The bot's own comment, with "@stratum review" and "/stratum review" in it, is not a command.
+    # The bot's own comment, with "/stratum review" in it, is not a command.
     [summary] = fake_github.summary_comments(7)
     event = {"action": "created", "comment": {**summary, "user": {"login": fake_github.bot, "type": "Bot"}}, "issue": {"number": 7, "pull_request": {}}}
     assert handle(ctx, "issue_comment", event) is None

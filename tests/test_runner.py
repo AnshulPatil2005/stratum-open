@@ -220,8 +220,9 @@ def comment_event(body, login="erin", inline_reply_to=None, kind="User"):
 
 
 def test_parse_commands():
-    assert parse("thanks!\n@stratum ignore workflow/unpinned-action\n") == ("ignore", "workflow/unpinned-action")
-    assert parse("@Stratum Review") == ("review", "")
+    assert parse("thanks!\n/stratum ignore workflow/unpinned-action\n") == ("ignore", "workflow/unpinned-action")
+    assert parse("/Stratum Review") == ("review", "")
+    assert parse("@stratum review") is None
     assert parse("no command") is None
 
 
@@ -230,12 +231,12 @@ def test_ignore_needs_write_access_and_resolves_the_thread(gh):
     review_pull(ctx, 7)
     dead = next(c for c in gh.review_comments_ if "Dead code" in c["body"])
 
-    event, payload = comment_event("@stratum ignore", login="erin", inline_reply_to=dead["id"])
+    event, payload = comment_event("/stratum ignore", login="erin", inline_reply_to=dead["id"])
     assert handle(ctx, event, payload) == "refused"
     assert "only people with write access" in gh.replies[-1][2]
 
     gh.permissions["mona"] = "write"
-    event, payload = comment_event("@stratum ignore", login="mona", inline_reply_to=dead["id"])
+    event, payload = comment_event("/stratum ignore", login="mona", inline_reply_to=dead["id"])
     assert handle(ctx, event, payload) == "ignore"
     state = publish.State.decode(gh.issue_comments_[7][0]["body"])
     assert len(state.ignored) == 1
@@ -244,12 +245,12 @@ def test_ignore_needs_write_access_and_resolves_the_thread(gh):
 
 
 def test_an_ignore_made_while_a_review_runs_is_kept(gh):
-    """Each command runs on its own, so an `@stratum ignore` can land while a
+    """Each command runs on its own, so an `/stratum ignore` can land while a
     review is reading the PR: the review must not write the old state back."""
     review_pull(context(gh, FakeModel(model_answer())), 7)
 
     class IgnoresMidway(FakeModel):
-        def complete(self, system, user, **kwargs):  # what a concurrent `@stratum ignore model:dead-code` writes
+        def complete(self, system, user, **kwargs):  # what a concurrent `/stratum ignore model:dead-code` writes
             summary = gh.issue_comments_[7][0]
             state = publish.State.decode(summary["body"])
             if "model:dead-code" not in state.ignored_rules:
@@ -303,7 +304,7 @@ def test_two_ignores_at_once_both_stick(gh, monkeypatch):
             edit(comment_id, publish.replace_state(before, state))
 
     monkeypatch.setattr(gh, "edit_comment", racing_edit)
-    event, payload = comment_event("@stratum ignore model:dead-code", login="mona")
+    event, payload = comment_event("/stratum ignore model:dead-code", login="mona")
     assert handle(ctx, event, payload) == "ignore"
     assert set(publish.State.decode(gh.issue_comments_[7][0]["body"]).ignored_rules) == {"model:dead-code", "code/sql"}
 
@@ -312,20 +313,20 @@ def test_ignore_a_rule_and_help_and_bots(gh):
     ctx = context(gh, FakeModel(model_answer()))
     review_pull(ctx, 7)
     gh.permissions["mona"] = "admin"
-    event, payload = comment_event("@stratum ignore model:dead-code", login="mona")
+    event, payload = comment_event("/stratum ignore model:dead-code", login="mona")
     handle(ctx, event, payload)
     assert publish.State.decode(gh.issue_comments_[7][0]["body"]).ignored_rules == ["model:dead-code"]
     dead = next(t for t in gh.threads if "Dead code" in t["comments"][0]["body"])
     assert dead["resolved"] and "Ignored on this PR." in dead["comments"][0]["body"]
 
-    event, payload = comment_event("@stratum ignore code/sql", login="mona")
+    event, payload = comment_event("/stratum ignore code/sql", login="mona")
     handle(ctx, event, payload)
     sql = next(t for t in gh.threads if "SQL built from strings" in t["comments"][0]["body"])
     assert "Ignored on this PR." in sql["comments"][0]["body"] and "Fixed" not in sql["comments"][0]["body"]
 
-    event, payload = comment_event("@stratum what")
+    event, payload = comment_event("/stratum what")
     assert handle(ctx, event, payload) == "help"
-    event, payload = comment_event("@stratum review", login="other[bot]", kind="Bot")
+    event, payload = comment_event("/stratum review", login="other[bot]", kind="Bot")
     assert handle(ctx, event, payload) is None
 
 
@@ -334,12 +335,12 @@ def test_explain_and_triage_commands(gh):
     review_pull(ctx, 7)
     sql = next(c for c in gh.review_comments_ if "Unknown id" in c["body"])
     gh.files[("app/users.py", "a" * 40)] = "import sqlite3\n" * 10
-    event, payload = comment_event("@stratum explain", login="carol", inline_reply_to=sql["id"])  # the PR's author
+    event, payload = comment_event("/stratum explain", login="carol", inline_reply_to=sql["id"])  # the PR's author
     assert handle(ctx, event, payload) == "explain"
     assert gh.replies[-1][2].startswith("Here's why")
     assert "<!-- stratum:explained carol -->" in gh.replies[-1][2]
 
-    event, payload = comment_event("@stratum triage")  # anyone
+    event, payload = comment_event("/stratum triage")  # anyone
     handle(ctx, event, payload)
     assert "This PR is sorted as" in gh.issue_comments_[7][-1]["body"]
 
@@ -350,14 +351,14 @@ def test_explain_is_for_the_author_and_writers_only(gh):
     review_pull(ctx, 7)
     sql = next(c for c in gh.review_comments_ if "Unknown id" in c["body"])
     calls = len(model.prompts)
-    event, payload = comment_event("@stratum explain", login="mallory", inline_reply_to=sql["id"])
+    event, payload = comment_event("/stratum explain", login="mallory", inline_reply_to=sql["id"])
     assert handle(ctx, event, payload) == "refused"
     assert "for this PR's author and people with write access" in gh.replies[-1][2]
     assert len(model.prompts) == calls  # no model call for a stranger
 
     gh.permissions["mona"] = "write"
     model.replies.append("Because the id is never checked.")
-    event, payload = comment_event("@stratum explain", login="mona", inline_reply_to=sql["id"])
+    event, payload = comment_event("/stratum explain", login="mona", inline_reply_to=sql["id"])
     assert handle(ctx, event, payload) == "explain"
 
 
@@ -369,9 +370,9 @@ def test_explain_has_a_daily_limit_per_person_and_per_pr(gh):
     sql = next(c for c in gh.review_comments_ if "Unknown id" in c["body"])
     gh.files[("app/users.py", "a" * 40)] = "x = 1\n"
     for _ in range(commands.EXPLAIN_PER_PERSON):
-        event, payload = comment_event("@stratum explain", login="carol", inline_reply_to=sql["id"])
+        event, payload = comment_event("/stratum explain", login="carol", inline_reply_to=sql["id"])
         assert handle(ctx, event, payload) == "explain"
-    event, payload = comment_event("@stratum explain", login="carol", inline_reply_to=sql["id"])
+    event, payload = comment_event("/stratum explain", login="carol", inline_reply_to=sql["id"])
     assert handle(ctx, event, payload) == "refused"
     assert "Try again tomorrow" in gh.replies[-1][2]
 
@@ -379,19 +380,19 @@ def test_explain_has_a_daily_limit_per_person_and_per_pr(gh):
     for comment in gh.review_comments_:
         if "stratum:explained" in comment["body"]:
             comment["created_at"] = "2026-01-01T00:00:00Z"
-    event, payload = comment_event("@stratum explain", login="carol", inline_reply_to=sql["id"])
+    event, payload = comment_event("/stratum explain", login="carol", inline_reply_to=sql["id"])
     assert handle(ctx, event, payload) == "explain"
 
     # A forged marker from someone else doesn't count against anyone.
     gh.review_comments_.extend({"id": 9000 + n, "body": "<!-- stratum:explained carol -->", "user": {"login": "mallory"},
                                 "created_at": gh.now} for n in range(10))
-    event, payload = comment_event("@stratum explain", login="carol", inline_reply_to=sql["id"])
+    event, payload = comment_event("/stratum explain", login="carol", inline_reply_to=sql["id"])
     assert handle(ctx, event, payload) == "explain"
 
 
 def test_record_command_without_history(gh):
     ctx = context(gh, None)
-    event, payload = comment_event("@stratum record")
+    event, payload = comment_event("/stratum record")
     handle(ctx, event, payload)
     assert "needs the repo's history" in gh.issue_comments_[7][-1]["body"]
 
@@ -726,11 +727,11 @@ def test_skip_reason(policy_text, pull, action, expected):
 def test_command_permissions_follow_the_policy(gh):
     ctx = context(gh, FakeModel(model_answer()), policy=parse_policy("commands:\n  triage: write\n  review: author\n"))
     review_pull(ctx, 7)
-    event, payload = comment_event("@stratum triage", login="erin")
+    event, payload = comment_event("/stratum triage", login="erin")
     assert handle(ctx, event, payload) == "refused"
     assert "only people with write access" in gh.issue_comments_[7][-1]["body"]
     ctx.model.replies.append(model_answer())
-    event, payload = comment_event("@stratum review", login="carol")  # the PR's author, allowed by "author"
+    event, payload = comment_event("/stratum review", login="carol")  # the PR's author, allowed by "author"
     assert handle(ctx, event, payload) == "review"
 
 

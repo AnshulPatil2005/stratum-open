@@ -719,8 +719,8 @@ _TO_CODE = re.compile(r"(?<![A-Za-z0-9`])(?<![A-Za-z0-9]_)@[A-Za-z0-9][A-Za-z0-9
 
 def demention(text: str) -> str:
     """The model's words with every @name put in code, so nobody is paged by
-    text a model made up, and `/stratum` too, so neither `@stratum review` nor
-    `/stratum review` in a reply is ever a command. The bot's own comments are
+    text a model made up, and `/stratum` too, so `/stratum review` in a reply
+    is never a command. The bot's own comments are
     skipped by the command parser too; this covers people."""
     def swap(match: re.Match) -> str:
         # Already inside a code span: GitHub won't link it, and more backticks

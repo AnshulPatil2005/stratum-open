@@ -53,7 +53,7 @@ both products get it.
 | `/stratum explain` | The PR's author or write access, a few a day | Write access; it uses the team's AI provider or allowance |
 | `/stratum triage`, `/stratum record` | Anyone | Not available |
 
-Both still read each command written `@stratum`, as it used to be.
+Neither reads the older `@stratum` form any more, since GitHub turned it into a mention of an unrelated organization.
 
 ## Which repository owns what
 

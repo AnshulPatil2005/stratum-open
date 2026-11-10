@@ -104,7 +104,7 @@ def test_replayed_and_racing_deliveries_queue_one_job(tmp_path, monkeypatch):
     call(server, pr_event(action="synchronize"), delivery="later")
     assert server._queue.qsize() == 1 and server._pending[("acme/widget", 7, "review")][1]["action"] == "synchronize"
     comment = json.dumps({"action": "created", "installation": {"id": 1}, "repository": {"full_name": "acme/widget"}, "issue": {"number": 7, "pull_request": {}},
-                          "comment": {"id": 9, "body": "@stratum triage"}}).encode()
+                          "comment": {"id": 9, "body": "/stratum triage"}}).encode()
     for n in range(50):  # each with its own delivery id, so it's the queue's per-comment key doing the collapsing
         call(server, comment, event="issue_comment", delivery=f"comment-{n}")
     assert server._queue.qsize() == 2, "fifty copies of one comment are one job"

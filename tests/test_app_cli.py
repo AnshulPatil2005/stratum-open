@@ -69,7 +69,7 @@ def test_a_newer_push_replaces_the_queued_review(server):
 @pytest.mark.parametrize("body, queued", [
     ("/stratum review", True),
     ("thanks!\r\n/Stratum ignore code/sql\r\n", True),
-    ("@stratum review", True),
+    ("@stratum review", False),
     ("looks good", False),
     ("Fixes https://github.com/stratum-org/stratum-open/issues/53", False),
     ("/stratum-org/stratum-open has the docs", False),

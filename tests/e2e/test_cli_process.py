@@ -243,7 +243,7 @@ def test_action_comment_and_schedule_events(fake_github, fake_model, tmp_path):
     fake_github.add_pull(7, diff=DIFF)
     run_stratum(["action"], env=action_env(fake_github, fake_model, tmp_path, pr_payload()))
     comment = {"action": "created", "repository": {"default_branch": "main"}, "issue": {"number": 7, "pull_request": {}},
-               "comment": {"id": 1, "body": "@stratum triage", "user": {"login": "erin", "type": "User"}}}
+               "comment": {"id": 1, "body": "/stratum triage", "user": {"login": "erin", "type": "User"}}}
     result = run_stratum(["action"], env=action_env(fake_github, fake_model, tmp_path, comment, event="issue_comment"))
     assert result.returncode == 0 and "Command: triage" in result.stdout
     result = run_stratum(["action"], env=action_env(fake_github, fake_model, tmp_path, {"repository": {"default_branch": "main"}}, event="schedule"))

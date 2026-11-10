@@ -74,7 +74,7 @@ def test_the_policy_sets_it_on_the_model():
 
 
 def test_a_model_built_from_the_policy_has_its_reasoning_level():
-    # Commands like `@stratum explain` use model_from_policy() without effective_policy().
+    # Commands like `/stratum explain` use model_from_policy() without effective_policy().
     from stratum_open.model import model_from_policy
     model = model_from_policy(parse_policy("review:\n  reasoning: off\n"), env={})
     assert model.reasoning == "off"

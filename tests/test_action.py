@@ -43,7 +43,7 @@ def test_drafts_and_other_actions_are_skipped(tmp_path, monkeypatch, capsys):
 def test_comment_events_run_commands(tmp_path, monkeypatch):
     gh = FakeGitHub(diff=DIFF)
     payload = {"action": "created", "repository": {"default_branch": "main"}, "issue": {"number": 7, "pull_request": {}},
-               "comment": {"id": 1, "body": "@stratum help", "user": {"login": "erin", "type": "User"}}}
+               "comment": {"id": 1, "body": "/stratum help", "user": {"login": "erin", "type": "User"}}}
     run(tmp_path, monkeypatch, "issue_comment", payload, gh)
     assert "Stratum commands" in gh.issue_comments_[7][-1]["body"]
 
@@ -61,11 +61,10 @@ def test_schedule_builds_the_queue(tmp_path, monkeypatch):
     [
         ("pull_request_target", None, True),
         ("schedule", None, True),
-        ("issue_comment", "@stratum triage", False),
-        ("issue_comment", "@stratum record", False),
-        ("issue_comment", "@stratum  rereview", True),
-        ("issue_comment", "@stratum\texplain", True),
-        ("pull_request_review_comment", "@Stratum Ignore", True),
+        ("issue_comment", "/stratum record", False),
+        ("issue_comment", "/stratum  rereview", True),
+        ("pull_request_review_comment", "/Stratum Ignore", True),
+        ("issue_comment", "@stratum review", False),
         ("issue_comment", "/stratum triage", False),
         ("issue_comment", "/stratum review", True),
         ("pull_request_review_comment", "/Stratum explain", True),
@@ -91,13 +90,13 @@ def starts_the_job(needles: list[str], body: str) -> bool:
 @pytest.mark.parametrize("path", ["examples/stratum.yml", ".github/workflows/stratum.yml"])
 def test_the_workflow_starts_a_job_for_every_comment_the_parser_reads_as_a_command(path):
     needles = comment_filter(path)
-    assert needles == ["/stratum ", "@stratum"]
+    assert needles == ["/stratum "]
     commands = ["/stratum review", "/Stratum REVIEW", "thanks!\n/stratum review", "/stratum review\n", "ok\r\n/stratum  ignore code/sql\r\n",
-                "@stratum review", "@Stratum\ttriage", "@stratum\nreview", "  /stratum record"]
+                "  /stratum record"]
     for body in commands:
         assert parse(body) is not None and starts_the_job(needles, body), body
     # A slash command needs the space after it, the same text the filter looks for.
-    for body in ["/stratum\treview", "/stratum\nreview"]:
+    for body in ["/stratum\treview", "/stratum\nreview", "@stratum review", "@Stratum\ttriage"]:
         assert parse(body) is None and not starts_the_job(needles, body), body
     # Links to the project don't start a job.
     for body in ["Fixes https://github.com/stratum-org/stratum-open/issues/53", "/stratum-org/stratum-open", "see stratum-org/stratum-open#52"]:

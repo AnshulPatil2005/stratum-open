@@ -1,7 +1,7 @@
 """`/stratum` commands in PR comments.
 
-A command starts a line: `/stratum review`. `@stratum review` works too, but
-GitHub links `@stratum` to an unrelated organization of that name.
+A command starts a line: `/stratum review`. `@stratum` isn't one: GitHub links it
+to an unrelated organization of that name.
 
 Anyone can ask for help, the PR's triage or their own track record. An
 explanation calls the model, so on a public repo it would let anyone make the
@@ -23,7 +23,7 @@ from stratum_open.runner import Context, excluded, record_for, review_pull
 
 # "/stratum" takes a space after it: that's what the workflow's job filter
 # looks for, so a link to stratum-org/stratum-open doesn't start a job.
-COMMAND = re.compile(r"^\s*(?:@stratum\s+|/stratum +)([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
+COMMAND = re.compile(r"^\s*/stratum +([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
 # Commands that can call the model: explain, and the ones that review again.
 NEEDS_MODEL = {"review", "re-review", "rereview", "ignore", "explain"}
 # Explanations per person and per PR in a day: enough to understand a review,
