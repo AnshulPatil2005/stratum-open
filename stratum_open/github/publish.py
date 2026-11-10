@@ -34,7 +34,7 @@ LABEL = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low
 
 @dataclass
 class State:
-    head: str = ""
+    head: str = ""  # the last commit the model read in full; "" until it has
     findings: list[dict[str, Any]] = field(default_factory=list)  # model findings, with "snippet"
     ignored: list[str] = field(default_factory=list)  # fingerprints
     ignored_rules: list[str] = field(default_factory=list)

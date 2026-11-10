@@ -197,7 +197,11 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         **_walkthrough(large, findings),
     )
     new_state = publish.State(
-        head=head,
+        # The next review reads what changed since this head, so it moves only
+        # once the model has read everything up to it: after a failed or
+        # cut-off call it stays where it was, and the next run reads those
+        # files again instead of calling a review it never finished complete.
+        head=head if engine.complete else state.head,
         findings=[publish.state_finding(f, snippet_of(f, files)) for f in findings if f.source == "model"],
         ignored=state.ignored, ignored_rules=state.ignored_rules,
         triage={**sorted_pr.as_dict(), "additions": facts.additions, "deletions": facts.deletions},

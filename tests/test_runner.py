@@ -378,6 +378,53 @@ def test_record_command_without_history(gh):
     assert "needs the repo's history" in gh.issue_comments_[7][-1]["body"]
 
 
+def test_a_review_the_model_never_answered_is_tried_again_on_the_same_commit(gh):
+    from stratum_open.model import Reply
+
+    down = Reply("", "m", 0, error="couldn't reach the model: ConnectTimeout")
+    review_pull(context(gh, FakeModel(down)), 7)
+    assert gh.checks[-1]["conclusion"] == "neutral"
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).head == ""
+
+    # The same commit again (CI finishing, a reopen, a re-run), the model still down.
+    review_pull(context(gh, FakeModel(down)), 7)
+    body = gh.issue_comments_[7][0]["body"]
+    assert gh.checks[-1]["conclusion"] == "neutral"
+    assert "The model didn't answer" in body and "No files changed since" not in body
+
+    # The model is back: it reads the PR, and only then does the head move.
+    model = FakeModel(model_answer())
+    outcome = review_pull(context(gh, model), 7)
+    assert len(model.prompts) == 1 and "Unknown id" in {f.title for f in outcome.findings}
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).head == "a" * 40
+
+
+def test_after_a_failed_push_the_model_reads_everything_since_its_last_full_review(gh):
+    from stratum_open.model import Reply
+
+    review_pull(context(gh, FakeModel(model_answer())), 7)
+    gh.move_head(7, "b" * 40, FIXED)
+    gh.compare[("a" * 40, "b" * 40)] = ["app/users.py"]
+    review_pull(context(gh, FakeModel(Reply("", "m", 0, error="couldn't reach the model: ConnectTimeout"))), 7)
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).head == "a" * 40
+
+    model = FakeModel(model_answer(findings=[]))
+    review_pull(context(gh, model), 7)
+    body = gh.issue_comments_[7][0]["body"]
+    assert len(model.prompts) == 1 and "app/users.py" in model.prompts[0][1]
+    assert "Reviewed only the 1 file changed since aaaaaaa" in body
+    assert publish.State.decode(body).head == "b" * 40
+
+
+def test_a_cut_off_reply_is_read_again_on_the_same_commit(gh):
+    cut = '{"summary": "Changes the user query.", "matches_description": "yes", "findings": ['
+    review_pull(context(gh, FakeModel(cut)), 7)
+    model = FakeModel(model_answer())
+    review_pull(context(gh, model), 7)
+    assert len(model.prompts) == 1
+    assert "No files changed since" not in gh.issue_comments_[7][0]["body"]
+
+
 def test_a_cut_off_reply_never_passes_the_check(gh):
     cut = '{"summary": "Changes the user query.", "matches_description": "yes", "findings": ['
     outcome = review_pull(context(gh, FakeModel(cut)), 7)
