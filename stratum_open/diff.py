@@ -320,6 +320,7 @@ class Packed:
     clipped: list[str]  # paths sent in part
     omitted: list[str]  # paths that didn't fit
     skipped: list[str]  # paths not sent on purpose (binary, deleted, ignored)
+    chunk_paths: list[list[str]] = field(default_factory=list)  # the paths in each chunk, in the same order
 
 
 def pack(
@@ -347,6 +348,7 @@ def pack(
     candidates.sort(key=lambda f: -order(f))
 
     chunk: list[str] = []
+    in_chunk: list[str] = []
     used = 0
     for file in candidates:
         text = render(file, style=style)
@@ -362,15 +364,18 @@ def pack(
             clipped = False
         if used + size > budget_tokens and chunk:
             packed.chunks.append("\n\n".join(chunk))
-            chunk, used = [], 0
+            packed.chunk_paths.append(in_chunk)
+            chunk, in_chunk, used = [], [], 0
         if len(packed.chunks) >= max_chunks:
             packed.omitted.append(file.path)
             continue
         chunk.append(text)
+        in_chunk.append(file.path)
         used += size
         (packed.clipped if clipped else packed.reviewed).append(file.path)
     if chunk and len(packed.chunks) < max_chunks:
         packed.chunks.append("\n\n".join(chunk))
+        packed.chunk_paths.append(in_chunk)
     return packed
 
 

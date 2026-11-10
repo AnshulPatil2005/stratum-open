@@ -141,6 +141,7 @@ class ReviewResult:
     failed_calls: int = 0
     salvaged_calls: int = 0  # replies that weren't valid JSON, read in part
     dropped: int = 0  # findings the model returned that couldn't be used
+    unread: set[str] = field(default_factory=set)  # paths in a chunk whose call failed or was cut off
 
     @property
     def complete(self) -> bool:
@@ -235,9 +236,11 @@ def review(
             if data is not None:
                 result.salvaged_calls += 1
                 call["salvaged"] = True
+                result.unread.update(packed.chunk_paths[index])  # what came after the break was never read
         if not isinstance(data, dict):
             result.failed_calls += 1
             call["error"] = call["error"] or "the reply wasn't the JSON asked for"
+            result.unread.update(packed.chunk_paths[index])
             continue
         if index == 0 or not result.summary:
             result.summary = demention(_text(data.get("summary"), 400))

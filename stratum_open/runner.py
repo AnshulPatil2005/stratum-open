@@ -29,6 +29,7 @@ from stratum_open.util import redact
 MAX_BANDIT_FILES = 20
 MAX_CONTEXT_FILES = 20
 MAX_REVIEW_TEXT_FILES = 20  # files whose text is fetched for review.context_lines
+MAX_UNREAD = 200  # unread paths kept in the summary's state; past it, the next run reads everything since the old head
 
 
 @dataclass
@@ -101,7 +102,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     problems: list[str] = []
 
     # What the model reads this time: everything, or only what changed since
-    # the head it last reviewed.
+    # the head it last reviewed, plus what it couldn't read there.
     changed: set[str] | None = None
     if state.head and not full:
         if state.head == head:
@@ -109,6 +110,10 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         else:
             since = gh.compare_files(state.head, head)
             changed = set(since) & set(paths) if since is not None else None
+    retried: set[str] = set()
+    if changed is not None:
+        retried = (set(state.unread) & set(paths)) - changed
+        changed |= retried
     incremental = changed is not None
 
     notes, hotspots, boundary, file_notes = _history(ctx, files, pull)
@@ -186,7 +191,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         record=record,
     )
 
-    coverage = _large_coverage(large) + _coverage(result, incremental, changed, state.head, files)
+    coverage = _large_coverage(large) + _coverage(result, incremental, changed, state.head, files, retried)
     if ctx.model is not None:
         coverage.append(f"Profile: `{engine.profile}` ({engine.profile_why}).")
     summary = publish.Summary(
@@ -196,12 +201,17 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         triage=sorted_pr, notes=notes, coverage=coverage, problems=problems, muted=muted,
         **_walkthrough(large, findings),
     )
+    # The next review reads what changed since this head, plus `unread`: the
+    # files whose model call failed or was cut off, so it reads those again
+    # rather than calling a review it never finished complete. With no model,
+    # nothing was read, so what was unread stays unread. A list too long for
+    # the summary comment keeps the old head instead, so the next run reads
+    # everything since it.
+    unread = sorted((engine.unread if ctx.model is not None else set(state.unread)) & set(paths))
+    keep_head = len(unread) > MAX_UNREAD
     new_state = publish.State(
-        # The next review reads what changed since this head, so it moves only
-        # once the model has read everything up to it: after a failed or
-        # cut-off call it stays where it was, and the next run reads those
-        # files again instead of calling a review it never finished complete.
-        head=head if engine.complete else state.head,
+        head=state.head if keep_head else head,
+        unread=state.unread if keep_head else unread,
         findings=[publish.state_finding(f, snippet_of(f, files)) for f in findings if f.source == "model"],
         ignored=state.ignored, ignored_rules=state.ignored_rules,
         triage={**sorted_pr.as_dict(), "additions": facts.additions, "deletions": facts.deletions},
@@ -394,11 +404,18 @@ def excluded(ctx: Context, login: str) -> bool:
     return author_identity(login) in {author_identity(e) for e in ctx.policy.track_record.exclude}
 
 
-def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] | None, previous_head: str, files: list[FileDiff]) -> list[str]:
+def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] | None, previous_head: str, files: list[FileDiff],
+              retried: set[str] = frozenset()) -> list[str]:
     lines = []
     if incremental and previous_head:
-        if changed:
-            lines.append(f"Reviewed only the {_files(len(changed))} changed since {previous_head[:7]}; findings elsewhere were kept.")
+        new = len((changed or set()) - retried)
+        again = f"the {_files(len(retried))} the last review couldn't read" if retried else ""
+        if new and again:
+            lines.append(f"Reviewed only the {_files(new)} changed since {previous_head[:7]}, and {again}; findings elsewhere were kept.")
+        elif again:
+            lines.append(f"Read again {again}; findings elsewhere were kept.")
+        elif new:
+            lines.append(f"Reviewed only the {_files(new)} changed since {previous_head[:7]}; findings elsewhere were kept.")
         else:
             lines.append(f"No files changed since {previous_head[:7]}; the earlier findings were kept and the checks ran again.")
     if result and result.packed:

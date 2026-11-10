@@ -20,7 +20,7 @@ the environment or calls GitHub.
 from __future__ import annotations
 
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Sequence
 
 from stratum_open import __version__
@@ -46,6 +46,7 @@ class EngineResult:
     complete: bool  # every model call was read in full
     engine_version: str = __version__
     large: LargeReview | None = None  # the per-file passes and walkthrough, when the profile ran them
+    unread: set[str] = field(default_factory=set)  # paths whose model call failed or was cut off: read them again next time
 
 
 def analyze(
@@ -123,7 +124,7 @@ def analyze(
             result = ReviewResult(failed_calls=1, calls=[{
                 "model": str(getattr(model, "name", "")), "seconds": 0, "ok": False, "prompt_tokens": None, "output_tokens": None,
                 "error": error, "traceback": traceback.format_exc(),
-            }])
+            }], unread={f.path for f in files if only_paths is None or f.path in only_paths})  # no telling what was read
 
     # The chunked review verifies its own findings; the per-file passes' go through the same check here.
     if large is not None and large.findings and policy.review.verify in VERIFY_PROMPTS:
@@ -134,10 +135,14 @@ def analyze(
     assign_fingerprints(found, files)
     found = dedupe(found)
 
+    # The paths whose model call failed or was cut off: the caller reads them
+    # again next time, and their file-level findings can't be called fixed.
+    unread = (result.unread if result else set()) | (large.unread if large else set())
     # A model finding stays until the code it's on changes; the model not
     # repeating it on the next push doesn't make it fixed.
     reviewed_now = set(result.packed.reviewed + result.packed.clipped) if result and result.packed and result.ran else set()
     reviewed_now |= set(large.reviewed) if large else set()
+    reviewed_now -= unread
     carried, gone = carry(previous or [], files, {f.fingerprint for f in found}, reviewed_now)
     for finding in [f for f in carried if not shown(f, policy)]:  # the policy's bar may have risen since
         carried.remove(finding)
@@ -159,7 +164,8 @@ def analyze(
     complete = (result.complete if result is not None else True) and (large.complete if large is not None else True)
     total = score(kept, bonus) if score is not None else max(0, min(100, risk_score(kept) + bonus))
     verdict = conclusion(kept, total, complete) if conclusion is not None else default_conclusion(kept, complete, policy, total)
-    return EngineResult(kept, gone, excluded, result, policy, profile, profile_why, total, verdict, complete, large=large)
+    return EngineResult(kept, gone, excluded, result, policy, profile, profile_why, total, verdict, complete, large=large,
+                        unread=unread)
 
 
 def effective_policy(policy: Policy, model: Any | None) -> tuple[Policy, str, str]:

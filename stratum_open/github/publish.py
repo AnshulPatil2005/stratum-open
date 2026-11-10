@@ -34,11 +34,12 @@ LABEL = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low
 
 @dataclass
 class State:
-    head: str = ""  # the last commit the model read in full; "" until it has
+    head: str = ""  # the last commit reviewed; the model read it all except `unread`
     findings: list[dict[str, Any]] = field(default_factory=list)  # model findings, with "snippet"
     ignored: list[str] = field(default_factory=list)  # fingerprints
     ignored_rules: list[str] = field(default_factory=list)
     triage: dict[str, Any] = field(default_factory=dict)
+    unread: list[str] = field(default_factory=list)  # paths whose model call failed or was cut off at `head`
 
     def encode(self) -> str:
         data = asdict(self)
@@ -59,6 +60,7 @@ class State:
                 ignored=[str(x) for x in data.get("ignored", [])],
                 ignored_rules=[str(x) for x in data.get("ignored_rules", [])],
                 triage=data.get("triage") if isinstance(data.get("triage"), dict) else {},
+                unread=[str(x) for x in data.get("unread", []) if isinstance(x, str)],
             )
         except (ValueError, TypeError, AttributeError):
             return cls()
