@@ -36,7 +36,7 @@ import requests
 
 from stratum_open.checks.dependencies import PackageLookup
 from stratum_open.github.api import API, GitHub, GitHubError
-from stratum_open.github.commands import handle
+from stratum_open.github.commands import handle, parse
 from stratum_open.github.feedback import collect_votes
 from stratum_open.model import model_from_policy
 from stratum_open.policy import REVIEW_EVENTS
@@ -205,7 +205,9 @@ class Server:
         if event in ("issue_comment", "pull_request_review_comment") and payload.get("action") == "created":
             comment = _dict(payload.get("comment"))
             number = (_dict(payload.get("issue")) or pull).get("number")
-            if "@stratum" in (comment.get("body") or "").lower() and comment.get("id") and number:
+            # The parser the job runs: a comment without a command (Stratum's own, with a
+            # "Reply `/stratum ignore`" footer, or a link to stratum-org/stratum-open) has no job to do.
+            if parse(comment.get("body") or "") and comment.get("id") and number:
                 self.enqueue((repo, number, "comment", comment["id"]), event, payload)
                 return True
         return False

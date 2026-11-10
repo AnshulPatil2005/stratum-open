@@ -1,4 +1,7 @@
-"""`@stratum` commands in PR comments.
+"""`/stratum` commands in PR comments.
+
+A command starts a line: `/stratum review`. `@stratum review` works too, but
+GitHub links `@stratum` to an unrelated organization of that name.
 
 Anyone can ask for help, the PR's triage or their own track record. An
 explanation calls the model, so on a public repo it would let anyone make the
@@ -18,7 +21,9 @@ from stratum_open.github.api import WRITE, GitHubError
 from stratum_open.review import demention
 from stratum_open.runner import Context, excluded, record_for, review_pull
 
-COMMAND = re.compile(r"^\s*@stratum\s+([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
+# "/stratum" takes a space after it: that's what the workflow's job filter
+# looks for, so a link to stratum-org/stratum-open doesn't start a job.
+COMMAND = re.compile(r"^\s*(?:@stratum\s+|/stratum +)([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
 # Commands that can call the model: explain, and the ones that review again.
 NEEDS_MODEL = {"review", "re-review", "rereview", "ignore", "explain"}
 # Explanations per person and per PR in a day: enough to understand a review,
@@ -29,13 +34,13 @@ _EXPLAINED = re.compile(r"<!-- stratum:explained (\S+) -->")
 
 HELP = """Stratum commands, as a comment on this PR:
 
-- `@stratum review`: review the whole PR again, not only what changed. *(write access)*
-- `@stratum ignore`: as a reply to one of Stratum's inline comments, hide that finding on this PR. *(write access)*
-- `@stratum ignore <rule>`: hide every finding of a rule on this PR, e.g. `@stratum ignore workflow/unpinned-action`. *(write access)*
-- `@stratum mute <rule>` / `@stratum unmute <rule>`: hide a rule on every PR in this repo. Needs the GitHub App, which can store it. *(write access)*
-- `@stratum explain`: as a reply to an inline comment, explain that finding in more detail. *(the PR's author or write access; a few a day)*
-- `@stratum triage`: why this PR got its triage label.
-- `@stratum record`: your own track record in this repo, from its git history."""
+- `/stratum review`: review the whole PR again, not only what changed. *(write access)*
+- `/stratum ignore`: as a reply to one of Stratum's inline comments, hide that finding on this PR. *(write access)*
+- `/stratum ignore <rule>`: hide every finding of a rule on this PR, e.g. `/stratum ignore workflow/unpinned-action`. *(write access)*
+- `/stratum mute <rule>` / `/stratum unmute <rule>`: hide a rule on every PR in this repo. Needs the GitHub App, which can store it. *(write access)*
+- `/stratum explain`: as a reply to an inline comment, explain that finding in more detail. *(the PR's author or write access; a few a day)*
+- `/stratum triage`: why this PR got its triage label.
+- `/stratum record`: your own track record in this repo, from its git history."""
 
 
 def parse(body: str) -> tuple[str, str] | None:
@@ -94,9 +99,9 @@ def handle(ctx: Context, event: str, payload: dict) -> str | None:
     if command == "mute":
         if not ctx.feedback:
             reply("Muting a rule for the whole repo needs somewhere to store it, so it works with the Stratum GitHub App. "
-                  "With the Action, use `@stratum ignore <rule>` on this PR or list the paths in `review.ignore_paths`.")
+                  "With the Action, use `/stratum ignore <rule>` on this PR or list the paths in `review.ignore_paths`.")
         elif not arg:
-            reply(f"Which rule? For example `@stratum {name} workflow/unpinned-action`. Each inline comment names its rule.")
+            reply(f"Which rule? For example `/stratum {name} workflow/unpinned-action`. Each inline comment names its rule.")
         else:
             if name == "mute":
                 ctx.storage.mute(gh.repo, arg, author)
@@ -106,7 +111,7 @@ def handle(ctx: Context, event: str, payload: dict) -> str | None:
         return name
     if name == "explain":
         if not inline:
-            reply("Reply `@stratum explain` to one of Stratum's inline comments, and it explains that finding.")
+            reply("Reply `/stratum explain` to one of Stratum's inline comments, and it explains that finding.")
             return "explain"
         refusal = _explain_limit(ctx, number, author)
         if refusal:
@@ -185,7 +190,7 @@ def _ignore(ctx: Context, number: int, rule: str, thread_root: int | None, reply
             reply("That isn't one of Stratum's comments, so there's nothing to ignore.")
             return "ignore"
     elif not rule:
-        reply("Reply `@stratum ignore` to one of Stratum's inline comments, or name a rule: `@stratum ignore <rule>`.")
+        reply("Reply `/stratum ignore` to one of Stratum's inline comments, or name a rule: `/stratum ignore <rule>`.")
         return "ignore"
     _record_ignore(gh, number, ctx.bot, fingerprint=fp, rule=None if fp else rule)
     review_pull(ctx, number, retry=False)  # resolves the thread and redraws the summary, with no model call

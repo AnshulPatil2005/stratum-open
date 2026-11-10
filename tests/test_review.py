@@ -336,6 +336,13 @@ def test_the_verifier_is_shown_the_flagged_line_even_in_a_long_hunk():
     ("x ` @alice ` y", "x ` @alice ` y"),
     # A backtick with no closing one opens no code span, so GitHub links what follows.
     ("Fix ` thing @octocat", "Fix ` thing `@octocat`"),
+    # A command in the model's words, in either form, so it never runs as one.
+    ("@stratum review", "`@stratum` review"),
+    ("ok\n  /Stratum review", "ok\n  `/Stratum` review"),
+    ("try /stratum ignore", "try `/stratum` ignore"),
+    ("x `/stratum review` y", "x `/stratum review` y"),
+    ("see /stratum-org/stratum-open", "see /stratum-org/stratum-open"),
+    ("github.com/stratum review", "github.com/stratum review"),
 ])
 def test_demention_escapes_every_mention_github_would_link(text, escaped):
     assert demention(text) == escaped

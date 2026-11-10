@@ -216,14 +216,15 @@ def test_very_long_text_is_cut_to_fit_a_comment(fake_github, make_context, fake_
 def test_mentions_and_commands_in_model_text_are_neutralised(fake_github, make_context, fake_model, logs):
     fake_github.add_pull(7, diff=DIFF)
     fake_github.permissions["alice"] = "admin"
-    text = "Ping @alice and @stratum review this; see user@example.com and `@code`"
-    fake_model.queue(Response.ok(json_reply([finding("app/users.py", SQL_LINE, title="Risky @alice", detail=text, fix="@stratum ignore")], summary=text)))
+    text = "Ping @alice and @stratum review this; see user@example.com and `@code`\n/stratum review"
+    fake_model.queue(Response.ok(json_reply([finding("app/users.py", SQL_LINE, title="Risky @alice", detail=text, fix="/stratum ignore")], summary=text)))
     ctx = make_context()
     review_pull(ctx, 7)
     posted = fake_github.posted_text()
     assert "`@alice`" in posted and " @alice" not in posted.replace("`@alice`", "")
     assert "`@stratum` review" in posted and "user@example.com" in posted
-    # The bot's own comment, with "@stratum review" in it, is not a command.
+    assert "`/stratum` review" in posted and "`/stratum` ignore" in posted
+    # The bot's own comment, with "@stratum review" and "/stratum review" in it, is not a command.
     [summary] = fake_github.summary_comments(7)
     event = {"action": "created", "comment": {**summary, "user": {"login": fake_github.bot, "type": "Bot"}}, "issue": {"number": 7, "pull_request": {}}}
     assert handle(ctx, "issue_comment", event) is None

@@ -73,12 +73,12 @@ def skip_reason(pull: dict, action: str | None, policy: Policy) -> str | None:
     """Why a PR event doesn't start a review, per `review.events` and the
     `review.skip_*` settings; None when it should. `action` is None for a
     review that isn't a PR event (CI finishing), which skips the events check.
-    `@stratum review` doesn't ask: a maintainer asking outranks these."""
+    `/stratum review` doesn't ask: a maintainer asking outranks these."""
     rules = policy.review
     if action is not None and action not in rules.events:
         return f"Nothing to do for a {action} event."
     if pull.get("draft") and rules.skip_drafts:
-        return "Draft PR: Stratum reviews it once it's ready for review, or on `@stratum review`."
+        return "Draft PR: Stratum reviews it once it's ready for review, or on `/stratum review`."
     user = pull.get("user") or {}
     login = user.get("login", "")
     if rules.skip_bots and (user.get("type") == "Bot" or login.endswith("[bot]")):
@@ -205,7 +205,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     except GitHubError as exc:
         problems.append(f"Couldn't read CI status or linked issues ({exc.status}).")
 
-    # Each `@stratum` command runs on its own, so an `ignore` can land while
+    # Each `/stratum` command runs on its own, so an `ignore` can land while
     # this review was reading the PR: read the summary again before writing
     # it, keep what was ignored meanwhile, and leave those findings out (the
     # score and the check's conclusion then follow the findings that are left).

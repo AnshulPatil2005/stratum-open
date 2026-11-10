@@ -79,7 +79,7 @@ class Checks:
 
 @dataclass(frozen=True)
 class Commands:
-    """Who may run each `@stratum` command: anyone | author (the PR's author,
+    """Who may run each `/stratum` command: anyone | author (the PR's author,
     or anyone with write access) | write (write access)."""
     review: str = "write"
     ignore: str = "write"

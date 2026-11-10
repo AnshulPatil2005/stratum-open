@@ -1,4 +1,6 @@
 import json
+import re
+from pathlib import Path
 
 import pytest
 
@@ -6,6 +8,7 @@ from fakes import FakeGitHub, FakeModel
 from test_runner import DIFF, model_answer
 
 from stratum_open import action
+from stratum_open.github.commands import parse
 
 
 def run(tmp_path, monkeypatch, event_name, payload, gh, model=None):
@@ -63,6 +66,9 @@ def test_schedule_builds_the_queue(tmp_path, monkeypatch):
         ("issue_comment", "@stratum  rereview", True),
         ("issue_comment", "@stratum\texplain", True),
         ("pull_request_review_comment", "@Stratum Ignore", True),
+        ("issue_comment", "/stratum triage", False),
+        ("issue_comment", "/stratum review", True),
+        ("pull_request_review_comment", "/Stratum explain", True),
         ("issue_comment", "thanks!", False),
     ],
 )
@@ -70,6 +76,32 @@ def test_needs_model_asks_the_command_parser(tmp_path, event_name, body, expecte
     event = tmp_path / "event.json"
     event.write_text(json.dumps({"comment": {"body": body}} if body is not None else {}))
     assert action.needs_model({"GITHUB_EVENT_NAME": event_name, "GITHUB_EVENT_PATH": str(event)}) is expected
+
+
+def comment_filter(path: str) -> list[str]:
+    """What the workflow's job filter looks for in a comment's body."""
+    text = (Path(__file__).parent.parent / path).read_text(encoding="utf-8")
+    return re.findall(r"contains\(github\.event\.comment\.body, '([^']*)'\)", text)
+
+
+def starts_the_job(needles: list[str], body: str) -> bool:
+    return any(needle.lower() in body.lower() for needle in needles)  # GitHub's contains() ignores case
+
+
+@pytest.mark.parametrize("path", ["examples/stratum.yml", ".github/workflows/stratum.yml"])
+def test_the_workflow_starts_a_job_for_every_comment_the_parser_reads_as_a_command(path):
+    needles = comment_filter(path)
+    assert needles == ["/stratum ", "@stratum"]
+    commands = ["/stratum review", "/Stratum REVIEW", "thanks!\n/stratum review", "/stratum review\n", "ok\r\n/stratum  ignore code/sql\r\n",
+                "@stratum review", "@Stratum\ttriage", "@stratum\nreview", "  /stratum record"]
+    for body in commands:
+        assert parse(body) is not None and starts_the_job(needles, body), body
+    # A slash command needs the space after it, the same text the filter looks for.
+    for body in ["/stratum\treview", "/stratum\nreview"]:
+        assert parse(body) is None and not starts_the_job(needles, body), body
+    # Links to the project don't start a job.
+    for body in ["Fixes https://github.com/stratum-org/stratum-open/issues/53", "/stratum-org/stratum-open", "see stratum-org/stratum-open#52"]:
+        assert parse(body) is None and not starts_the_job(needles, body), body
 
 
 def test_ci_finishing_respects_the_skip_settings(tmp_path, monkeypatch, capsys):

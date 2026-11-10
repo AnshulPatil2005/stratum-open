@@ -713,22 +713,23 @@ def _int(value: Any) -> int | None:
 # "x-@name", "x/@name" and "é@name" are). An "_" that starts italics or bold,
 # as in "_@name_", isn't part of the text, so it doesn't count; one inside a
 # word, as in "a_@name", does. A backtick before it means it's already in code.
-_MENTION = re.compile(r"(?<![A-Za-z0-9`])(?<![A-Za-z0-9]_)@([A-Za-z0-9](?:[A-Za-z0-9-]{0,38}))(?![A-Za-z0-9])")
+# And "/stratum " at the start of a line, where it starts a command, or after a space.
+_TO_CODE = re.compile(r"(?<![A-Za-z0-9`])(?<![A-Za-z0-9]_)@[A-Za-z0-9][A-Za-z0-9-]{0,38}(?![A-Za-z0-9])|(?<!\S)(?i:/stratum)(?= )")
 
 
 def demention(text: str) -> str:
     """The model's words with every @name put in code, so nobody is paged by
-    text a model made up, and `@stratum review` in a reply is never a
-    command. The bot's own comments are skipped by the command parser too;
-    this covers people."""
+    text a model made up, and `/stratum` too, so neither `@stratum review` nor
+    `/stratum review` in a reply is ever a command. The bot's own comments are
+    skipped by the command parser too; this covers people."""
     def swap(match: re.Match) -> str:
         # Already inside a code span: GitHub won't link it, and more backticks
         # would break the span. A backtick with none after it opens no span.
         if text.count("`", 0, match.start()) % 2 and "`" in text[match.end():]:
             return match.group(0)
-        return f"`@{match.group(1)}`"
+        return f"`{match.group(0)}`"
 
-    return _MENTION.sub(swap, text)
+    return _TO_CODE.sub(swap, text)
 
 
 def _text(value: Any, limit: int) -> str:

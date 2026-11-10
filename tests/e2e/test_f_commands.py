@@ -1,5 +1,5 @@
-"""F. `@stratum` commands: every command at every permission level, odd
-comments, and spam."""
+"""F. `/stratum` commands: every command at every permission level, odd
+comments, and spam. `@stratum` still works too."""
 
 from __future__ import annotations
 
@@ -55,7 +55,7 @@ def replies(fake_github):
 @pytest.mark.parametrize("login", sorted(WRITERS) + sorted(READERS) + ["nobody"])
 def test_write_commands_at_every_permission_level(reviewed, fake_github, fake_model, login, command):
     before = len(fake_model.chat_calls)
-    done = handle(reviewed, *event(f"@stratum {command}", login=login))
+    done = handle(reviewed, *event(f"/stratum {command}", login=login))
     name = command.split()[0]
     if login in WRITERS:
         assert done == name
@@ -72,7 +72,7 @@ def test_write_commands_at_every_permission_level(reviewed, fake_github, fake_mo
 @pytest.mark.parametrize("command", ["explain", "triage", "record", "help", "wat"])
 @pytest.mark.parametrize("login", ["mona", "carol", "erin", "nobody"])
 def test_anyone_commands(reviewed, fake_github, login, command):
-    done = handle(reviewed, *event(f"@stratum {command}", login=login))
+    done = handle(reviewed, *event(f"/stratum {command}", login=login))
     last = replies(fake_github)[-1]
     if command == "explain" and login not in WRITERS and login != "carol":
         # `explain` runs the model, so by default it's for the PR's author (carol) and people with write access.
@@ -80,7 +80,7 @@ def test_anyone_commands(reviewed, fake_github, login, command):
         return
     assert done == {"wat": "help", "help": "help"}.get(command, command)
     if command == "explain":
-        assert "Reply `@stratum explain` to one of Stratum's inline comments" in last
+        assert "Reply `/stratum explain` to one of Stratum's inline comments" in last
     elif command == "triage":
         assert "This PR is sorted as" in last
     elif command == "record":
@@ -93,14 +93,14 @@ def test_explain_and_ignore_as_replies_to_an_inline_comment(reviewed, fake_githu
     dead = next(c for c in fake_github.inline_comments(7) if "Dead code" in c["body"])
     fake_github.files[("app/users.py", HEAD)] = "import sqlite3\n" * 10
     fake_model.queue(Response.ok("It never runs because the line above returns. Ask @alice."))
-    assert handle(reviewed, *event("@stratum explain", login="carol", inline_reply_to=dead["id"])) == "explain"  # carol wrote the PR
+    assert handle(reviewed, *event("/stratum explain", login="carol", inline_reply_to=dead["id"])) == "explain"  # carol wrote the PR
     explained = replies(fake_github)[-1]
     assert explained.startswith("It never runs") and "`@alice`" in explained and "Explained by" in explained
-    assert handle(reviewed, *event("@stratum ignore", login="mona", inline_reply_to=dead["id"])) == "ignore"
+    assert handle(reviewed, *event("/stratum ignore", login="mona", inline_reply_to=dead["id"])) == "ignore"
     state = publish.State.decode(fake_github.summary_comments(7)[0]["body"])
     assert len(state.ignored) == 1
-    assert handle(reviewed, *event("@stratum ignore", login="mona")) == "ignore"
-    assert "Reply `@stratum ignore` to one of Stratum's inline comments, or name a rule" in replies(fake_github)[-1]
+    assert handle(reviewed, *event("/stratum ignore", login="mona")) == "ignore"
+    assert "Reply `/stratum ignore` to one of Stratum's inline comments, or name a rule" in replies(fake_github)[-1]
 
 
 def test_ignore_an_unknown_rule_is_recorded_harmlessly(reviewed, fake_github):
@@ -128,7 +128,12 @@ def test_ignore_and_explain_on_a_comment_that_is_not_stratums(reviewed, fake_git
     ("thanks\n   @STRATUM    TRIAGE   please, and @stratum record", {"login": "erin"}, "triage"),
     ("@stratum\ttriage", {}, "triage"),
     ("email me at hi@stratum.dev", {}, None),
-], ids=["edited", "deleted", "bot", "self", "deleted-user", "issue-not-pr", "quoted", "whitespace-casing-trailing-two-commands", "tab", "email"])
+    ("/stratum review", {"login": "stratum[bot]"}, None),
+    ("> /stratum review\n\nquoting someone", {}, None),
+    ("Moved to https://github.com/stratum-org/stratum-open\n/stratum-org/stratum-open#53", {}, None),
+    ("ok\r\n  /STRATUM  triage", {"login": "erin"}, "triage"),
+], ids=["edited", "deleted", "bot", "self", "deleted-user", "issue-not-pr", "quoted", "whitespace-casing-trailing-two-commands", "tab", "email",
+        "slash-self", "slash-quoted", "links", "slash-whitespace-casing"])
 def test_comments_that_must_not_run_commands(reviewed, fake_github, fake_model, body, kwargs, expected):
     before = len(replies(fake_github))
     assert handle(reviewed, *event(body, **kwargs)) == expected
@@ -178,5 +183,47 @@ def test_record_for_an_author_with_no_history(fake_github, make_context, tmp_pat
 
 def test_parse_handles_every_spelling():
     assert parse("@Stratum Re-Review now") == ("re-review", "now")
+    assert parse("/Stratum Re-Review now") == ("re-review", "now")
     assert parse("") is None and parse(None) is None  # type: ignore[arg-type]
-    assert parse("@stratum") is None
+    assert parse("@stratum") is None and parse("/stratum") is None
+
+
+@pytest.mark.parametrize("body, expected", [
+    # The table in issue #53: GitHub renders the first three as a mention of
+    # the unrelated `stratum` organization, so `/stratum` is the documented form.
+    ("@stratum ignore", ("ignore", "")),
+    ("@Stratum ignore", ("ignore", "")),
+    ("\\@stratum ignore", None),
+    ("`@stratum ignore`", None),
+    ("/stratum ignore", ("ignore", "")),
+    ("@stratum-open ignore", None),
+    ("/stratum-open ignore", None),
+    # Links and paths aren't commands.
+    ("/stratum-org/stratum-open", None),
+    ("https://github.com/stratum-org/stratum-open/issues/53", None),
+    ("see github.com/stratum-org/stratum-open", None),
+    ("/stratum/review", None),
+    ("//stratum review", None),
+    ("cd /stratum review", None),
+    ("`/stratum review`", None),
+    ("thanks!\n  /stratum ignore workflow/unpinned-action\n", ("ignore", "workflow/unpinned-action")),
+])
+def test_parse_reads_a_slash_or_at_command_and_nothing_else(body, expected):
+    assert parse(body) == expected
+
+
+@pytest.mark.parametrize("name", ["review", "re-review", "rereview", "ignore", "mute", "unmute", "explain", "triage", "record", "help"])
+def test_every_command_reads_the_same_in_both_forms(name):
+    assert parse(f"/stratum {name} x") == parse(f"@stratum {name} x") == (name, "x")
+
+
+def test_stratum_shows_commands_as_slash_and_its_own_text_is_never_one(reviewed, fake_github):
+    handle(reviewed, *event("/stratum help"))
+    assert replies(fake_github)[-1] == HELP
+    inline = [c["body"] for c in fake_github.inline_comments(7)]
+    [summary] = [c["body"] for c in fake_github.summary_comments(7)]
+    assert inline and all("Reply `/stratum ignore` to hide it on this PR, or `/stratum explain` for more." in body for body in inline)
+    assert "Comment `/stratum help` for commands." in summary
+    for body in [HELP, summary, *inline]:
+        assert "@stratum" not in body
+        assert parse(body) is None, "Stratum's own text must never read as a command"
