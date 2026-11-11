@@ -94,9 +94,8 @@ def build_records(
     """A record for every author with a PR landed on `ref` in the last
     `window_days`, keyed by `author_identity`."""
     since = (now or datetime.now(timezone.utc)) - timedelta(days=window_days)
-    try:
-        tip = _git(repo_dir, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}").strip()
-    except subprocess.CalledProcessError:
+    tip = commit_sha(repo_dir, ref)
+    if tip is None:
         return {}  # an empty repo, or a ref that isn't there: nobody has a record yet
     by_sha = _history(repo_dir, ref, since)
     if tip not in by_sha:
@@ -205,6 +204,15 @@ def _git(repo_dir: str, *args: str) -> str:
         ["git", "-C", repo_dir, *args],
         capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120, check=True,
     ).stdout
+
+
+def commit_sha(repo_dir: str, ref: str) -> str | None:
+    """The commit `ref` points at, or None in an empty repo or for a ref that
+    isn't there."""
+    try:
+        return _git(repo_dir, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}").strip()
+    except subprocess.CalledProcessError:
+        return None
 
 
 def describe_subprocess_error(exc: BaseException, limit: int = 200) -> str:
