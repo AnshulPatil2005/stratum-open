@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from stratum_open.github import publish
 from stratum_open.github.api import GitHub, GitHubError
+from stratum_open.github.commands import WRITE
 from stratum_open.storage import Storage
 
 VOTES = {"+1": 1, "-1": -1}
-WRITE = {"admin", "maintain", "write"}
 
 
 def collect_votes(gh: GitHub, number: int, bot: str, storage: Storage) -> int:
