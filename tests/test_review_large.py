@@ -144,6 +144,13 @@ def test_a_failed_call_and_a_model_that_raises():
     assert result.failed_calls == 1 and result.files[0].reason == "the model didn't answer for this file"
 
 
+def test_a_risk_score_that_isnt_a_finite_number_is_the_default():
+    code = '    return jwt.decode(token, options={"verify_signature": False})'
+    for risk in (float("nan"), float("inf"), float("-inf")):
+        result = run(FakeModel(file_answer([finding("app/auth/session.py", code)], risk=risk)), "  file_reviews: 1\n  lens_files: 0\n")
+        assert result.files[0].risk_score == 50 and [f.title for f in result.findings] == ["Signature not verified"]
+
+
 def test_parallel_calls_keep_each_answer_with_its_file():
     class ByFile:
         name = "by-file"
