@@ -77,3 +77,9 @@ def test_queue_groups_and_orders():
     text = render_queue(rows, POLICY)
     assert text.index("#2 Small fix") < text.index("#3 Big change")
     assert "### triage: ready (2)" in text and "### Not reviewed yet (1)" in text
+
+
+def test_the_queue_pings_nobody_named_in_a_title():
+    titled = facts(number=5, title="Ping @acme/security-team and @octocat")
+    text = render_queue([(titled, triage(titled, [], POLICY)), (facts(number=6, title="cc @mona"), None)], POLICY)
+    assert "Ping `@acme`/security-team and `@octocat`" in text and "#6 cc `@mona`" in text
