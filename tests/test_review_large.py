@@ -73,6 +73,22 @@ def test_areas_come_from_the_path():
     assert areas.generated("rebuild/tool.py") == ""
 
 
+def test_a_word_marker_matches_only_a_whole_word_of_the_path():
+    for path in ("docs/privacy-policy.md", "tokenizer.py", "design-tokens.css", "author.py", "viewmodels/user.py",
+                 "mysql_client.py", "composer.json"):
+        assert areas.areas(path) == [], path
+    for path in ("app/auth/login.py", "AuthService.ts", "OAuth2Client.java", "api/access_token.py", "permissions.py",
+                 "app/policies/post_policy.rb"):
+        assert areas.areas(path) == ["auth"], path
+    for path in ("migrations/0001.py", "db/migrate/0002_add.rb", "models.py", "db/schema.rb", "query.sql"):
+        assert areas.areas(path) == ["migration"], path
+    for path in ("configuration.py", "tsconfig.json", "webpack.config.js", "Dockerfile", "docker-compose.yml", ".env.example"):
+        assert areas.areas(path) == ["config"], path
+    for path in ("ci/run.sh", ".gitlab-ci.yml", "Jenkinsfile", "azure-pipelines.yml", "k8s/deployment.yaml"):
+        assert areas.areas(path) == ["workflow"], path
+    assert areas.areas("requirements-dev.txt") == ["dependency"] and areas.areas("pyproject.toml") == ["dependency"]
+
+
 def test_files_are_ranked_and_capped():
     model = FakeModel(file_answer(), file_answer())
     result = run(model, "  file_reviews: 2\n  lens_files: 0\n")

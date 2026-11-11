@@ -4,16 +4,27 @@ first and tells the model why each one matters."""
 
 from __future__ import annotations
 
-# Each area's markers, matched anywhere in the lowercased path. A marker that
-# starts with "/" must start a folder or file name.
+import re
+
+# Each area's markers. A marker of letters only is a word: it matches a whole
+# word of the path, so "token" finds access_token.py but not tokenizer.py or
+# design-tokens.css. Any other marker is matched anywhere in the lowercased
+# path; one that starts with "/" must start a folder or file name.
 AREAS: dict[str, tuple[str, ...]] = {
-    "auth": ("auth", "login", "permission", "policy", "jwt", "token"),
-    "config": ("config", ".env", "settings", "docker", "compose", "nginx", "vercel"),
-    "migration": ("migrat", "schema", "model", "sql"),
-    "workflow": (".github/workflows", ".gitlab-ci", ".circleci", "jenkinsfile", "/ci/", "/ci.", "pipeline", "deploy"),
+    "auth": ("auth", "authn", "authz", "authenticate", "authentication", "authenticator", "authorize", "authorization",
+             "oauth", "login", "logout", "permission", "permissions", "/policies/", "jwt", "token"),
+    "config": ("config", "configs", "configuration", "config.", ".env", "settings", "docker", "dockerfile", "compose",
+               "nginx", "vercel"),
+    "migration": ("migrate", "migration", "migrations", "schema", "schemas", "model", "models", "sql"),
+    "workflow": (".github/workflows", ".gitlab-ci", ".circleci", "jenkinsfile", "/ci/", "/ci.", "pipeline", "pipelines",
+                 "deploy", "deployment", "deployments"),
     "dependency": ("package.json", "package-lock", "requirements", "poetry.lock", "pyproject"),
     "tests": ("/test", "_test", "test_", ".test.", ".spec."),  # not latest.py or attestation.py
 }
+
+# The words of a path: runs of letters or of digits, split where camelCase
+# starts a new word (OAuth2Client.java: o, auth, 2, client, java).
+_WORD = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|\d+")
 
 WHY = {
     "auth": "Touches authentication or access control paths.",
@@ -30,7 +41,9 @@ CODE_EXTENSIONS = (".py", ".ts", ".tsx", ".js", ".jsx", ".sql", ".yml", ".yaml")
 
 def areas(path: str) -> list[str]:
     lowered = "/" + path.lower().lstrip("/")
-    return [name for name, markers in AREAS.items() if any(marker in lowered for marker in markers)]
+    words = {word.lower() for word in _WORD.findall(path)}
+    return [name for name, markers in AREAS.items()
+            if any(marker in words if marker.isalpha() else marker in lowered for marker in markers)]
 
 
 def why_it_matters(path: str, found: list[str]) -> str:
