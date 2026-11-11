@@ -1,6 +1,7 @@
 """End to end on a fake GitHub: review, publish, push again, commands."""
 
 import json
+import time
 
 import pytest
 from fakes import FakeGitHub, FakeModel
@@ -219,11 +220,48 @@ def comment_event(body, login="erin", inline_reply_to=None, kind="User"):
     return "issue_comment", {"action": "created", "comment": comment, "issue": {"number": 7, "pull_request": {}}}
 
 
+def test_parse_takes_linear_time_on_a_comment_of_newlines():
+    # "^\s*" with MULTILINE scanned every newline after each line start: about 5 s
+    # for this, inside the App's webhook request, which GitHub gives 10 s.
+    start = time.perf_counter()
+    assert parse("x" + "\n" * 65534 + "x") is None
+    assert parse("\n" * 65536 + "/stratum review") == ("review", "")
+    assert time.perf_counter() - start < 0.5
+
+
 def test_parse_commands():
     assert parse("thanks!\n/stratum ignore workflow/unpinned-action\n") == ("ignore", "workflow/unpinned-action")
     assert parse("/Stratum Review") == ("review", "")
     assert parse("@stratum review") is None
     assert parse("no command") is None
+
+
+def test_hints_from_before_0_3_are_rewritten_once_and_kept_when_a_thread_closes(gh):
+    ctx = context(gh, FakeModel(model_answer()))
+    review_pull(ctx, 7)
+    for thread in gh.threads:  # what 0.2 posted
+        thread["comments"][0]["body"] = thread["comments"][0]["body"].replace("`/stratum ", "`@stratum ")
+    threads = gh.review_threads(7)
+    assert len(threads) >= 2 and all("Reply `@stratum ignore`" in t["comments"][0]["body"] for t in threads)
+
+    gone = {publish.thread_fingerprint(threads[0], BOT): "Fixed."}
+    assert publish.refresh_hints(gh, threads, bot=BOT) == len(threads)
+    publish.resolve_threads(gh, 7, threads, gone, bot=BOT)
+    bodies = [t["comments"][0]["body"] for t in gh.threads]
+    assert all("@stratum" not in body and "Reply `/stratum ignore`" in body for body in bodies)
+    assert publish.RESOLVED_MARKER in bodies[0]
+    edits = len(gh.edited)
+    review_pull(ctx, 7)
+    assert len(gh.edited) == edits  # nothing left to rewrite
+
+
+def test_a_review_rewrites_the_old_hints(gh):
+    ctx = context(gh, FakeModel(model_answer()))
+    review_pull(ctx, 7)
+    for thread in gh.threads:
+        thread["comments"][0]["body"] = thread["comments"][0]["body"].replace("`/stratum ", "`@stratum ")
+    review_pull(ctx, 7)
+    assert all("Reply `/stratum ignore`" in t["comments"][0]["body"] for t in gh.threads)
 
 
 def test_ignore_needs_write_access_and_resolves_the_thread(gh):

@@ -18,12 +18,9 @@ from datetime import datetime, timedelta, timezone
 
 from stratum_open.github import publish
 from stratum_open.github.api import WRITE, GitHubError
-from stratum_open.review import demention
+from stratum_open.review import demention, parse  # parse() lives next to demention(), which keeps model text from matching it
 from stratum_open.runner import Context, excluded, record_for, review_pull
 
-# "/stratum" takes a space after it: that's what the workflow's job filter
-# looks for, so a link to stratum-org/stratum-open doesn't start a job.
-COMMAND = re.compile(r"^\s*/stratum +([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
 # Commands that can call the model: explain, and the ones that review again.
 NEEDS_MODEL = {"review", "re-review", "rereview", "ignore", "explain"}
 # Explanations per person and per PR in a day: enough to understand a review,
@@ -32,7 +29,7 @@ EXPLAIN_PER_PERSON = 5
 EXPLAIN_PER_PR = 20
 _EXPLAINED = re.compile(r"<!-- stratum:explained (\S+) -->")
 
-HELP = """Stratum commands, as a comment on this PR:
+HELP = """Stratum commands, at the start of a line in a comment on this PR:
 
 - `/stratum review`: review the whole PR again, not only what changed. *(write access)*
 - `/stratum ignore`: as a reply to one of Stratum's inline comments, hide that finding on this PR. *(write access)*
@@ -41,11 +38,6 @@ HELP = """Stratum commands, as a comment on this PR:
 - `/stratum explain`: as a reply to an inline comment, explain that finding in more detail. *(the PR's author or write access; a few a day)*
 - `/stratum triage`: why this PR got its triage label.
 - `/stratum record`: your own track record in this repo, from its git history."""
-
-
-def parse(body: str) -> tuple[str, str] | None:
-    match = COMMAND.search(body or "")
-    return (match.group(1).lower(), match.group(2).strip()) if match else None
 
 
 def handle(ctx: Context, event: str, payload: dict) -> str | None:

@@ -278,6 +278,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             marker = publish.thread_marker(thread, ctx.bot)
             if marker and not marker[1].startswith("model:") and marker[0] not in current:
                 gone.setdefault(marker[0], "Fixed: the check no longer finds this.")
+        publish.refresh_hints(gh, threads, bot=ctx.bot, log=ctx.log)  # before closing any, so a closed one keeps the new hint
         publish.resolve_threads(gh, number, threads, gone, bot=ctx.bot, log=ctx.log)
         # A check's finding on a moved file can be on a line the diff doesn't show: it's listed in the summary.
         inline = placeable(findings, files)

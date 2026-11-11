@@ -36,7 +36,7 @@ both products get it.
 | Model | One you run or choose: Ollama on the Actions runner by default, or any OpenAI-compatible endpoint | Stratum's managed models, or the team's own AI provider (then used for every AI task) |
 | Where it runs | Your GitHub Action, your App server or your machine | Stratum's servers, through its GitHub App |
 | Config | `.stratum/policy.yml` | The same file; its `services:` section feeds Stratum's service map and is ignored here |
-| `/stratum` commands | `review`, `ignore`, `ignore <rule>`, `mute`/`unmute` (App only), `explain`, `triage`, `record` | The same names, except `triage` and `record` |
+| Comment commands | `/stratum review`, `ignore`, `ignore <rule>`, `mute`/`unmute` (App only), `explain`, `triage`, `record` | The same names, except `triage` and `record`, written `@stratum review` for now |
 | Triage labels and author track records | Yes | No |
 | Incidents, Drift, Insights, team context, projects | No | Yes |
 | Command-line tool | `stratum-open` | `stratum` (a client for the hosted service) |
@@ -46,14 +46,14 @@ both products get it.
 
 | Command | Stratum Open | Stratum |
 | --- | --- | --- |
-| `/stratum review` (also `re-review`) | Review the whole PR again (write access) | Same |
-| `/stratum ignore` (as a reply) | Hide that finding on this PR (write access) | Same |
-| `/stratum ignore <rule>` | Hide a rule on this PR (write access) | Same |
-| `/stratum mute <rule>` / `unmute` | Hide a rule on every PR; GitHub App only, since it stores it | Same; works on every install |
-| `/stratum explain` | The PR's author or write access, a few a day | Write access; it uses the team's AI provider or allowance |
+| `/stratum review` (also `re-review`) | Review the whole PR again (write access) | Same, as `@stratum review` |
+| `/stratum ignore` (as a reply) | Hide that finding on this PR (write access) | Same, as `@stratum ignore` |
+| `/stratum ignore <rule>` | Hide a rule on this PR (write access) | Same, as `@stratum ignore <rule>` |
+| `/stratum mute <rule>` / `unmute` | Hide a rule on every PR; GitHub App only, since it stores it | Same, as `@stratum mute <rule>`; works on every install |
+| `/stratum explain` | The PR's author or write access, a few a day | `@stratum explain`: write access; it uses the team's AI provider or allowance |
 | `/stratum triage`, `/stratum record` | Anyone | Not available |
 
-Neither reads the older `@stratum` form any more, since GitHub turned it into a mention of an unrelated organization.
+Stratum Open reads only `/stratum`, since GitHub turns `@stratum` into a mention of an unrelated organization. Hosted Stratum still reads only `@stratum`; its column changes to `/stratum` when hosted Stratum switches.
 
 ## Which repository owns what
 

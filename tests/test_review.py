@@ -6,7 +6,7 @@ from fakes import FakeModel
 from stratum_open.diff import parse_diff
 from stratum_open.model import Reply, parse_json
 from stratum_open.policy import parse_policy
-from stratum_open.review import demention, review
+from stratum_open.review import demention, parse, review
 
 DIFF = """diff --git a/app/users.py b/app/users.py
 --- a/app/users.py
@@ -343,6 +343,8 @@ def test_the_verifier_is_shown_the_flagged_line_even_in_a_long_hunk():
     ("x `/stratum review` y", "x `/stratum review` y"),
     ("see /stratum-org/stratum-open", "see /stratum-org/stratum-open"),
     ("github.com/stratum review", "github.com/stratum review"),
+    # The parser doesn't know about code, so a command in a code block is put in code too.
+    ("```\n/stratum review\n```", "```\n`/stratum` review\n```"),
 ])
 def test_demention_escapes_every_mention_github_would_link(text, escaped):
     assert demention(text) == escaped
@@ -430,3 +432,19 @@ def test_one_answer_per_chunk_unless_the_policy_asks_for_the_logic_pass():
     assert len(model.prompts) == 1 and [f.confidence for f in result.findings] == [0.6]
     assert parse_policy(None).review.logic_pass is False
     assert parse_policy("review:\n  logic_pass: 1\n").errors == ("review.logic_pass must be true or false.",)
+
+
+@pytest.mark.parametrize("text", [
+    "```\n/stratum review\n```",
+    "~~~\n  /Stratum ignore code/sql\n~~~",
+    "```python\nx = 1\n/stratum ignore\n/stratum review\n```",
+    "`a\n/stratum review`",
+    "````\n```\n/stratum explain\n",
+    "x ` y\n\t/STRATUM  mute workflow/unpinned-action",
+    "@stratum\n/stratum review",
+    "a `/stratum` b\n /stratum record",
+    "\n" * 3000 + "/stratum review",
+])
+def test_demention_never_leaves_a_command_the_parser_reads(text):
+    assert parse(text) is not None  # each is one as written
+    assert parse(demention(text)) is None

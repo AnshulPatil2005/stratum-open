@@ -717,11 +717,27 @@ def _int(value: Any) -> int | None:
 _TO_CODE = re.compile(r"(?<![A-Za-z0-9`])(?<![A-Za-z0-9]_)@[A-Za-z0-9][A-Za-z0-9-]{0,38}(?![A-Za-z0-9])|(?<!\S)(?i:/stratum)(?= )")
 
 
+# A `/stratum` command, as the command parser reads it (github/commands.py runs
+# it). It lives here so demention() can check its result against the parser
+# itself. "/stratum" takes a space after it: that's what the workflow's job
+# filter looks for, so a link to stratum-org/stratum-open doesn't start a job.
+# Only spaces and tabs may come before it on its line: `\s` there would also
+# match newlines and make a search quadratic in a comment's line count.
+COMMAND = re.compile(r"^[^\S\n]*/stratum +([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
+
+
+def parse(body: str) -> tuple[str, str] | None:
+    """The first command in a comment, as (name, argument), or None."""
+    match = COMMAND.search(body or "")
+    return (match.group(1).lower(), match.group(2).strip()) if match else None
+
+
 def demention(text: str) -> str:
     """The model's words with every @name put in code, so nobody is paged by
     text a model made up, and `/stratum` too, so `/stratum review` in a reply
-    is never a command. The bot's own comments are
-    skipped by the command parser too; this covers people."""
+    is never a command: `parse()` of the result is always None. The bot's own
+    comments are skipped by the command parser too; this covers people, and
+    a token the bot shares with one."""
     def swap(match: re.Match) -> str:
         # Already inside a code span: GitHub won't link it, and more backticks
         # would break the span. A backtick with none after it opens no span.
@@ -729,7 +745,15 @@ def demention(text: str) -> str:
             return match.group(0)
         return f"`{match.group(0)}`"
 
-    return _TO_CODE.sub(swap, text)
+    text = _TO_CODE.sub(swap, text)
+    # The parser doesn't know about code, so a command inside a code block or
+    # a code span still reads as one. Backticks there show, but a line that
+    # starts with one isn't a command.
+    at = 0
+    while match := COMMAND.search(text, at):
+        at = match.start() + match.group(0).lower().index("/stratum")
+        text = f"{text[:at]}`{text[at:at + 8]}`{text[at + 8:]}"
+    return text
 
 
 def _text(value: Any, limit: int) -> str:

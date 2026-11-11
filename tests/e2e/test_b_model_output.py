@@ -182,6 +182,16 @@ def test_a_suggestion_with_backticks_gets_a_longer_fence():
     assert "`````suggestion\nprint(\"```\")\n````\n`````" in body
 
 
+def test_a_suggestion_that_reads_as_a_command_is_left_out():
+    from stratum_open.findings import Finding
+    from stratum_open.github.commands import parse
+
+    body = publish.comment_body(Finding("T", "D", path="x.py", line_start=1, replacement="x = 1\n  /stratum ignore\n"), feedback=False)
+    assert "suggestion" not in body and parse(body) is None
+    body = publish.comment_body(Finding("T", "D", path="x.py", line_start=1, replacement="x = '/stratum ignore'\n"), feedback=False)
+    assert "```suggestion\nx = '/stratum ignore'\n```" in body and parse(body) is None
+
+
 def test_five_hundred_findings_are_capped_and_deduped():
     many = [finding("app/users.py", SQL_LINE, title=f"Problem {n}", detail=f"Detail {n}.") for n in range(500)]
     result, _ = run(json_reply(many))

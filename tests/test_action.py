@@ -87,17 +87,20 @@ def starts_the_job(needles: list[str], body: str) -> bool:
     return any(needle.lower() in body.lower() for needle in needles)  # GitHub's contains() ignores case
 
 
-@pytest.mark.parametrize("path", ["examples/stratum.yml", ".github/workflows/stratum.yml"])
-def test_the_workflow_starts_a_job_for_every_comment_the_parser_reads_as_a_command(path):
-    needles = comment_filter(path)
-    assert needles == ["/stratum "]
+# Until 0.3.0 is out, the example also starts a job for the "@stratum" form, the only
+# one v0.2.0 (the version it pins) reads. The release commit drops it, and this changes with it.
+@pytest.mark.parametrize("path, needles", [("examples/stratum.yml", ["/stratum ", "@stratum"]), (".github/workflows/stratum.yml", ["/stratum "])])
+def test_the_workflow_starts_a_job_for_every_comment_the_parser_reads_as_a_command(path, needles):
+    assert comment_filter(path) == needles
     commands = ["/stratum review", "/Stratum REVIEW", "thanks!\n/stratum review", "/stratum review\n", "ok\r\n/stratum  ignore code/sql\r\n",
                 "  /stratum record"]
     for body in commands:
         assert parse(body) is not None and starts_the_job(needles, body), body
     # A slash command needs the space after it, the same text the filter looks for.
-    for body in ["/stratum\treview", "/stratum\nreview", "@stratum review", "@Stratum\ttriage"]:
+    for body in ["/stratum\treview", "/stratum\nreview"]:
         assert parse(body) is None and not starts_the_job(needles, body), body
+    for body in ["@stratum review", "@Stratum\ttriage"]:
+        assert parse(body) is None and starts_the_job(needles, body) is ("@stratum" in needles), body
     # Links to the project don't start a job.
     for body in ["Fixes https://github.com/stratum-org/stratum-open/issues/53", "/stratum-org/stratum-open", "see stratum-org/stratum-open#52"]:
         assert parse(body) is None and not starts_the_job(needles, body), body

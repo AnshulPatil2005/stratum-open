@@ -19,7 +19,7 @@ from stratum_open.engine import default_conclusion
 from stratum_open.findings import Finding, counts, severity_rank
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.policy import Policy
-from stratum_open.review import MIN_REPEATED_FILES
+from stratum_open.review import MIN_REPEATED_FILES, parse
 from stratum_open.triage import COLORS, DESCRIPTIONS, KEYS, Triage, label_for
 
 CHECK_NAME = "Stratum"
@@ -101,7 +101,9 @@ def comment_body(finding: Finding, *, feedback: bool) -> str:
     lines = [f"**{LABEL[finding.severity]} · {finding.category}:** {finding.title}", "", finding.detail]
     if finding.suggestion:
         lines += ["", f"**Fix:** {finding.suggestion}"]
-    if finding.replacement is not None:
+    # Code to commit can't be put in backticks the way demention() does, so a
+    # suggestion that would read as a `/stratum` command is left out.
+    if finding.replacement is not None and parse(finding.replacement) is None:
         # The fence has to be longer than any run of backticks inside, or GitHub ends the block early.
         longest = max((len(run) for run in re.findall(r"`+", finding.replacement)), default=0)
         fence = "`" * max(3, longest + 1)
@@ -189,6 +191,27 @@ def _inline(finding: Finding, feedback: bool) -> dict[str, Any]:
     if finding.line_start != finding.line_end:
         comment.update(start_line=finding.line_start, start_side="RIGHT")
     return comment
+
+
+def refresh_hints(gh: GitHub, threads: list[dict], *, bot: str, log=lambda line: None) -> int:
+    """Rewrite "Reply `@stratum ignore`" in Stratum's open threads from before
+    0.3.0 as `/stratum`, the form that's read now. It edits `threads` too, so a
+    thread closed after this keeps the new hint. Each comment is edited once;
+    after that this does nothing, so it can go once 0.2 reviews are gone."""
+    fixed = 0
+    for thread in threads:
+        root = thread["comments"][0]
+        if not thread_fingerprint(thread, bot) or not is_open(thread, bot) or "`@stratum " not in root["body"]:
+            continue
+        body = root["body"].replace("`@stratum ", "`/stratum ")
+        try:
+            gh.edit_review_comment(root["id"], body)
+        except GitHubError as exc:
+            log(f"couldn't update a finding's comment to the /stratum commands: {exc}")
+            continue
+        root["body"] = body
+        fixed += 1
+    return fixed
 
 
 def resolve_threads(gh: GitHub, number: int, threads: list[dict], gone: dict[str, str], *, bot: str,

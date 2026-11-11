@@ -207,6 +207,9 @@ class Server:
             number = (_dict(payload.get("issue")) or pull).get("number")
             # The parser the job runs: a comment without a command (Stratum's own, with a
             # "Reply `/stratum ignore`" footer, or a link to stratum-org/stratum-open) has no job to do.
+            # Nor has a bot's, which handle() would drop once a worker had cloned the repo.
+            if _dict(comment.get("user")).get("type") == "Bot":
+                return False
             if parse(comment.get("body") or "") and comment.get("id") and number:
                 self.enqueue((repo, number, "comment", comment["id"]), event, payload)
                 return True
