@@ -7,6 +7,16 @@ def test_graphql_bot_logins_match_rest_ones_only_for_real_bots():
     assert _login(None) == ""
 
 
+def test_a_label_with_a_slash_stays_one_path_segment(monkeypatch):
+    gh = GitHub("t", "acme/widget")
+    urls = []
+    monkeypatch.setattr(gh, "request", lambda method, url, **kw: urls.append(url))
+    gh.remove_label(7, "triage/needs work")
+    gh.ensure_label("triage/ready", "ffffff", "")
+    assert urls[0].endswith("/issues/7/labels/triage%2Fneeds%20work")
+    assert urls[1].endswith("/labels/triage%2Fready")
+
+
 def test_review_threads_carry_rest_style_logins(monkeypatch):
     gh = GitHub("t", "acme/widget")
     page = {"repository": {"pullRequest": {"reviewThreads": {
