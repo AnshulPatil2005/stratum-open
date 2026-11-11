@@ -20,7 +20,7 @@ def collect_votes(gh: GitHub, number: int, bot: str, storage: Storage) -> int:
     permissions: dict[str, bool] = {}
     recorded = 0
     for comment in gh.review_comments(number):
-        if (comment.get("user") or {}).get("login", "").lower() != bot.lower():
+        if not publish._is_bot(comment, bot):
             continue
         match = publish._FINDING.search(comment.get("body") or "")
         totals = comment.get("reactions") or {}
