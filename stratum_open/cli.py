@@ -11,6 +11,7 @@ import argparse
 import json
 import os
 import re
+import sqlite3
 import subprocess
 import sys
 from pathlib import Path
@@ -61,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     data.add_argument("--db", default=os.environ.get("STRATUM_DB", "stratum.db"))
     data.add_argument("--repo", help="owner/name")
     data.add_argument("--pr", type=int, help="with delete: one PR's findings and job log")
-    data.add_argument("--feedback", action="store_true", help="with delete: 👍/👎 votes and muted rules")
+    data.add_argument("--feedback", action="store_true", help="with delete: thumbs-up/down votes and muted rules")
     data.add_argument("--all", action="store_true", help="with delete --repo: everything stored for the repo")
     data.add_argument("--days", type=int, default=180, help="with purge: findings older than this go (jobs: 14 days)")
 
@@ -164,7 +165,10 @@ def _review_local(args, base: str) -> int:
     from stratum_open.repo.boundaries import boundary_findings
 
     try:
-        text = _git(".", "diff", "--no-color", "--find-renames", f"{base}...HEAD")
+        # The flags keep out what the user's git config can change: an external
+        # diff tool, textconv filters, and other prefixes than a/ and b/.
+        text = _git(".", "diff", "--no-color", "--no-ext-diff", "--no-textconv", "--src-prefix=a/", "--dst-prefix=b/",
+                    "--find-renames", f"{base}...HEAD")
     except subprocess.CalledProcessError as exc:
         sys.exit(f"git couldn't compare {base} with HEAD: {(exc.stderr or '').strip() or 'is this a git repo, and does that branch exist?'}")
     files = parse_diff(text)
@@ -268,7 +272,10 @@ def _data(args) -> int:
 
     if not Path(args.db).exists():
         sys.exit(f"No database at {args.db}. Only the GitHub App stores data; the Action and the CLI keep nothing.")
-    storage = SQLiteStorage(args.db)
+    try:
+        storage = SQLiteStorage(args.db)
+    except (sqlite3.Error, RuntimeError) as exc:
+        sys.exit(f"Couldn't open the database at {args.db}: {exc}")
     if args.action == "purge":
         print(json.dumps(storage.purge(findings_days=args.days, repo=args.repo)))
     elif args.action == "export":

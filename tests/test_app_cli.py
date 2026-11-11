@@ -3,7 +3,9 @@ import hmac
 import io
 import json
 import os
+import sqlite3
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 
@@ -120,6 +122,9 @@ def test_review_local_runs_the_checks(tmp_path, capsys, monkeypatch):
     git("checkout", "-q", "-b", "feature")
     (repo / "app.py").write_text('x = 1\nAPI_KEY = "sk-live-0123456789abcdef0123"\n')
     git("commit", "-q", "-am", "Add key")
+    # The user's own diff settings don't change what's reviewed.
+    git("config", "diff.external", "echo")
+    git("config", "diff.noprefix", "true")
     monkeypatch.chdir(repo)
     monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
     code = cli.main(["review", "--local", "main", "--no-model", "--json", str(tmp_path / "out.json")])
@@ -141,6 +146,27 @@ def test_data_commands(tmp_path, capsys):
     assert "for acme/widget#7" in out and "Deleted 1 vote and mute row(s)." in out
     with pytest.raises(SystemExit):
         cli.main(["data", "delete", "--db", str(tmp_path / "missing.db"), "--feedback"])
+
+
+def test_data_on_a_file_that_isnt_a_database_or_is_newer(tmp_path):
+    junk = tmp_path / "junk.db"
+    junk.write_text("not a database " * 100)
+    newer = tmp_path / "newer.db"
+    db = sqlite3.connect(newer)
+    db.execute("PRAGMA user_version = 999")
+    db.close()
+    for db in (junk, newer):
+        with pytest.raises(SystemExit) as exit_:
+            cli.main(["data", "export", "--db", str(db), "--repo", "acme/widget"])
+        assert str(exit_.value).startswith(f"Couldn't open the database at {db}: ")
+
+
+def test_help_prints_where_stdout_isnt_utf8(monkeypatch):
+    out = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+    monkeypatch.setattr(sys, "stdout", out)
+    with pytest.raises(SystemExit) as exit_:
+        cli.main(["data", "--help"])
+    assert exit_.value.code == 0
 
 
 def test_a_redelivered_webhook_is_ignored(server):
