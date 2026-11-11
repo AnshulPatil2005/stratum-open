@@ -21,6 +21,8 @@ def test_each_heuristic_fires_on_its_area():
     assert rules(diff("requirements.txt", ["requests==2.32.0"])) == ["heuristic/dependencies-changed"]
     assert rules(diff("deploy/config.yaml", ["cors_origins: ['*']"])) == ["heuristic/cors-config", "heuristic/workflow-changed"]
     assert rules(diff("src/decision.py", ["x = 1"])) == []  # not CI, despite the "ci" in its name
+    assert rules(diff("docs/privacy-policy.md", ["typo"])) == []  # not auth, despite "policy"
+    assert rules(diff("app/viewmodels/user.py", ["x = 1"])) == []  # not a migration, despite "model"
 
 
 def test_tests_that_lose_more_than_they_gain():
