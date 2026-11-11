@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Sequence
 
 from stratum_open import __version__
-from stratum_open.diff import FileDiff
+from stratum_open.diff import FileDiff, sendable
 from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank, risk_score
 from stratum_open.model import is_model_failure
 from stratum_open.policy import Policy
@@ -124,7 +124,8 @@ def analyze(
             result = ReviewResult(failed_calls=1, calls=[{
                 "model": str(getattr(model, "name", "")), "seconds": 0, "ok": False, "prompt_tokens": None, "output_tokens": None,
                 "error": error, "traceback": traceback.format_exc(),
-            }], unread={f.path for f in files if only_paths is None or f.path in only_paths})  # no telling what was read
+            }], unread={f.path for f in files  # no telling what was read, of what would have been sent
+                        if (only_paths is None or f.path in only_paths) and sendable(f, policy.ignored)})
 
     # The chunked review verifies its own findings; the per-file passes' go through the same check here.
     if large is not None and large.findings and policy.review.verify in VERIFY_PROMPTS:

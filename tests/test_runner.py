@@ -387,11 +387,13 @@ def test_a_review_the_model_never_answered_is_tried_again_on_the_same_commit(gh)
     state = publish.State.decode(gh.issue_comments_[7][0]["body"])
     assert (state.head, state.unread) == ("a" * 40, ["app/users.py"])
 
-    # The same commit again (CI finishing, a reopen, a re-run), the model still down.
-    review_pull(context(gh, FakeModel(down)), 7)
+    # The same commit again (CI finishing, a reopen, a re-run), the model still down:
+    # it was sent the file again, and the summary doesn't say it read it.
+    still_down = FakeModel(down)
+    review_pull(context(gh, still_down), 7)
     body = gh.issue_comments_[7][0]["body"]
-    assert gh.checks[-1]["conclusion"] == "neutral"
-    assert "The model didn't answer" in body and "No files changed since" not in body
+    assert gh.checks[-1]["conclusion"] == "neutral" and len(still_down.prompts) == 1
+    assert "The model didn't answer" in body and "Read again" not in body
     assert publish.State.decode(body).unread == ["app/users.py"]
 
     # The model is back: it reads the file it missed, and nothing is left unread.
@@ -484,7 +486,7 @@ def test_when_the_model_step_raises_every_file_it_was_given_is_unread(gh):
 def test_too_many_unread_files_keep_the_old_head(gh, monkeypatch):
     from stratum_open import runner
 
-    monkeypatch.setattr(runner, "MAX_UNREAD", 0)
+    monkeypatch.setattr(runner, "MAX_UNREAD_BYTES", 0)
     review_pull(context(gh, FakeModel(DOWN)), 7)
     state = publish.State.decode(gh.issue_comments_[7][0]["body"])
     assert (state.head, state.unread) == ("", [])  # so the next run reads the whole PR
@@ -505,6 +507,79 @@ def test_a_file_level_finding_on_a_file_the_model_didnt_answer_for_isnt_called_f
     body = gh.issue_comments_[7][0]["body"]
     assert "No tests" in body.split("<details>")[0]
     assert publish.State.decode(body).unread == ["app/beta.py"]
+
+
+LOGO = "diff --git a/logo.png b/logo.png\nindex 1111111..2222222 100644\nBinary files a/logo.png and b/logo.png differ\n"
+
+
+def test_a_file_that_is_never_sent_is_never_unread(gh):
+    class Raises(FakeModel):
+        def complete(self, system, user, **kwargs):
+            raise RuntimeError("the embedder's model broke")
+
+    gh.diff = DIFF + LOGO
+    review_pull(context(gh, Raises()), 7)
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).unread == ["app/users.py"]
+
+
+def test_a_retry_with_nothing_left_to_send_doesnt_call_the_model_down(gh):
+    review_pull(context(gh, FakeModel(DOWN)), 7)
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).unread == ["app/users.py"]
+
+    # The policy now keeps the file out of the model's view: there's nothing to send.
+    model = FakeModel(model_answer())
+    review_pull(context(gh, model, policy=parse_policy("review:\n  ignore_paths: ['app/**']\n")), 7)
+    body = gh.issue_comments_[7][0]["body"]
+    assert model.prompts == [] and "didn't answer" not in body and "Read again" not in body
+    assert publish.State.decode(body).unread == []
+
+
+def test_with_no_model_nothing_is_read_and_nothing_said_read_again(gh):
+    review_pull(context(gh, FakeModel(DOWN)), 7)
+    review_pull(context(gh, None), 7)
+    body = gh.issue_comments_[7][0]["body"]
+    assert "Read again" not in body and publish.State.decode(body).unread == ["app/users.py"]
+
+
+def test_a_push_reviewed_with_no_model_is_read_by_the_next_with_one(gh):
+    review_pull(context(gh, FakeModel(model_answer())), 7)
+    gh.move_head(7, "b" * 40, FIXED)
+    gh.compare[("a" * 40, "b" * 40)] = ["app/users.py"]
+    review_pull(context(gh, None), 7)
+    state = publish.State.decode(gh.issue_comments_[7][0]["body"])
+    assert (state.head, state.unread) == ("b" * 40, ["app/users.py"])
+
+    model = FakeModel(model_answer(findings=[]))
+    review_pull(context(gh, model), 7)
+    assert len(model.prompts) == 1 and "app/users.py" in model.prompts[0][1]
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).unread == []
+
+
+def test_a_file_to_read_again_that_the_size_limit_left_out_stays_unread(gh):
+    gh.diff = two_files()
+    review_pull(context(gh, FakeModel(model_answer(findings=[]), DOWN), policy=SPLIT), 7)
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).unread == ["app/beta.py"]
+
+    # A push changes alpha; with room for one call, alpha takes it and beta is left out.
+    gh.move_head(7, "b" * 40)
+    gh.compare[("a" * 40, "b" * 40)] = ["app/alpha.py"]
+    one_call = parse_policy("review:\n  profile: small\n  context_tokens: 6000\n  max_chunks: 1\n")
+    outcome = review_pull(context(gh, FakeModel(model_answer(findings=[])), policy=one_call), 7)
+    assert outcome.review.packed.omitted == ["app/beta.py"]
+    body = gh.issue_comments_[7][0]["body"]
+    assert publish.State.decode(body).unread == ["app/beta.py"] and gh.checks[-1]["conclusion"] == "neutral"
+    assert "The model hasn't read 1 file yet" in body and "Read again" not in body
+
+
+def test_an_ignore_redraws_without_calling_the_model(gh):
+    review_pull(context(gh, FakeModel(DOWN)), 7)
+    gh.permissions["mona"] = "admin"
+    model = FakeModel(model_answer())
+    event, payload = comment_event("@stratum ignore code/sql", login="mona")
+    assert handle(context(gh, model), event, payload) == "ignore"
+    body = gh.issue_comments_[7][0]["body"]
+    assert model.prompts == [] and publish.State.decode(body).unread == ["app/users.py"]
+    assert "The model hasn't read 1 file yet" in body and gh.checks[-1]["conclusion"] == "neutral"
 
 
 def test_a_cut_off_reply_never_passes_the_check(gh):

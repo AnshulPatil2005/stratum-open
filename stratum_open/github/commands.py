@@ -189,7 +189,7 @@ def _ignore(ctx: Context, number: int, rule: str, thread_root: int | None, reply
         reply("Reply `@stratum ignore` to one of Stratum's inline comments, or name a rule: `@stratum ignore <rule>`.")
         return "ignore"
     _record_ignore(gh, number, ctx.bot, fingerprint=fp, rule=None if fp else rule)
-    review_pull(ctx, number)  # resolves the thread and redraws the summary; the model reads only files the last review couldn't
+    review_pull(ctx, number, retry=False)  # resolves the thread and redraws the summary, with no model call
     return "ignore"
 
 

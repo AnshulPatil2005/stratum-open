@@ -8,11 +8,12 @@ from).
 
 from __future__ import annotations
 
+import json
 import subprocess
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from stratum_open.diff import FileDiff, parse_diff
+from stratum_open.diff import FileDiff, parse_diff, sendable
 from stratum_open.engine import analyze, default_conclusion, effective_policy, snippet_of  # noqa: F401  (effective_policy: re-exported)
 from stratum_open.findings import Finding, risk_score
 from stratum_open.github import publish
@@ -29,7 +30,9 @@ from stratum_open.util import redact
 MAX_BANDIT_FILES = 20
 MAX_CONTEXT_FILES = 20
 MAX_REVIEW_TEXT_FILES = 20  # files whose text is fetched for review.context_lines
-MAX_UNREAD = 200  # unread paths kept in the summary's state; past it, the next run reads everything since the old head
+# The JSON size of the unread paths kept in the summary's state (about 60 paths), so they don't crowd the
+# findings out of the comment; past it, the next run reads everything since the old head.
+MAX_UNREAD_BYTES = 4000
 
 
 @dataclass
@@ -88,7 +91,9 @@ def skip_reason(pull: dict, action: str | None, policy: Policy) -> str | None:
     return None
 
 
-def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = True) -> Outcome:
+def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = True, retry: bool = True) -> Outcome:
+    """`retry=False` leaves the files the last review couldn't read for the
+    next one, so a redraw (an ignore) makes no model call for them."""
     gh = ctx.gh
     pull = gh.pull(number)
     if pull.get("state") != "open":
@@ -110,8 +115,10 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         else:
             since = gh.compare_files(state.head, head)
             changed = set(since) & set(paths) if since is not None else None
+    # `unread` records paths, not passes: a file read again goes through every
+    # pass (per-file, lenses, chunked, verify, synthesis), even if one failed.
     retried: set[str] = set()
-    if changed is not None:
+    if changed is not None and retry:
         retried = (set(state.unread) & set(paths)) - changed
         changed |= retried
     incremental = changed is not None
@@ -139,7 +146,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         if call.get("traceback"):  # the model step raised: the summary gets the one-line error, the log the rest
             ctx.log(redact(f"model review failed: {call.get('error', '')}\n{call['traceback']}"))
     if result is not None:
-        if not result.ran:
+        if result.calls and not result.ran:  # no calls: nothing it was given could be sent
             problems.extend(model_problems(sorted({c["error"] for c in result.calls if c.get("error")})))
         else:
             if result.failed_calls:
@@ -157,6 +164,25 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         if large.salvaged_calls:
             problems.append(f"{large.salvaged_calls} of the per-file replies were cut off; anything found after the cut is missing.")
 
+    # What the model read this time, and what's left for the next review: the
+    # files whose call failed or was cut off, and those it was to read again
+    # but didn't (left out for the size limit, or `retry=False`). With no
+    # model, nothing was read, so what changed joins what was unread. Files
+    # that are never sent (binary, deleted, ignored) are never unread.
+    read = set(result.packed.reviewed + result.packed.clipped) if result and result.packed else set()
+    read = (read | set(large.reviewed if large else [])) - engine.unread
+    if ctx.model is None:
+        left = set(state.unread) | (changed if changed is not None else set(paths))
+    else:
+        left = engine.unread | (set(state.unread) - read)
+    by_path = {f.path: f for f in files}
+    unread = sorted(p for p in left if p in by_path and sendable(by_path[p], policy.ignored))
+    waiting = len(set(unread) - engine.unread) if ctx.model is not None else 0
+    if waiting:
+        problems.append(f"The model hasn't read {_files(waiting)} yet; the next review reads {'it' if waiting == 1 else 'them'}.")
+    # A review that left files unread isn't complete, whichever run failed to read them.
+    complete = engine.complete and not waiting
+
     facts = PRFacts.from_pull(pull, paths)
     try:
         facts.ci_ok = gh.ci_state(head, ignore={policy.review.check_name, *ctx.own_checks})
@@ -169,6 +195,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     # it, keep what was ignored meanwhile, and leave those findings out (the
     # score and the check's conclusion then follow the findings that are left).
     score, conclusion = engine.score, engine.conclusion
+    if complete != engine.complete:
+        conclusion = default_conclusion(findings, complete, policy, score)
     if post:
         latest = publish.find_summary(gh.issue_comments(number), ctx.bot)
         if latest is not None:
@@ -183,7 +211,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             if len(kept) < len(findings):
                 findings = kept
                 score = max(0, min(100, risk_score(findings)))
-                conclusion = default_conclusion(findings, engine.complete, policy, score)
+                conclusion = default_conclusion(findings, complete, policy, score)
             existing = latest  # edit the summary that's there now, never post a second one
     sorted_pr = triage(
         facts, findings, policy,
@@ -191,7 +219,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         record=record,
     )
 
-    coverage = _large_coverage(large) + _coverage(result, incremental, changed, state.head, files, retried)
+    coverage = _large_coverage(large) + _coverage(result, incremental, changed - retried if changed is not None else None, state.head, files, retried & read)
     if ctx.model is not None:
         coverage.append(f"Profile: `{engine.profile}` ({engine.profile_why}).")
     summary = publish.Summary(
@@ -201,14 +229,13 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         triage=sorted_pr, notes=notes, coverage=coverage, problems=problems, muted=muted,
         **_walkthrough(large, findings),
     )
-    # The next review reads what changed since this head, plus `unread`: the
-    # files whose model call failed or was cut off, so it reads those again
-    # rather than calling a review it never finished complete. With no model,
-    # nothing was read, so what was unread stays unread. A list too long for
-    # the summary comment keeps the old head instead, so the next run reads
-    # everything since it.
-    unread = sorted((engine.unread if ctx.model is not None else set(state.unread)) & set(paths))
-    keep_head = len(unread) > MAX_UNREAD
+    # The next review reads what changed since this head, plus `unread`, so
+    # it reads those again rather than calling a review it never finished
+    # complete. A list too long for the summary comment keeps the old head
+    # and its `unread` instead, so the next run reads everything since it.
+    # (Whatever failed this time was either changed since the old head or
+    # already in its `unread`; anything else was read at the old head.)
+    keep_head = len(json.dumps(unread)) > MAX_UNREAD_BYTES
     new_state = publish.State(
         head=state.head if keep_head else head,
         unread=state.unread if keep_head else unread,
@@ -405,11 +432,13 @@ def excluded(ctx: Context, login: str) -> bool:
 
 
 def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] | None, previous_head: str, files: list[FileDiff],
-              retried: set[str] = frozenset()) -> list[str]:
+              read_again: set[str] = frozenset()) -> list[str]:
+    """`changed`: the files changed since `previous_head`; `read_again`: the
+    ones the last review couldn't read that the model read this time."""
     lines = []
     if incremental and previous_head:
-        new = len((changed or set()) - retried)
-        again = f"the {_files(len(retried))} the last review couldn't read" if retried else ""
+        new = len(changed or ())
+        again = f"the {_files(len(read_again))} the last review couldn't read" if read_again else ""
         if new and again:
             lines.append(f"Reviewed only the {_files(new)} changed since {previous_head[:7]}, and {again}; findings elsewhere were kept.")
         elif again:

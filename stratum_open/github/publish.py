@@ -39,7 +39,7 @@ class State:
     ignored: list[str] = field(default_factory=list)  # fingerprints
     ignored_rules: list[str] = field(default_factory=list)
     triage: dict[str, Any] = field(default_factory=dict)
-    unread: list[str] = field(default_factory=list)  # paths whose model call failed or was cut off at `head`
+    unread: list[str] = field(default_factory=list)  # paths the model hasn't read at `head` (paths, not passes: each goes through every pass again)
 
     def encode(self) -> str:
         data = asdict(self)

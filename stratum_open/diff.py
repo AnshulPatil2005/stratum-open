@@ -323,6 +323,11 @@ class Packed:
     chunk_paths: list[list[str]] = field(default_factory=list)  # the paths in each chunk, in the same order
 
 
+def sendable(file: FileDiff, skip: Callable[[str], bool] = lambda path: False) -> bool:
+    """Whether `pack` would send the file: not binary, deleted, empty or skipped."""
+    return not (file.binary or file.status == "deleted" or not file.hunks or skip(file.path))
+
+
 def pack(
     files: list[FileDiff],
     budget_tokens: int,
@@ -340,10 +345,10 @@ def pack(
     packed = Packed([], [], [], [], [])
     candidates = []
     for file in files:
-        if file.binary or file.status == "deleted" or not file.hunks or skip(file.path):
-            packed.skipped.append(file.path)
-        else:
+        if sendable(file, skip):
             candidates.append(file)
+        else:
+            packed.skipped.append(file.path)
     order = priority or (lambda f: f.additions + f.deletions)
     candidates.sort(key=lambda f: -order(f))
 
