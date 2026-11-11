@@ -8,13 +8,16 @@ parts of the file. With the file's full content (`contents`) the rules see all
 of it. Without it they see what the diff shows, so a `run: |` block whose
 first line is outside the diff's context isn't known to be a script, and a
 trigger that isn't shown isn't known either.
+
+A file moved here from a path that isn't a workflow or an action is checked
+in full, since every line of it is new to where it now runs.
 """
 
 from __future__ import annotations
 
 import re
 
-from stratum_open.checks.common import view
+from stratum_open.checks.common import checked_lines, view
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
 
@@ -22,24 +25,34 @@ _WORKFLOW = re.compile(r"^\.github/workflows/[^/]+\.ya?ml$")  # GitHub runs only
 _ACTION = re.compile(r"(?:^|/)action\.ya?ml$")
 
 
+def scope(path: str) -> frozenset[str]:
+    """What this check reads in a file at `path`: an action's steps, or a
+    workflow's steps and triggers."""
+    if _WORKFLOW.match(path):
+        return frozenset({"steps", "triggers"})
+    return frozenset({"steps"}) if _ACTION.search(path) else frozenset()
+
+
 def check(files: list[FileDiff], contents: dict[str, str] | None = None) -> list[Finding]:
     findings: list[Finding] = []
     for file in files:
-        workflow = bool(_WORKFLOW.match(file.path))
-        if (workflow or _ACTION.search(file.path)) and file.added():
-            findings.extend(_check_file(file, contents, workflow))
+        if not scope(file.path):
+            continue
+        added = checked_lines(file, contents, scope)
+        if added:
+            findings.extend(_check_file(file, contents, bool(_WORKFLOW.match(file.path)), added))
     return findings
 
 
-def _check_file(file: FileDiff, contents: dict[str, str] | None, workflow: bool) -> list[Finding]:
+def _check_file(file: FileDiff, contents: dict[str, str] | None, workflow: bool, added_lines: list[tuple[int, str]]) -> list[Finding]:
     lines = view(file, contents)
-    added = {number for number, _ in file.added()}
+    added = {number for number, _ in added_lines}
     findings: list[Finding] = []
     if workflow:
         findings.extend(_pull_request_target(file.path, lines, added))
     scripts = _script_lines(lines)
     pr_triggered = workflow and any(_triggers(text) for _, text in lines)
-    for number, text in file.added():
+    for number, text in added_lines:
         if _yaml_comment(text) and number not in scripts:
             continue
         findings.extend(_permissions(file.path, number, text))

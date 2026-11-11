@@ -452,3 +452,59 @@ def test_the_profile_follows_the_model(gh):
     assert "__new hunk__" in user  # large: split hunks
     assert big.context_tokens == 32768
     assert "Profile: `large` (70B parameters)." in gh.issue_comments_[7][0]["body"]
+
+
+# ── files moved into place ───────────────────────────────────────────────
+
+PWN = """on: pull_request_target
+permissions: write-all
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - run: echo "${{ github.event.pull_request.title }}" && make test
+"""
+
+
+def moved(old, new):
+    return f"diff --git a/{old} b/{new}\nsimilarity index 100%\nrename from {old}\nrename to {new}\n"
+
+
+def test_a_workflow_moved_into_place_is_checked_in_full():
+    gh = FakeGitHub(diff=moved("docs/examples/ci.yml", ".github/workflows/ci.yml"), files={(".github/workflows/ci.yml", "a" * 40): PWN})
+    outcome = review_pull(context(gh, None), 7)
+    assert {"workflow/pwn-request", "workflow/write-all"} <= {f.rule for f in outcome.findings}
+    assert gh.checks[-1]["conclusion"] == "failure"
+    body = gh.issue_comments_[7][-1]["body"]
+    assert "Checked in full, since they moved to where the checks do more: `.github/workflows/ci.yml`" in body
+    assert gh.reviews == []  # no line of a move takes a comment: the findings are listed in the summary
+
+
+def test_code_moved_out_of_the_tests_is_fetched_even_without_bandit(monkeypatch):
+    monkeypatch.setattr("stratum_open.checks.bandit.available", lambda: False)
+    gh = FakeGitHub(diff=moved("tests/helper.py", "app/helper.py"), files={("app/helper.py", "a" * 40): "def f(request):\n    eval(request.args['x'])\n"})
+    outcome = review_pull(context(gh, None), 7)
+    assert "code/eval" in {f.rule for f in outcome.findings}
+
+
+def test_a_moved_file_github_wont_give_is_named_in_the_review():
+    outcome = review_pull(context(FakeGitHub(diff=moved("tests/helper.py", "app/helper.py")), None), 7)
+    [finding] = [f for f in outcome.findings if f.rule == "checks/moved-unread"]
+    assert "`app/helper.py`" in finding.detail
+
+
+def test_a_moved_binary_file_is_left_alone():
+    png = "\x89PNG\r\n\x1a\n\0\0\0\rIHDR password = 'hunter2hunter2'"
+    gh = FakeGitHub(diff=moved("tests/fixtures/logo.png", "app/logo.png"), files={("app/logo.png", "a" * 40): png})
+    outcome = review_pull(context(gh, None), 7)
+    assert outcome.findings == []
+
+
+def test_findings_on_a_moved_file_keep_their_lines_in_the_summary_and_the_check_run():
+    gh = FakeGitHub(diff=moved("docs/examples/ci.yml", ".github/workflows/ci.yml"), files={(".github/workflows/ci.yml", "a" * 40): PWN})
+    review_pull(context(gh, None), 7)
+    assert "in `.github/workflows/ci.yml` line 9: pull_request_target runs the PR's own code" in gh.issue_comments_[7][-1]["body"]
+    assert (".github/workflows/ci.yml", 9) in {(a["path"], a["start_line"]) for a in gh.checks[-1]["annotations"]}

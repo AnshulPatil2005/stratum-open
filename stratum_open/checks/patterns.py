@@ -5,6 +5,8 @@ Each rule matches only shapes it's sure of, so a finding is worth reading but
 a quiet run proves little. Lines are judged one at a time: a call or a SQL
 string split over several lines is mostly missed. Test files are skipped for
 everything but token-shaped secrets, which leak just the same from a test.
+A file moved to where more of the rules apply (out of `tests/`, or to another
+language) is checked in full.
 """
 
 from __future__ import annotations
@@ -12,7 +14,7 @@ from __future__ import annotations
 import functools
 import re
 
-from stratum_open.checks.common import basename, extension, is_comment, is_test_path, view
+from stratum_open.checks.common import basename, checked_lines, extension, is_comment, is_test_path, view
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
 
@@ -25,10 +27,31 @@ DOCS = {".md", ".markdown", ".rst", ".txt", ".adoc"}
 MAX_LINE = 5000
 
 
+def scope(path: str) -> frozenset[str]:
+    """The rules that run on a file at `path`, as `check` below decides them.
+    The eval and shell rules know Python and JavaScript, and the SQL rule
+    reads Ruby and PHP strings its own way, so those are told apart."""
+    ext, test = extension(path), is_test_path(path)
+    rules: set[str] = set()
+    if not _TEMPLATE_FILE.search(basename(path).lower()):
+        rules.add("secret/token")
+        if not test:
+            rules.add("secret/assigned")
+    if not test:
+        language = "python" if ext in PYTHON else "javascript" if ext in JAVASCRIPT else None
+        if language:
+            rules.update({f"eval/{language}", f"shell/{language}"})
+        if ext in SQL_HOSTS:
+            rules.add(f"sql{ext}" if ext in (".rb", ".php") else "sql")
+        if ext not in DOCS:
+            rules.add("cors")
+    return frozenset(rules)
+
+
 def check(files: list[FileDiff], contents: dict[str, str] | None = None) -> list[Finding]:
     findings: list[Finding] = []
     for file in files:
-        added = file.added()
+        added = checked_lines(file, contents, scope)
         if not added:
             continue
         ext = extension(file.path)

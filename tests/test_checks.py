@@ -457,6 +457,73 @@ def test_plain_text_has_no_hidden_characters():
     assert agents.hidden_characters("caf\u00e9 na\u00efve \u2014 \u65e5\u672c") == []
 
 
+# ── files moved into place ───────────────────────────────────────────────
+
+PWN = """on: pull_request_target
+permissions: write-all
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - run: echo "${{ github.event.pull_request.title }}" && make test
+"""
+RISKY_PY = 'import subprocess\n\ndef load(request):\n    subprocess.run(request.args["c"], shell=True)\n    eval(request.args["expr"])\n'
+
+
+def moved(old, new):
+    """What `git mv` gives, and GitHub's diff of a PR, for a file moved with no edits."""
+    return f"diff --git a/{old} b/{new}\nsimilarity index 100%\nrename from {old}\nrename to {new}\n"
+
+
+def test_a_workflow_moved_in_from_docs_is_checked_in_full():
+    findings = run(moved("docs/examples/ci.yml", WORKFLOW), contents={WORKFLOW: PWN})
+    assert {"workflow/pwn-request", "workflow/write-all", "workflow/script-injection", "workflow/unpinned-action"} <= set(rules(findings))
+    assert "checks/moved-unread" not in rules(findings)
+
+
+def test_an_action_moved_to_a_workflow_gets_the_trigger_rules():
+    findings = run(moved(".github/actions/ci/action.yml", WORKFLOW), contents={WORKFLOW: PWN})
+    assert "workflow/pwn-request" in rules(findings)
+
+
+def test_a_moved_workflow_with_one_edit_is_still_checked_in_full():
+    text = (f"diff --git a/docs/ci.yml b/{WORKFLOW}\nsimilarity index 91%\nrename from docs/ci.yml\nrename to {WORKFLOW}\n"
+            f"--- a/docs/ci.yml\n+++ b/{WORKFLOW}\n@@ -10 +10 @@\n"
+            '-      - run: echo "${{ github.event.pull_request.title }}" && make test\n'
+            '+      - run: echo "${{ github.event.pull_request.title }}" && make test  # run the tests\n')
+    assert "workflow/pwn-request" in rules(run(text, contents={WORKFLOW: PWN}))
+
+
+def test_code_moved_out_of_the_tests_is_checked_in_full():
+    findings = run(moved("tests/helper.py", "app/helper.py"), contents={"app/helper.py": RISKY_PY})
+    assert {"code/eval", "code/shell"} <= set(rules(findings))
+
+
+def test_a_file_moved_to_a_manifest_counts_its_dependencies_as_new():
+    findings = run(moved("examples/deps.txt", "requirements.txt"), contents={"requirements.txt": "requests==2.32.0\nreqeusts==2.32.0\n"})
+    assert sorted(rules(findings)) == ["deps/lookalike", "deps/new", "deps/new"]
+
+
+@pytest.mark.parametrize("old, new, text", [
+    (".github/workflows/old.yml", WORKFLOW, PWN),  # a workflow renamed
+    ("lib/helper.py", "app/helper.py", RISKY_PY),  # code moved between folders
+    ("app/helper.js", "app/helper.ts", "eval(req.query.x)\n"),  # JavaScript to TypeScript: the same rules
+    ("requirements/dev.txt", "requirements.txt", "reqeusts==2.32.0\n"),  # one manifest to another of its kind
+    ("app/helper.py", "tests/helper.py", RISKY_PY),  # into the tests, where fewer rules run
+])
+def test_a_move_that_stays_in_scope_checks_only_what_it_adds(old, new, text):
+    assert rules(run(moved(old, new), contents={new: text})) in ([], ["paths/always-human"])
+
+
+def test_a_moved_file_without_its_text_is_named_in_a_low_finding():
+    finding = only(run(moved("tests/helper.py", "app/helper.py")), "checks/moved-unread")
+    assert finding.severity == "low" and not finding.anchored and "`app/helper.py`" in finding.detail
+    assert "checks/moved-unread" not in rules(run(moved("lib/helper.py", "app/helper.py")))  # it was checked before
+
+
 # ── run_checks ───────────────────────────────────────────────────────────
 
 

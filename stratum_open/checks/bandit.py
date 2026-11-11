@@ -28,7 +28,7 @@ import sys
 import tempfile
 from typing import Any
 
-from stratum_open.checks.common import is_test_path
+from stratum_open.checks.common import checked_lines, is_test_path
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
 
@@ -59,21 +59,28 @@ def available() -> bool:
     return importlib.util.find_spec("bandit") is not None
 
 
+def scope(path: str) -> frozenset[str]:
+    """Bandit reads Python files outside the tests."""
+    return frozenset({"bandit"}) if path.endswith(".py") and not is_test_path(path) else frozenset()
+
+
 def check(files: list[FileDiff], contents: dict[str, str] | None = None, *, keep_low: bool = False) -> list[Finding]:
     if not contents or not available():
         return []
-    targets = [
-        file for file in files
-        if file.path.endswith(".py") and file.path in contents and file.status != "deleted"
-        and not is_test_path(file.path) and file.added()
-    ]
-    targets = sorted(targets, key=lambda file: -file.additions)[:MAX_FILES]
+    # A file moved here from the tests counts every line as added.
+    checked = {
+        file.path: dict(found)
+        for file in files
+        if scope(file.path) and file.path in contents and file.status != "deleted"
+        and (found := checked_lines(file, contents, scope))
+    }
+    targets = sorted(checked, key=lambda path: -len(checked[path]))[:MAX_FILES]
     if not targets:
         return []
-    added = {file.path: dict(file.added()) for file in targets}
+    added = {path: checked[path] for path in targets}
     levels = {**_SEVERITY, **(_LOW if keep_low else {})}
     findings = []
-    for issue in run_bandit({file.path: contents[file.path] for file in targets}):
+    for issue in run_bandit({path: contents[path] for path in targets}):
         severity = levels.get((issue["severity"], issue["confidence"]))
         mine = added.get(issue["path"], {})
         lines = [issue["line"]] + [n for n in issue["lines"] if n != issue["line"]]

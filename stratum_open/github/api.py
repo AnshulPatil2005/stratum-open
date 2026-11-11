@@ -149,6 +149,10 @@ class GitHub:
         for file in self.paginate(f"{self._r}/pulls/{number}/files"):
             old = file.get("previous_filename") or file["filename"]
             header = f"diff --git a/{old} b/{file['filename']}\n"
+            if file["status"] == "renamed" and not file.get("patch") and not file.get("changes"):
+                # A move with no edits has no patch, and isn't binary: write it as git does.
+                parts.append(f"{header}similarity index 100%\nrename from {old}\nrename to {file['filename']}\n")
+                continue
             if file["status"] == "added":
                 header += f"new file mode 100644\n--- /dev/null\n+++ b/{file['filename']}\n"
             elif file["status"] == "removed":

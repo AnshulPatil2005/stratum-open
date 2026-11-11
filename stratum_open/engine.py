@@ -131,7 +131,7 @@ def analyze(
         large.dropped += dropped
 
     found = anchor_to_diff(checks + list(extra_findings) + (large.findings if large else []) + (result.findings if result else []), files)
-    assign_fingerprints(found, files)
+    assign_fingerprints(found, files, contents)
     found = dedupe(found)
 
     # A model finding stays until the code it's on changes; the model not

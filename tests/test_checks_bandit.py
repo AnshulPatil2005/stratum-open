@@ -107,3 +107,22 @@ def test_real_bandit_ignores_nosec_the_pr_adds():
     findings = bandit.check(parse_diff(diff("app/load.py", added, context=context)), {"app/load.py": source})
     assert [(f.rule, f.line_start) for f in findings] == [("bandit/B301", 5), ("bandit/B306", 6), ("bandit/B324", 7)]
     assert all("`# nosec`" in f.detail for f in findings)
+
+
+def test_a_file_moved_out_of_the_tests_goes_to_bandit_with_every_line(monkeypatch):
+    sent = []
+    monkeypatch.setattr(bandit, "available", lambda: True)
+    monkeypatch.setattr(bandit, "run_bandit", lambda sources: sent.append(sorted(sources)) or [issue(1, path="app/helper.py")])
+    text = "diff --git a/tests/helper.py b/app/helper.py\nsimilarity index 100%\nrename from tests/helper.py\nrename to app/helper.py\n"
+    findings = bandit.check(parse_diff(text), {"app/helper.py": "subprocess.run(cmd, shell=True)\n"})
+    assert sent == [["app/helper.py"]]
+    assert [(f.rule, f.line_start) for f in findings] == [("bandit/B602", 1)]
+
+
+def test_a_file_moved_between_folders_of_code_isnt_sent_again(monkeypatch):
+    sent = []
+    monkeypatch.setattr(bandit, "available", lambda: True)
+    monkeypatch.setattr(bandit, "run_bandit", lambda sources: sent.append(sorted(sources)) or [])
+    text = "diff --git a/lib/helper.py b/app/helper.py\nsimilarity index 100%\nrename from lib/helper.py\nrename to app/helper.py\n"
+    assert bandit.check(parse_diff(text), {"app/helper.py": "subprocess.run(cmd, shell=True)\n"}) == []
+    assert sent == []
