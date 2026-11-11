@@ -161,7 +161,10 @@ def context_from_env(policy: Policy, env: Mapping[str, str]) -> Policy:
 
 def needs_model(env: Mapping[str, str] = os.environ) -> bool:
     """Whether this event can call the model, so the workflow only starts
-    Ollama when it has to. It asks the same parser that runs the command."""
+    Ollama when it has to. It asks the same parser that runs the command.
+    A scheduled or manual run only rebuilds the triage queue: no model call."""
+    if env.get("GITHUB_EVENT_NAME") in ("schedule", "workflow_dispatch"):
+        return False
     if env.get("GITHUB_EVENT_NAME") not in ("issue_comment", "pull_request_review_comment"):
         return True
     with open(env["GITHUB_EVENT_PATH"], encoding="utf-8") as handle_file:

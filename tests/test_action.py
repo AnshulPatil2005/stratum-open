@@ -48,16 +48,19 @@ def test_comment_events_run_commands(tmp_path, monkeypatch):
 def test_schedule_builds_the_queue(tmp_path, monkeypatch):
     gh = FakeGitHub(diff=DIFF)
     run(tmp_path, monkeypatch, "pull_request_target", pr_payload(), gh)
-    run(tmp_path, monkeypatch, "schedule", {"repository": {"default_branch": "main"}}, gh)
+    model = FakeModel()
+    run(tmp_path, monkeypatch, "schedule", {"repository": {"default_branch": "main"}}, gh, model)
     [queue] = gh.issues
     assert queue["title"] == "Stratum triage queue" and "#7 Add a thing" in queue["body"]
+    assert not model.prompts  # so needs_model can say the Action needs no Ollama for it
 
 
 @pytest.mark.parametrize(
     "event_name, body, expected",
     [
         ("pull_request_target", None, True),
-        ("schedule", None, True),
+        ("schedule", None, False),
+        ("workflow_dispatch", None, False),
         ("issue_comment", "@stratum triage", False),
         ("issue_comment", "@stratum record", False),
         ("issue_comment", "@stratum  rereview", True),
