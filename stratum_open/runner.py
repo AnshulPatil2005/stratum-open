@@ -25,7 +25,7 @@ from stratum_open.review_large import LargeReview
 from stratum_open.storage import NullStorage, Storage
 from stratum_open.track_record import AuthorRecord, author_identity, build_records, describe_subprocess_error
 from stratum_open.triage import PRFacts, Triage, triage
-from stratum_open.util import redact
+from stratum_open.util import count, redact
 
 MAX_BANDIT_FILES = 20
 MAX_CONTEXT_FILES = 20
@@ -482,7 +482,7 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
         if packed.reviewed or packed.clipped:
             calls = len(packed.chunks)
             paths = packed.reviewed + packed.clipped
-            sent = f"{_files(len(paths))} in {calls} call{'' if calls == 1 else 's'}"
+            sent = f"{_files(len(paths))} in {count(calls, 'call')}"
             read = len(set(paths) - unread)
             if result.ran and read == len(paths):
                 lines.append(f"The model read {sent}.")
@@ -542,7 +542,7 @@ def _and(words: list[str]) -> str:
 
 
 def _files(n: int) -> str:
-    return f"{n} file" if n == 1 else f"{n} files"
+    return count(n, "file")
 
 
 def model_problems(errors: list[str]) -> list[str]:

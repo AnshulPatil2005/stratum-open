@@ -14,6 +14,7 @@ import unicodedata
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
 from stratum_open.policy import matches_any
+from stratum_open.util import count
 
 AGENT_FILES = (
     "**/AGENTS.md", "**/CLAUDE.md", "**/CLAUDE.local.md", "**/GEMINI.md",
@@ -125,5 +126,5 @@ def _describe(found: list[str]) -> str:
     for char in dict.fromkeys(char for char in found if ord(char) not in _TAGS):
         names.append(f"U+{ord(char):04X} {unicodedata.name(char, '')}".strip())
     if tags:
-        names.append(f"{tags} Unicode tag character{'s' if tags != 1 else ''} (U+E0000–U+E007F), which can spell out hidden text")
+        names.append(f"{count(tags, 'Unicode tag character')} (U+E0000–U+E007F), which can spell out hidden text")
     return ", ".join(names)

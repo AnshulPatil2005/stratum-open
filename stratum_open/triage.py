@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from stratum_open.findings import Finding
 from stratum_open.policy import Policy
 from stratum_open.track_record import AuthorRecord
+from stratum_open.util import count
 
 KEYS = ("needs_human", "needs_work", "low_effort", "ready")
 COLORS = {"ready": "0e8a16", "needs_work": "d93f0b", "low_effort": "fbca04", "needs_human": "5319e7"}
@@ -100,7 +101,7 @@ def triage(
         needs_work.append("CI is failing.")
     blocking = [f for f in findings if f.severity == "critical" or (f.source == "check" and f.blocking and not f.needs_human)]
     if blocking:
-        needs_work.append(f"{_count(len(blocking), 'serious finding')} to fix: " + "; ".join(sorted({f.title for f in blocking}))[:200] + ".")
+        needs_work.append(f"{count(len(blocking), 'serious finding')} to fix: " + "; ".join(sorted({f.title for f in blocking}))[:200] + ".")
     if policy.triage.require_linked_issue and not facts.linked_issues:
         needs_work.append("No linked issue, and this project asks for one.")
     if matches_description == "no":
@@ -168,10 +169,6 @@ def _score(facts: PRFacts, evidence: list[str], needs_work: list[str], low_effor
     size = facts.additions + facts.deletions
     cost = math.log2(1 + size) / 2 + len(facts.paths) / 20
     return len(evidence) - 1.5 * len(needs_work) - 0.5 * len(low_effort) - cost
-
-
-def _count(n: int, noun: str) -> str:
-    return f"{n} {noun}{'' if n == 1 else 's'}"
 
 
 def render_queue(rows: list[tuple[PRFacts, Triage | None]], policy: Policy) -> str:
