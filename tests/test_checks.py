@@ -117,6 +117,11 @@ def test_template_files_are_not_searched_for_secrets(path):
     assert "code/secret" not in rules(run(diff(path, ['API_KEY="a8f3k2l9q0w8e7r6"'])))
 
 
+def test_a_translated_field_name_is_not_a_secret():
+    assert "code/secret" not in rules(run(diff("locales/es.json", ['  "password": "Contraseña",'])))
+    assert "code/secret" in rules(run(diff("locales/es.json", ['  "api_token": "Zq81kLm2Pq",'])))
+
+
 def test_tests_can_hold_fake_passwords_but_not_real_tokens():
     assert "code/secret" not in rules(run(diff("tests/test_login.py", ['login(password="s3cr3tPa55")'])))
     token = 'gh = "ghp_' + "A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8" + '"'
@@ -262,6 +267,7 @@ def test_pull_request_target_with_the_head_checked_out_is_critical():
     "          ref: ${{ github.event.pull_request.head.ref }}",
     "          ref: ${{ github.head_ref }}",
     "      - run: gh pr checkout ${{ github.event.pull_request.number }}",
+    "          ref: ${{ github.event.pull_request.merge_commit_sha }}",
 ])
 def test_every_way_of_checking_out_the_head_counts(checkout):
     lines = ["on:", "  pull_request_target:", "jobs:", "  t:", "    steps:", "      - uses: actions/checkout@v4", "        with:", checkout]
@@ -336,6 +342,14 @@ def test_untrusted_text_in_an_inline_run_is_script_injection():
     finding = only(run(diff(WORKFLOW, ['      - run: echo "${{ github.event.issue.title }}"'], new=True)),
                    "workflow/script-injection")
     assert finding.severity == "high" and "github.event.issue.title" in finding.detail
+
+
+def test_the_head_repos_default_branch_is_untrusted():
+    # The fork's owner names it; the base repo's is the maintainers' own.
+    lines = ["      - run: echo ${{ github.event.pull_request.head.repo.default_branch }}",
+             "      - run: echo ${{ github.event.pull_request.base.repo.default_branch }}"]
+    findings = run(diff(WORKFLOW, lines, new=True))
+    assert [f.line_start for f in findings if f.rule == "workflow/script-injection"] == [1]
 
 
 def test_untrusted_text_in_a_run_block_is_script_injection():

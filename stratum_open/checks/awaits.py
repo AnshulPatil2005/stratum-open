@@ -63,7 +63,7 @@ def touches_async(file: FileDiff) -> bool:
 def _parse(text: str) -> ast.Module | None:
     try:
         return ast.parse(text)
-    except (SyntaxError, ValueError):
+    except (SyntaxError, ValueError, RecursionError, MemoryError):  # the last two: a huge generated expression
         return None
 
 
@@ -111,7 +111,8 @@ def _from_tree(tree: ast.Module, added: set[int], removed: list[tuple[int, str]]
             elif isinstance(node, ast.AsyncFunctionDef):
                 hits.extend(_in_async(node, added, module_wide | own))
                 scopes.append((node, own))
-            elif isinstance(node, (ast.FunctionDef, ast.If, ast.Try, ast.With, ast.AsyncWith)):
+            elif isinstance(node, (ast.FunctionDef, ast.If, ast.Try, ast.TryStar, ast.ExceptHandler, ast.With, ast.AsyncWith,
+                                   ast.For, ast.AsyncFor, ast.While, ast.Match, ast.match_case)):
                 scopes.append((node, own))
     return hits
 

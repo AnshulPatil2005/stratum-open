@@ -100,6 +100,37 @@ def test_unparseable_files_and_other_languages_are_skipped():
     assert flagged("async function f() { await g(); g(); }", path="app.js") == []
 
 
+def test_a_file_too_deep_to_parse_is_skipped_without_an_error():
+    # One long generated expression: ast.parse raises RecursionError past ~3000 terms.
+    files, _ = added_file("gen.py", "TOTAL = 1\nasync def f():\n    await g()\n")
+    contents = {"gen.py": "TOTAL = " + " + ".join(["1"] * 3100) + "\n"}
+    assert [f.rule for f in run_checks(files, Policy(), contents=contents) if f.rule == "checks/error"] == []
+
+
+def test_async_defs_inside_loops_handlers_and_matches_are_checked():
+    assert flagged("""
+try:
+    import uvloop
+except ImportError:
+    async def a(client):
+        await client.close()
+        client.close()
+for _ in range(1):
+    async def b(client):
+        await client.close()
+        client.close()
+while False:
+    async def c(client):
+        await client.close()
+        client.close()
+match 1:
+    case 1:
+        async def d(client):
+            await client.close()
+            client.close()
+""") == [(n, "`client.close()` isn't awaited") for n in (6, 10, 14, 19)]
+
+
 def test_it_runs_with_the_other_checks():
     files, contents = added_file("app.py", "async def a(s):\n    await s.send()\n    s.send()\n")
     rules = [f.rule for f in run_checks(files, Policy(), contents=contents)]
