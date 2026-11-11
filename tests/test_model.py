@@ -55,6 +55,20 @@ def test_describe_never_fails():
     assert (info.billions, info.context, info.local) == (None, None, False)
 
 
+class Down:
+    def get(self, url, **kwargs):
+        raise requests.ConnectionError()
+
+    post = get
+
+
+def test_an_unreachable_model_error_leaves_out_credentials_in_the_endpoint():
+    for endpoint, shown in (("https://bob:s3cretpass@gpu.example.org:8443/v1", "https://gpu.example.org:8443/v1"),
+                            ("https://gpu.example.org/v1?key=AIzaSyD-abcdef0123456789", "https://gpu.example.org/v1")):
+        reply = Model(endpoint, "m", session=Down()).complete("s", "u")
+        assert reply.error == f"couldn't reach the model at {shown}: ConnectionError"
+
+
 def test_parameter_sizes():
     assert _billions("7.6B") == 7.6
     assert _billions("8x7B") == 56
