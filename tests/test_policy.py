@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from stratum_open.policy import POLICY_PATH, Policy, forbidden_pairs, load_policy, parse_policy
+from stratum_open.policy import POLICY_PATH, Policy, forbidden_pairs, load_policy, matches_any, parse_policy
 
 
 def test_no_file_means_defaults():
@@ -93,6 +93,8 @@ def test_services_is_hosted_stratums_section_and_is_accepted_unread():
         ("review:\n  max_inline_comments: true", "review.max_inline_comments must be a whole number."),
         ("review:\n  endpoint: 8080", "review.endpoint must be text."),
         ("track_record:\n  followup_days: 0", "track_record.followup_days must be at least 1."),
+        ("track_record:\n  window_days: 999999", "track_record.window_days must be at most 36500."),
+        ("data:\n  findings_retention_days: 999999", "data.findings_retention_days must be at most 36500."),
         ("always_human:\n  paths: .github/**", "always_human.paths must be a list of text values."),
         ("version: 2", f"{POLICY_PATH} has version 2; this release reads version 1."),
         ("- a\n- b", f"{POLICY_PATH} must be a mapping of keys, not a list."),
@@ -158,6 +160,11 @@ def test_glob_rules():
     assert not policy.needs_human("docs/README.md")
     assert policy.needs_human("docs/a.txt")
     assert not policy.needs_human("docs/ab.txt")
+
+
+def test_a_pattern_ending_in_a_slash_is_a_folder():
+    assert matches_any("docs/a.md", ("docs/",)) and matches_any("docs/x/a.md", ("/docs/",))
+    assert not matches_any("docs.md", ("docs/",)) and not matches_any("src/docs/a.md", ("docs/",))
 
 
 def test_profiles_fill_in_only_what_the_file_left_out():
