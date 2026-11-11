@@ -93,6 +93,15 @@ def test_without_a_quote_a_replacement_is_never_offered():
     assert finding.line_start == 5 and finding.replacement is None
 
 
+def test_a_quote_across_a_blank_line_is_found():
+    from stratum_open.review import _locate
+    [file] = parse_diff(DIFF)
+    assert _locate("import requests\n\ndef get_user(conn, user_id):", file, near=None) == (2, 4)
+    assert _locate("import requests\ndef get_user(conn, user_id):", file, near=None) == (2, 4)  # the blank line left out
+    assert _locate("\nimport requests\n\n", file, near=None) == (2, 2)
+    assert _locate("import requests\n\n\ndef get_user(conn, user_id):", file, near=None) == (2, 4)  # one blank too many
+
+
 def test_bad_parts_of_a_reply_are_dropped_not_passed_on():
     findings = [
         {"file": "nope.py", "title": "x", "detail": "not in the diff"},

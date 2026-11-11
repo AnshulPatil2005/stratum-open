@@ -483,22 +483,34 @@ def _locate(code: str, file: FileDiff, near: int | None) -> tuple[int, int] | No
     """Where the quoted code sits on the new side of the diff, preferring
     added lines and the match nearest the line number the model gave."""
     wanted = [_norm(_NUMBERED.sub("", line).removeprefix("+")) for line in code.splitlines()]
-    wanted = [line for line in wanted if line]
+    while wanted and not wanted[0]:
+        wanted.pop(0)
+    while wanted and not wanted[-1]:
+        wanted.pop()
     if not wanted:
         return None
-    added = {number for number, _ in file.added()}
     side = sorted(file.new_side().items())
+    matches = _matches(wanted, side, file, near)
+    if not matches:  # the quote dropped or added a blank line: match the lines with code only
+        matches = _matches([want for want in wanted if want], [(n, text) for n, text in side if text.strip()], file, near)
+    if not matches:
+        return None
+    _, _, start, end = min(matches)
+    return start, end
+
+
+def _matches(wanted: list[str], side: list[tuple[int, str]], file: FileDiff, near: int | None) -> list[tuple[bool, int, int, int]]:
+    """Each run of `side` that reads as `wanted`. A hunk's new lines have no
+    gaps, so a run inside one hunk is one stretch of the file."""
+    added = {number for number, _ in file.added()}
     matches = []
     for i, (number, _) in enumerate(side):
         window = side[i:i + len(wanted)]
         if len(window) == len(wanted) and all(_norm(text) == want for (_, text), want in zip(window, wanted)):
             last = window[-1][0]
-            if last - number == len(wanted) - 1 and file.can_comment(number, last):
+            if file.can_comment(number, last):
                 matches.append((number not in added, abs(number - (near or number)), number, last))
-    if not matches:
-        return None
-    _, _, start, end = min(matches)
-    return start, end
+    return matches
 
 
 def _match_path(name: str, by_path: dict[str, FileDiff]) -> str | None:
