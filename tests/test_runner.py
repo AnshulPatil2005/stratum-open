@@ -555,20 +555,93 @@ def test_a_push_reviewed_with_no_model_is_read_by_the_next_with_one(gh):
     assert publish.State.decode(gh.issue_comments_[7][0]["body"]).unread == []
 
 
-def test_a_file_to_read_again_that_the_size_limit_left_out_stays_unread(gh):
+def test_a_file_to_read_again_is_packed_before_new_changes(gh):
     gh.diff = two_files()
     review_pull(context(gh, FakeModel(model_answer(findings=[]), DOWN), policy=SPLIT), 7)
     assert publish.State.decode(gh.issue_comments_[7][0]["body"]).unread == ["app/beta.py"]
 
-    # A push changes alpha; with room for one call, alpha takes it and beta is left out.
+    # A push changes alpha; with room for one call, beta (read again) takes it, and alpha
+    # is left out as on any first read, past the size limit.
     gh.move_head(7, "b" * 40)
     gh.compare[("a" * 40, "b" * 40)] = ["app/alpha.py"]
     one_call = parse_policy("review:\n  profile: small\n  context_tokens: 6000\n  max_chunks: 1\n")
     outcome = review_pull(context(gh, FakeModel(model_answer(findings=[])), policy=one_call), 7)
-    assert outcome.review.packed.omitted == ["app/beta.py"]
+    assert outcome.review.packed.reviewed == ["app/beta.py"] and outcome.review.packed.omitted == ["app/alpha.py"]
     body = gh.issue_comments_[7][0]["body"]
-    assert publish.State.decode(body).unread == ["app/beta.py"] and gh.checks[-1]["conclusion"] == "neutral"
-    assert "The model hasn't read 1 file yet" in body and "Read again" not in body
+    assert "and the 1 file the last review couldn't read" in body and "past the review's size limit" in body
+    assert publish.State.decode(body).unread == []
+
+
+def small_and_big():
+    """`app/small.py`, and a 600-line `app/big.py` too big for any one call."""
+    big = "".join(f"+big_value_{i:03} = compute({i})  # padding, so this file is far too big for one call\n" for i in range(600))
+    return ("diff --git a/app/small.py b/app/small.py\nnew file mode 100644\n--- /dev/null\n+++ b/app/small.py\n"
+            "@@ -0,0 +1,1 @@\n+small_value = compute(1)\n"
+            f"diff --git a/app/big.py b/app/big.py\nnew file mode 100644\n--- /dev/null\n+++ b/app/big.py\n@@ -0,0 +1,600 @@\n{big}")
+
+
+@pytest.mark.parametrize("first", ["crash", "no model"])
+def test_a_file_the_size_limit_never_sends_doesnt_stay_unread(gh, first):
+    class Raises(FakeModel):
+        def complete(self, system, user, **kwargs):
+            raise RuntimeError("the embedder's model broke")
+
+    gh.diff = small_and_big()
+    skip = parse_policy("review:\n  profile: small\n  context_tokens: 6000\n  large_patch: skip\n")
+    review_pull(context(gh, Raises() if first == "crash" else None, policy=skip), 7)
+    assert set(publish.State.decode(gh.issue_comments_[7][0]["body"]).unread) == {"app/small.py", "app/big.py"}
+
+    def healthy(**kwargs):
+        outcome = review_pull(context(gh, FakeModel(model_answer(findings=[])), policy=skip), 7, **kwargs)
+        assert "app/big.py" in outcome.review.packed.omitted if outcome.review else True
+        assert publish.State.decode(gh.issue_comments_[7][0]["body"]).unread == []
+        assert gh.checks[-1]["conclusion"] == "success"
+
+    healthy()  # the same commit: small is read, big is left out as on a first read
+    healthy()
+    gh.move_head(7, "b" * 40)
+    gh.compare[("a" * 40, "b" * 40)] = ["app/small.py", "app/big.py"]
+    healthy()  # a push
+    healthy(full=True)  # `@stratum review`
+
+
+def test_an_ignore_makes_no_model_call_even_when_the_head_wasnt_kept(gh, monkeypatch):
+    from stratum_open import runner
+
+    monkeypatch.setattr(runner, "MAX_UNREAD_BYTES", 0)  # any unread list is too long: the old (empty) head is kept
+    review_pull(context(gh, FakeModel(DOWN)), 7)
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).head == ""
+
+    gh.permissions["mona"] = "admin"
+    model = FakeModel(model_answer())
+    event, payload = comment_event("@stratum ignore code/sql", login="mona")
+    assert handle(context(gh, model), event, payload) == "ignore"
+    body = gh.issue_comments_[7][0]["body"]
+    assert model.prompts == [] and publish.State.decode(body).head == ""
+    assert "The model hasn't read 1 file yet" in body and gh.checks[-1]["conclusion"] == "neutral"
+
+
+def test_a_full_review_with_no_model_leaves_what_was_read_read(gh):
+    review_pull(context(gh, FakeModel(model_answer())), 7)
+    review_pull(context(gh, None), 7, full=True)
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).unread == []
+    model = FakeModel(model_answer())
+    review_pull(context(gh, model), 7)
+    assert model.prompts == []
+
+    # After a push, only what changed is left for the model.
+    gh.move_head(7, "b" * 40, DIFF + two_files())
+    gh.compare[("a" * 40, "b" * 40)] = ["app/alpha.py"]
+    review_pull(context(gh, None), 7, full=True)
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).unread == ["app/alpha.py"]
+
+
+def test_the_coverage_counts_only_the_files_the_model_read(gh):
+    gh.diff = two_files()
+    review_pull(context(gh, FakeModel(model_answer(findings=[]), DOWN), policy=SPLIT), 7)
+    body = gh.issue_comments_[7][0]["body"]
+    assert "Stratum sent the model 2 files in 2 calls; it read 1 of them in full." in body
+    assert "The model read 2 files" not in body
 
 
 def test_an_ignore_redraws_without_calling_the_model(gh):

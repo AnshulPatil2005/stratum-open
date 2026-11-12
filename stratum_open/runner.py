@@ -92,8 +92,8 @@ def skip_reason(pull: dict, action: str | None, policy: Policy) -> str | None:
 
 
 def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = True, retry: bool = True) -> Outcome:
-    """`retry=False` leaves the files the last review couldn't read for the
-    next one, so a redraw (an ignore) makes no model call for them."""
+    """`retry=False` makes no model call at all (a redraw, like an ignore):
+    what the model hasn't read is left for the next review."""
     gh = ctx.gh
     pull = gh.pull(number)
     if pull.get("state") != "open":
@@ -107,20 +107,24 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     problems: list[str] = []
 
     # What the model reads this time: everything, or only what changed since
-    # the head it last reviewed, plus what it couldn't read there.
-    changed: set[str] | None = None
-    if state.head and not full:
+    # the head it last reviewed, plus what it couldn't read there. With no
+    # model or `retry=False` it reads nothing, and what changed since that
+    # head is what's left unread, so that's worked out on a full review too.
+    reads = ctx.model is not None and retry
+    since: set[str] | None = None  # the files changed since `state.head`; None when that isn't known
+    if state.head and (not full or not reads):
         if state.head == head:
-            changed = set()
+            since = set()
         else:
-            since = gh.compare_files(state.head, head)
-            changed = set(since) & set(paths) if since is not None else None
+            compared = gh.compare_files(state.head, head)
+            since = set(compared) & set(paths) if compared is not None else None
+    changed = None if full else since
     # `unread` records paths, not passes: a file read again goes through every
     # pass (per-file, lenses, chunked, verify, synthesis), even if one failed.
     retried: set[str] = set()
-    if changed is not None and retry:
+    if changed is not None and reads:
         retried = (set(state.unread) & set(paths)) - changed
-        changed |= retried
+        changed = changed | retried
     incremental = changed is not None
 
     notes, hotspots, boundary, file_notes = _history(ctx, files, pull)
@@ -130,7 +134,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     around = ctx.model is not None and effective_policy(ctx.policy, ctx.model)[0].review.context_lines > 0
     engine = analyze(
         title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=ctx.policy, model=ctx.model,
-        contents=_contents(ctx, files, head, around=around), lookup=ctx.lookup, only_paths=changed, previous=state.findings,
+        contents=_contents(ctx, files, head, around=around), lookup=ctx.lookup, only_paths=changed if retry else set(), first=retried,
+        previous=state.findings,
         notes=notes, hotspots=hotspots, file_notes=file_notes, extra_findings=boundary,
         exclude_fingerprints=set(state.ignored), exclude_rules=set(state.ignored_rules) | set(muted),
         log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
@@ -159,22 +164,28 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     if large is not None:
         file_calls = [c for c in large.calls if c.get("pass") != "synthesis"]
         if large.failed_calls:
+            # A file the chunked review read in full isn't unread; one it didn't read is read again next time.
+            covered = not (large.unread & engine.unread)
             problems.append(f"{large.failed_calls} of {len(file_calls)} per-file model calls failed; "
-                            "the chunked review still covered those files.")
+                            + ("the chunked review still covered those files." if covered
+                               else "the next review reads again the ones the chunked review didn't read in full either."))
         if large.salvaged_calls:
             problems.append(f"{large.salvaged_calls} of the per-file replies were cut off; anything found after the cut is missing.")
 
     # What the model read this time, and what's left for the next review: the
     # files whose call failed or was cut off, and those it was to read again
-    # but didn't (left out for the size limit, or `retry=False`). With no
-    # model, nothing was read, so what changed joins what was unread. Files
-    # that are never sent (binary, deleted, ignored) are never unread.
-    read = set(result.packed.reviewed + result.packed.clipped) if result and result.packed else set()
+    # but didn't. A file to read again that the size limit left out is
+    # dropped, as on a first read (the files read again are packed first, so
+    # only their own size does that). When the model read nothing, what
+    # changed joins what was unread. Files that are never sent (binary,
+    # deleted, ignored) are never unread.
+    packed = result.packed if result else None
+    read = set(packed.reviewed + packed.clipped) if packed else set()
     read = (read | set(large.reviewed if large else [])) - engine.unread
-    if ctx.model is None:
-        left = set(state.unread) | (changed if changed is not None else set(paths))
+    if not reads:
+        left = set(state.unread) | (since if since is not None else set(paths))
     else:
-        left = engine.unread | (set(state.unread) - read)
+        left = engine.unread | (set(state.unread) - read - set(packed.omitted if packed else []))
     by_path = {f.path: f for f in files}
     unread = sorted(p for p in left if p in by_path and sendable(by_path[p], policy.ignored))
     waiting = len(set(unread) - engine.unread) if ctx.model is not None else 0
@@ -219,7 +230,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         record=record,
     )
 
-    coverage = _large_coverage(large) + _coverage(result, incremental, changed - retried if changed is not None else None, state.head, files, retried & read)
+    coverage = _large_coverage(large) + _coverage(result, incremental, changed - retried if changed is not None else None, state.head, files, retried & read,
+                                                engine.unread)
     if ctx.model is not None:
         coverage.append(f"Profile: `{engine.profile}` ({engine.profile_why}).")
     summary = publish.Summary(
@@ -432,9 +444,10 @@ def excluded(ctx: Context, login: str) -> bool:
 
 
 def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] | None, previous_head: str, files: list[FileDiff],
-              read_again: set[str] = frozenset()) -> list[str]:
+              read_again: set[str] = frozenset(), unread: set[str] = frozenset()) -> list[str]:
     """`changed`: the files changed since `previous_head`; `read_again`: the
-    ones the last review couldn't read that the model read this time."""
+    ones the last review couldn't read that the model read this time;
+    `unread`: the ones whose call failed or was cut off this time."""
     lines = []
     if incremental and previous_head:
         new = len(changed or ())
@@ -451,9 +464,13 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
         packed = result.packed
         if packed.reviewed or packed.clipped:
             calls = len(packed.chunks)
-            sent = f"{_files(len(packed.reviewed) + len(packed.clipped))} in {calls} call{'' if calls == 1 else 's'}"
-            if result.ran:
+            paths = packed.reviewed + packed.clipped
+            sent = f"{_files(len(paths))} in {calls} call{'' if calls == 1 else 's'}"
+            read = len(set(paths) - unread)
+            if result.ran and read == len(paths):
                 lines.append(f"The model read {sent}.")
+            elif result.ran:
+                lines.append(f"Stratum sent the model {sent}; it read {read or 'none'} of them in full.")
             else:
                 lines.append(f"Stratum sent the model {sent}, but it didn't answer, so they weren't reviewed.")
         if packed.clipped:

@@ -59,6 +59,7 @@ def analyze(
     contents: dict[str, str] | None = None,
     lookup: Any | None = None,
     only_paths: set[str] | None = None,
+    first: set[str] | frozenset[str] = frozenset(),
     previous: list[dict[str, Any]] | None = None,
     notes: Sequence[str] = (),
     hotspots: set[str] | frozenset[str] = frozenset(),
@@ -82,7 +83,8 @@ def analyze(
       read past the diff with it, and `review.context_lines` shows the code
       around each hunk from it.
     - `only_paths`: on an incremental review, the files changed since the last
-      one; an empty set means nothing new for the model to read.
+      one; an empty set means nothing new for the model to read. `first`: the
+      paths the chunked review packs before the rest (files read again).
     - `previous`: the last review's findings (as saved by `state_finding`, with
       their `snippet`); those whose code is still there are carried over.
     - `notes`, `guidance`: context for the prompt (history notes; the team's
@@ -109,7 +111,7 @@ def analyze(
                 )
             result = review(
                 title=title, description=description, files=files, policy=policy, model=model, only_paths=only_paths,
-                context=list(notes), hotspots=set(hotspots), guidance=guidance, contents=contents, log=log,
+                context=list(notes), hotspots=set(hotspots), first=first, guidance=guidance, contents=contents, log=log,
                 previous=still_there(previous or [], files) if only_paths is not None else None,
             )
         except Exception as exc:  # the model step is the one part of a review that may never stop the rest
@@ -137,8 +139,11 @@ def analyze(
     found = dedupe(found)
 
     # The paths whose model call failed or was cut off: the caller reads them
-    # again next time, and their file-level findings can't be called fixed.
-    unread = (result.unread if result else set()) | (large.unread if large else set())
+    # again next time, and their file-level findings can't be called fixed. A
+    # per-file call that failed on a file the chunked review read in full
+    # doesn't count: that file was read.
+    chunked = set(result.packed.reviewed) - result.unread if result and result.packed and result.ran else set()
+    unread = (result.unread if result else set()) | ((large.unread if large else set()) - chunked)
     # A model finding stays until the code it's on changes; the model not
     # repeating it on the next push doesn't make it fixed.
     reviewed_now = set(result.packed.reviewed + result.packed.clipped) if result and result.packed and result.ran else set()

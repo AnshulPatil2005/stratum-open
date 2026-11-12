@@ -165,6 +165,7 @@ def review(
     only_paths: set[str] | None = None,
     context: list[str] | None = None,
     hotspots: set[str] | None = None,
+    first: set[str] | frozenset[str] = frozenset(),
     previous: list[dict[str, Any]] | None = None,
     guidance: str = "",
     contents: dict[str, str] | None = None,
@@ -174,7 +175,8 @@ def review(
     `previous` is the last review's findings on the files being reviewed
     again; they're listed so the model doesn't report them a second time in
     new words. `contents` (a path's new text) gives `review.context_lines`
-    of unchanged code around each hunk."""
+    of unchanged code around each hunk. `first`: paths packed before the
+    rest (files read again), so new changes don't push them out."""
     result = ReviewResult()
     in_scope = [f for f in files if only_paths is None or f.path in only_paths]
     rules = "".join(f"- {rule}\n" for rule in policy.review.rules)
@@ -210,7 +212,7 @@ def review(
     packed = diffs.pack(
         shown_files, max(1000, budget), policy.review.max_chunks,
         skip=policy.ignored,
-        priority=lambda f: (f.path in (hotspots or set())) * 1000 + f.additions + f.deletions,
+        priority=lambda f: (f.path in first) * 10**9 + (f.path in (hotspots or set())) * 1000 + f.additions + f.deletions,
         style=style, large=policy.review.large_patch,
     )
     result.packed = packed
