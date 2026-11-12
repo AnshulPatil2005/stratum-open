@@ -165,6 +165,12 @@ class LargeReview:
     def reviewed(self) -> list[str]:
         return [f.path for f in self.files if f.status == "reviewed"]
 
+    @property
+    def unread(self) -> set[str]:
+        """Paths with a per-file or lens call that failed or was cut off."""
+        return {c["path"] for c in self.calls
+                if c.get("pass") in ("file", "lens") and c.get("path") and (c.get("error") or c.get("salvaged"))}
+
 
 @dataclass
 class _Task:

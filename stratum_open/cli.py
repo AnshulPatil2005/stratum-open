@@ -190,7 +190,7 @@ def _review_local(args, base: str) -> int:
     )
     if model is not None:
         print(f"Profile: {result.profile} ({result.profile_why}).", file=sys.stderr)
-        if result.review is not None and not result.review.ran:
+        if result.review is not None and result.review.calls and not result.review.ran:
             print("The model didn't answer: " + "; ".join(sorted({c['error'] for c in result.review.calls if c.get('error')})), file=sys.stderr)
         elif result.review is not None and result.review.summary:
             print(f"What this changes: {result.review.summary}\n")

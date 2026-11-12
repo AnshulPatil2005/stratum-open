@@ -16,8 +16,9 @@ test fails when a stored field isn't listed here.
 
 **The Action keeps its memory on GitHub.** Stratum's summary comment on each PR
 carries a hidden copy of the last review's findings (title, detail, file,
-lines, the code they're on) and of what a maintainer ignored. That's how the
-next push reviews only what changed. It's the same text the PR's comments
+lines, the code they're on), of what a maintainer ignored, and of the paths
+of any files the model hasn't read yet. That's how the next push reviews
+only what changed, plus those files. It's the same text the PR's comments
 already show, it's deleted with the comment, and Stratum only reads it from a
 comment it wrote itself. With `ollama-model` set, GitHub's Actions cache also
 keeps Ollama and the model's weights (no project data); GitHub drops it after
