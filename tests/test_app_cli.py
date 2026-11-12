@@ -129,6 +129,34 @@ def test_review_local_runs_the_checks(tmp_path, capsys, monkeypatch):
     assert json.loads((tmp_path / "out.json").read_text())[0]["rule"] == "code/secret"
 
 
+
+def test_review_local_skips_a_moved_binary_file(tmp_path, capsys, monkeypatch):
+    empty = tmp_path / "gitconfig"
+    empty.write_text("")
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": str(empty), "GIT_CONFIG_NOSYSTEM": "1",
+           "GIT_AUTHOR_NAME": "a", "GIT_AUTHOR_EMAIL": "a@example.com", "GIT_COMMITTER_NAME": "a", "GIT_COMMITTER_EMAIL": "a@example.com"}
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, env=env)
+
+    git("init", "-q", "-b", "main")
+    # A binary file a test reads, with text in it that would look like a secret if it were read as code.
+    (repo / "tests" / "blob.dat").write_bytes(b"\x00\x01\x02" + b'API_KEY = "sk-live-0123456789abcdef0123"\n')
+    git("add", ".")
+    git("commit", "-q", "-m", "init")
+    git("checkout", "-q", "-b", "feature")
+    git("mv", "tests/blob.dat", "blob.dat")
+    git("commit", "-q", "-m", "Move the blob")
+    monkeypatch.chdir(repo)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    code = cli.main(["review", "--local", "main", "--no-model"])
+    out = capsys.readouterr().out
+    assert "code/secret" not in out and "checks/moved-unread" not in out
+    assert code == 0
+
+
 def test_data_commands(tmp_path, capsys):
     db = str(tmp_path / "s.db")
     storage = SQLiteStorage(db)

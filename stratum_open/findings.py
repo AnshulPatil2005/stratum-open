@@ -103,9 +103,11 @@ def severity_rank(severity: str) -> int:
     return _RANK.get(severity, 1)
 
 
-def fingerprint(finding: Finding, files: dict[str, FileDiff]) -> str:
+def fingerprint(finding: Finding, files: dict[str, FileDiff], contents: dict[str, str] | None = None) -> str:
     """Model findings key on their category rather than their wording, which
-    changes from run to run; checks key on their rule."""
+    changes from run to run; checks key on their rule. Both key on the code
+    they're about: the diff's lines, or the file's own for a line the diff
+    doesn't show (a check reading a file moved into its scope)."""
     # A check's title is fixed and names what it found (two new packages on one
     # line are two findings); the model's wording isn't, so it keys on category.
     what = f"{finding.rule}:{slug(finding.title)}" if finding.source == "check" else finding.category
@@ -113,22 +115,30 @@ def fingerprint(finding: Finding, files: dict[str, FileDiff]) -> str:
     anchor = ""
     if file is not None and finding.line_start is not None:
         anchor = _WS.sub(" ", file.snippet(finding.line_start, finding.line_end)).strip()
+        text = (contents or {}).get(finding.path)
+        if not anchor and text is not None:
+            lines = text.split("\n")[finding.line_start - 1:finding.line_end or finding.line_start]
+            anchor = _WS.sub(" ", "\n".join(lines)).strip()
     if not anchor:
         anchor = slug(finding.title)
     key = f"{finding.source}|{what}|{finding.path}|{anchor}".encode("utf-8")
     return hashlib.sha1(key, usedforsecurity=False).hexdigest()[:12]  # an id, not a secret
 
 
-def assign_fingerprints(findings: Iterable[Finding], files: list[FileDiff]) -> None:
+def assign_fingerprints(findings: Iterable[Finding], files: list[FileDiff], contents: dict[str, str] | None = None) -> None:
     by_path = {file.path: file for file in files}
     for finding in findings:
-        finding.fingerprint = fingerprint(finding, by_path)
+        finding.fingerprint = fingerprint(finding, by_path, contents)
 
 
 def anchor_to_diff(findings: list[Finding], files: list[FileDiff]) -> list[Finding]:
-    """Keep a finding's lines only if GitHub can comment there; otherwise it
-    becomes a file-level finding listed in the summary. Findings on files the
-    PR doesn't touch are dropped: the model can't see those files."""
+    """Keep a model finding's lines only if GitHub can comment there;
+    otherwise it becomes a file-level finding listed in the summary. A
+    check's finding keeps its lines: a check names the line it read, which
+    the diff may not show (a file moved into its scope), and the summary and
+    the check run can still point there. Only its inline comment needs the
+    diff (`placeable`). Findings on files the PR doesn't touch are dropped:
+    the model can't see those files."""
     by_path = {file.path: file for file in files}
     kept = []
     for finding in findings:
@@ -138,12 +148,23 @@ def anchor_to_diff(findings: list[Finding], files: list[FileDiff]) -> list[Findi
         if file is not None and finding.line_start is not None and not file.can_comment(finding.line_start, finding.line_end):
             if file.can_comment(finding.line_start):
                 finding.line_end = finding.line_start
+            elif finding.source == "check":
+                finding.replacement = None  # a suggested change goes only in an inline comment
             else:
                 finding.line_start = finding.line_end = None
         if finding.line_start is None:
             finding.replacement = None
         kept.append(finding)
     return kept
+
+
+def placeable(findings: list[Finding], files: list[FileDiff]) -> list[Finding]:
+    """The findings GitHub takes an inline comment on: anchored, on lines the
+    diff shows. Post only these inline, and list the rest in the summary: a
+    check's finding can carry a line the diff doesn't show (a file moved into
+    the check's scope), and GitHub refuses a comment there."""
+    by_path = {file.path: file for file in files}
+    return [f for f in findings if f.anchored and f.path in by_path and by_path[f.path].can_comment(f.line_start, f.line_end)]
 
 
 def dedupe(findings: list[Finding]) -> list[Finding]:

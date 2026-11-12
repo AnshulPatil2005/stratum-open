@@ -133,6 +133,8 @@ The [benchmark](benchmark/) reviews real merged PRs with each model, and maintai
 
 The command is now `stratum-open`, or `python -m stratum_open`; it was `stratum`. Hosted Stratum's client also installs a `stratum` command, and the new name lets the two sit side by side. Change any script, cron job or container command that runs `stratum`, such as `stratum serve` or `stratum data purge`. Nothing else is renamed: the Action, the `@stratum` comment commands, `.stratum/policy.yml` and the `STRATUM_*` settings work as before.
 
+If your code embeds the engine (`stratum_open.analyze`): a check's finding can now have a line the diff doesn't show, when a file moves to where a check does more (out of `tests/`, or into `.github/workflows/`) and the check reads all of it. GitHub refuses an inline comment on such a line. Post inline only the findings `stratum_open.placeable(findings, files)` returns, and list the rest in the summary.
+
 ## Stratum Open and hosted Stratum
 
 Stratum Open is the engine and the ways to run it yourself. Hosted Stratum runs the same engine as a service, with managed models and features that need a database (incidents, Drift, Insights). [How Stratum and Stratum Open fit together](docs/stratum-and-stratum-open.md) explains which does what, the commands in each, and which repository owns what.

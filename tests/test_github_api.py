@@ -22,3 +22,22 @@ def test_review_threads_carry_rest_style_logins(monkeypatch):
     from stratum_open.github.publish import thread_fingerprint
 
     assert thread_fingerprint(thread, "github-actions[bot]") == "0123456789ab"
+
+
+def test_a_too_big_diff_keeps_a_move_as_a_move(monkeypatch):
+    from stratum_open.diff import parse_diff
+    from stratum_open.github.api import GitHubError
+
+    gh = GitHub("t", "acme/widget")
+
+    def refuse(*args, **kwargs):
+        raise GitHubError(406, "diff too large")
+
+    monkeypatch.setattr(gh, "request", refuse)
+    monkeypatch.setattr(gh, "paginate", lambda path, **params: iter([
+        {"filename": ".github/workflows/ci.yml", "previous_filename": "docs/ci.yml", "status": "renamed", "changes": 0},
+        {"filename": "app/logo.png", "previous_filename": "logo.png", "status": "renamed", "changes": 2},  # edited, no patch
+    ]))
+    move, edited = parse_diff(gh.pull_diff(7))
+    assert (move.status, move.old_path, move.path, move.binary) == ("renamed", "docs/ci.yml", ".github/workflows/ci.yml", False)
+    assert edited.binary

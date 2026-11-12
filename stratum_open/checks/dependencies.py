@@ -37,7 +37,7 @@ from urllib.parse import quote
 import requests
 
 from stratum_open import __version__
-from stratum_open.checks.common import basename, view
+from stratum_open.checks.common import basename, checked_lines, view
 from stratum_open.checks.popular import BY_ECOSYSTEM
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
@@ -202,7 +202,15 @@ def manifest_kind(path: str) -> str | None:
     return None
 
 
+def scope(path: str) -> frozenset[str]:
+    """The kind of manifest at `path`, if it's one."""
+    kind = manifest_kind(path)
+    return frozenset({kind}) if kind else frozenset()
+
+
 def find_new(files: list[FileDiff], contents: dict[str, str] | None = None) -> list[Dependency]:
+    """A file renamed to a manifest from a path that wasn't one of its kind
+    (`examples/deps.txt` to `requirements.txt`) counts every line as added."""
     manifests = [(file, kind) for file in files if (kind := manifest_kind(file.path)) and not file.binary]
     removed: dict[str, set[str]] = {}
     for file, kind in manifests:
@@ -213,7 +221,7 @@ def find_new(files: list[FileDiff], contents: dict[str, str] | None = None) -> l
     found: list[Dependency] = []
     for file, kind in manifests:
         ecosystem = _ECOSYSTEM[kind]
-        added = {number for number, _ in file.added()}
+        added = {number for number, _ in checked_lines(file, contents, scope)}
         entries = _SCANNERS[kind](view(file, contents))
         elsewhere = {normalise(name, ecosystem) for number, name, _ in entries if number not in added}
         seen: set[str] = set()

@@ -10,13 +10,26 @@ from __future__ import annotations
 
 from typing import Callable
 
-from stratum_open.checks import agents, awaits, bandit, dependencies, heuristics, paths, patterns, workflows
+from stratum_open.checks import agents, awaits, bandit, common, dependencies, heuristics, paths, patterns, workflows
 from stratum_open.checks.dependencies import PackageInfo, PackageLookup
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
 from stratum_open.policy import Policy
 
-__all__ = ["PackageInfo", "PackageLookup", "run_checks"]
+__all__ = ["PackageInfo", "PackageLookup", "moved_in", "run_checks"]
+
+# The checks here whose rules depend on a file's path. Of the others, hidden
+# Unicode looks at every path, and protected paths and coding-agent files at
+# both sides of a rename. Module boundaries (repo/boundaries.py) also depend on
+# the path and don't read moved files yet: #65.
+_SCOPES = (patterns.scope, workflows.scope, dependencies.scope, bandit.scope)
+_MAX_LISTED = 10
+
+
+def moved_in(file: FileDiff) -> bool:
+    """Whether a rename brought the file to where some check does more than
+    where it was, so that check reads all of it, and needs its text."""
+    return any(common.moved_in(file, scope) for scope in _SCOPES)
 
 
 def run_checks(
@@ -66,4 +79,29 @@ def run_checks(
                 rule="checks/error",
                 confidence=1.0,
             ))
+    findings.extend(_moved_unread(files, contents))
     return findings
+
+
+def _moved_unread(files: list[FileDiff], contents: dict[str, str]) -> list[Finding]:
+    """One low finding naming the files that moved into a check's scope
+    without their text at hand: the checks saw only their added lines, if
+    any, and a quiet review would otherwise look like a clean one."""
+    unread = [file.path for file in files if moved_in(file) and file.path not in contents]
+    if not unread:
+        return []
+    named = ", ".join(f"`{path}`" for path in unread[:_MAX_LISTED]) + (f" and {len(unread) - _MAX_LISTED} more" if len(unread) > _MAX_LISTED else "")
+    return [Finding(
+        title="Moved files weren't checked in full",
+        detail=(
+            f"This PR moves {'a file' if len(unread) == 1 else f'{len(unread)} files'} to where the checks do more than where "
+            f"{'it was' if len(unread) == 1 else 'they were'}: {named}. Every line is new where it now is, but Stratum didn't have "
+            "the text, so the checks read only the lines the diff marks as added."
+        ),
+        severity="low",
+        category="security",
+        suggestion="Review these files as if they were added in this PR.",
+        source="check",
+        rule="checks/moved-unread",
+        confidence=1.0,
+    )]

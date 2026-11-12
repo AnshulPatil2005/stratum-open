@@ -107,3 +107,45 @@ def test_real_bandit_ignores_nosec_the_pr_adds():
     findings = bandit.check(parse_diff(diff("app/load.py", added, context=context)), {"app/load.py": source})
     assert [(f.rule, f.line_start) for f in findings] == [("bandit/B301", 5), ("bandit/B306", 6), ("bandit/B324", 7)]
     assert all("`# nosec`" in f.detail for f in findings)
+
+
+def test_a_file_moved_out_of_the_tests_goes_to_bandit_with_every_line(monkeypatch):
+    sent = []
+    monkeypatch.setattr(bandit, "available", lambda: True)
+    monkeypatch.setattr(bandit, "run_bandit", lambda sources: sent.append(sorted(sources)) or [issue(1, path="app/helper.py")])
+    text = "diff --git a/tests/helper.py b/app/helper.py\nsimilarity index 100%\nrename from tests/helper.py\nrename to app/helper.py\n"
+    findings = bandit.check(parse_diff(text), {"app/helper.py": "subprocess.run(cmd, shell=True)\n"})
+    assert sent == [["app/helper.py"]]
+    assert [(f.rule, f.line_start) for f in findings] == [("bandit/B602", 1)]
+
+
+def test_a_file_moved_between_folders_of_code_isnt_sent_again(monkeypatch):
+    sent = []
+    monkeypatch.setattr(bandit, "available", lambda: True)
+    monkeypatch.setattr(bandit, "run_bandit", lambda sources: sent.append(sorted(sources)) or [])
+    text = "diff --git a/lib/helper.py b/app/helper.py\nsimilarity index 100%\nrename from lib/helper.py\nrename to app/helper.py\n"
+    assert bandit.check(parse_diff(text), {"app/helper.py": "subprocess.run(cmd, shell=True)\n"}) == []
+    assert sent == []
+
+
+def moved(old, new):
+    return f"diff --git a/{old} b/{new}\nsimilarity index 100%\nrename from {old}\nrename to {new}\n"
+
+
+def test_moves_cant_push_the_prs_own_code_out_of_bandit(monkeypatch):
+    sent = []
+    monkeypatch.setattr(bandit, "available", lambda: True)
+    monkeypatch.setattr(bandit, "run_bandit", lambda sources: sent.append(list(sources)) or [issue(1, path="app/load.py")])
+    helper = "".join(f"x{i} = {i}\n" for i in range(80))
+    text = "".join(moved(f"tests/h{i}.py", f"src/h{i}.py") for i in range(20)) + diff("app/load.py", ["pickle.loads(data)"])
+    contents = {**{f"src/h{i}.py": helper for i in range(20)}, "app/load.py": "pickle.loads(data)\n"}
+    findings = bandit.check(parse_diff(text), contents)
+    assert sent[0][0] == "app/load.py" and len(sent[0]) == 20
+    assert [(f.path, f.rule) for f in findings] == [("app/load.py", "bandit/B602")]
+    read, left_out = bandit.plan(parse_diff(text), contents)
+    assert read[0] == "app/load.py" and left_out == ["src/h19.py"]
+
+
+def test_the_plan_names_python_files_bandit_has_no_text_for():
+    text = diff("app/a.py", ["x = 1"]) + diff("app/b.py", ["y = 2"]) + diff("tests/test_a.py", ["z = 3"])
+    assert bandit.plan(parse_diff(text), {"app/a.py": "x = 1\n"}) == (["app/a.py"], ["app/b.py"])

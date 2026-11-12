@@ -159,6 +159,7 @@ def _review(args) -> int:
 def _review_local(args, base: str) -> int:
     """Review `git diff BASE...HEAD` here, with the policy as it is on BASE,
     through the same engine call as a review on GitHub."""
+    from stratum_open.checks.common import looks_binary
     from stratum_open.checks.dependencies import PackageLookup
     from stratum_open.engine import analyze
     from stratum_open.repo.boundaries import boundary_findings
@@ -179,7 +180,9 @@ def _review_local(args, base: str) -> int:
     contents = {}
     for file in [f for f in files if f.status != "deleted" and not f.binary][:MAX_LOCAL_CONTENTS]:
         text = _git_or_none(".", "show", f"HEAD:{file.path}")
-        if text is not None:
+        if text is not None and looks_binary(text):
+            file.binary = True  # a move with no edits: the diff couldn't say it was binary
+        elif text is not None:
             contents[file.path] = text
     result = analyze(
         title=_git(".", "log", "-1", "--format=%s").strip(), description=_git(".", "log", "-1", "--format=%b").strip(),

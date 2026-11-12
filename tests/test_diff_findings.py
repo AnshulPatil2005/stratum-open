@@ -1,5 +1,5 @@
 from stratum_open.diff import approx_tokens, pack, parse_diff, render
-from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank, risk_score
+from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, placeable, rank, risk_score
 
 DIFF = """diff --git a/app/users.py b/app/users.py
 index 3f1c2a1..9b2e7d0 100644
@@ -148,3 +148,35 @@ def test_a_hunk_that_only_removes_lines_is_one_note():
     assert "(3 lines removed after line 1)" in text
     assert "y = 2" not in text and "z = 3" not in text
     assert "     8 +  b = 2" in text  # a hunk that adds lines is shown in full
+
+
+MOVED = "diff --git a/tests/helper.py b/app/helper.py\nsimilarity index 100%\nrename from tests/helper.py\nrename to app/helper.py\n"
+HELPER = "import os\n\ndef run(cmd):\n    eval(cmd)\n    eval(cmd + '!')\n"
+
+
+def test_a_check_finding_off_the_diff_keeps_its_line_but_isnt_placed_inline():
+    files = parse_diff(MOVED)
+    check = Finding("`eval()` runs a string as code", "x", "high", "security", "app/helper.py", 4, 4,
+                    replacement="safe(cmd)", source="check", rule="code/eval")
+    model = Finding("Unsafe", "y", "high", "security", "app/helper.py", 4, 4)
+    kept = anchor_to_diff([check, model], files)
+    assert (check.line_start, check.replacement) == (4, None)
+    assert model.line_start is None
+    assert placeable(kept, files) == []
+    on_diff, users = Finding("SQL injection", "z", "high", "security", "app/users.py", 6, 6), parse_diff(DIFF)
+    assert placeable(anchor_to_diff([on_diff], users), users) == [on_diff]
+
+
+def test_check_findings_off_the_diff_key_on_their_own_line_of_the_file():
+    files = parse_diff(MOVED)
+    first, second = (Finding("`eval()` runs a string as code", "x", "high", "security", "app/helper.py", n, n, source="check", rule="code/eval")
+                     for n in (4, 5))
+    assign_fingerprints([first, second], files, {"app/helper.py": HELPER})
+    assert first.fingerprint != second.fingerprint and dedupe([first, second]) == [first, second]
+
+    # The same line added in a diff gets the same fingerprint, so an ignore or a thread follows it.
+    added = parse_diff("diff --git a/app/helper.py b/app/helper.py\nnew file mode 100644\n--- /dev/null\n+++ b/app/helper.py\n"
+                       "@@ -0,0 +1,5 @@\n" + "".join(f"+{line}\n" for line in HELPER.splitlines()))
+    again = Finding("`eval()` runs a string as code", "x", "high", "security", "app/helper.py", 4, 4, source="check", rule="code/eval")
+    assign_fingerprints([again], added)
+    assert again.fingerprint == first.fingerprint

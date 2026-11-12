@@ -15,7 +15,7 @@ from typing import Any, Callable
 
 from stratum_open.diff import FileDiff, parse_diff, sendable
 from stratum_open.engine import analyze, default_conclusion, effective_policy, snippet_of  # noqa: F401  (effective_policy: re-exported)
-from stratum_open.findings import Finding, risk_score
+from stratum_open.findings import Finding, placeable, risk_score
 from stratum_open.github import publish
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
@@ -29,6 +29,8 @@ from stratum_open.util import redact
 
 MAX_BANDIT_FILES = 20
 MAX_CONTEXT_FILES = 20
+MAX_MOVED_FILES = 20  # files moved into a check's scope, which the checks read in full
+MAX_MOVED_BYTES = 1_000_000  # the contents API's own limit for a file's text
 MAX_REVIEW_TEXT_FILES = 20  # files whose text is fetched for review.context_lines
 # The JSON size of the unread paths kept in the summary's state (about 60 paths), so they don't crowd the
 # findings out of the comment; past it, the next run reads everything since the old head.
@@ -132,9 +134,10 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []
     # Whether the profile shows code around each hunk, so the files' text is worth fetching.
     around = ctx.model is not None and effective_policy(ctx.policy, ctx.model)[0].review.context_lines > 0
+    contents = _contents(ctx, files, head, around=around)
     engine = analyze(
         title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=ctx.policy, model=ctx.model,
-        contents=_contents(ctx, files, head, around=around), lookup=ctx.lookup, only_paths=changed if retry else set(), first=retried,
+        contents=contents, lookup=ctx.lookup, only_paths=changed if retry else set(), first=retried,
         previous=state.findings,
         notes=notes, hotspots=hotspots, file_notes=file_notes, extra_findings=boundary,
         exclude_fingerprints=set(state.ignored), exclude_rules=set(state.ignored_rules) | set(muted),
@@ -230,8 +233,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         record=record,
     )
 
-    coverage = _large_coverage(large) + _coverage(result, incremental, changed - retried if changed is not None else None, state.head, files, retried & read,
-                                                engine.unread)
+    coverage = _large_coverage(large) + _coverage(result, incremental, changed - retried if changed is not None else None, state.head, files,
+                                                 contents or {}, retried & read, engine.unread)
     if ctx.model is not None:
         coverage.append(f"Profile: `{engine.profile}` ({engine.profile_why}).")
     summary = publish.Summary(
@@ -275,7 +278,9 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             if marker and not marker[1].startswith("model:") and marker[0] not in current:
                 gone.setdefault(marker[0], "Fixed: the check no longer finds this.")
         publish.resolve_threads(gh, number, threads, gone, bot=ctx.bot, log=ctx.log)
-        posted = publish.publish_inline(gh, number, head, findings, threads, bot=ctx.bot, limit=policy.review.max_inline_comments, feedback=ctx.feedback)
+        # A check's finding on a moved file can be on a line the diff doesn't show: it's listed in the summary.
+        posted = publish.publish_inline(gh, number, head, placeable(findings, files), threads, bot=ctx.bot,
+                                        limit=policy.review.max_inline_comments, feedback=ctx.feedback)
     except GitHubError as exc:
         ctx.log(f"couldn't post inline comments: {exc}")
         problems.append(f"Couldn't post inline comments (GitHub answered {exc.status}), so every finding is listed here instead.")
@@ -313,10 +318,14 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
     """The full new text of the files where the checks need context:
     workflows and manifests always (they're small), Python files for Bandit
     when it's installed, and otherwise the Python files whose change touches
-    async code, for the missing-await check. With `around` (the profile shows
-    code around each hunk), the biggest changes the model will read too."""
+    async code, for the missing-await check. Files moved to where a check
+    does more than where they were, since the diff shows none of their lines
+    as added (at most MAX_MOVED_BYTES each; a bigger one is named as unread).
+    With `around` (the profile shows code around each hunk), the biggest
+    changes the model will read too."""
+    from stratum_open.checks import bandit, moved_in
     from stratum_open.checks.awaits import touches_async
-    from stratum_open.checks.bandit import available
+    from stratum_open.checks.common import looks_binary
     from stratum_open.checks.dependencies import manifest_kind
 
     def wanted(file: FileDiff) -> bool:
@@ -326,18 +335,23 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
 
     live = [f for f in files if f.status != "deleted" and not f.binary]
     fetch = [f for f in live if wanted(f)][:MAX_CONTEXT_FILES]
-    python = sorted((f for f in live if f.path.endswith(".py")), key=lambda f: -f.additions)
-    fetch += (python if available() else [f for f in python if touches_async(f)])[:MAX_BANDIT_FILES]
+    # The files Bandit reads first: a PR full of edited tests mustn't push the code out.
+    python = sorted((f for f in live if f.path.endswith(".py")), key=lambda f: (not bandit.scope(f.path), -f.additions))
+    fetch += (python if bandit.available() else [f for f in python if touches_async(f)])[:MAX_BANDIT_FILES]
+    moved = [f for f in live if moved_in(f)]  # the size cap and the binary test apply however they're fetched
+    fetch += [f for f in moved if f not in fetch][:MAX_MOVED_FILES]
     if around:
         reviewed = sorted((f for f in live if not ctx.policy.ignored(f.path) and f not in fetch), key=lambda f: -(f.additions + f.deletions))
         fetch += reviewed[:MAX_REVIEW_TEXT_FILES]
     contents: dict[str, str] = {}
     for file in fetch:
         try:
-            text = ctx.gh.file_text(file.path, head)
+            text = ctx.gh.file_text(file.path, head, max_bytes=MAX_MOVED_BYTES if file in moved else None)
         except GitHubError:
             text = None
-        if text is not None:
+        if text is not None and file in moved and looks_binary(text):
+            file.binary = True  # a moved file the diff couldn't call text or not
+        elif text is not None:
             contents[file.path] = text
     return contents or None
 
@@ -444,10 +458,13 @@ def excluded(ctx: Context, login: str) -> bool:
 
 
 def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] | None, previous_head: str, files: list[FileDiff],
-              read_again: set[str] = frozenset(), unread: set[str] = frozenset()) -> list[str]:
-    """`changed`: the files changed since `previous_head`; `read_again`: the
-    ones the last review couldn't read that the model read this time;
-    `unread`: the ones whose call failed or was cut off this time."""
+              contents: dict[str, str], read_again: set[str] = frozenset(), unread: set[str] = frozenset()) -> list[str]:
+    """`changed`: the files changed since `previous_head`; `contents`: the
+    files' text, for what the checks couldn't read; `read_again`: the ones the
+    last review couldn't read that the model read this time; `unread`: the
+    ones whose call failed or was cut off this time."""
+    from stratum_open.checks import bandit, moved_in
+
     lines = []
     if incremental and previous_head:
         new = len(changed or ())
@@ -478,6 +495,14 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
         if packed.omitted:
             lines.append(f"Not read by the model ({_files(len(packed.omitted))} past the review's size limit): " + ", ".join(f"`{p}`" for p in packed.omitted[:10]))
     lines.append(f"The checks ran on {'the' if len(files) == 1 else 'all'} {_files(len(files))} changed.")
+    moved = [f.path for f in files if moved_in(f) and f.path in contents]
+    if moved:
+        lines.append("Checked in full, since they moved to where the checks do more: " + ", ".join(f"`{p}`" for p in moved[:10]))
+    if bandit.available():
+        _, left_out = bandit.plan(files, contents)
+        if left_out:
+            lines.append(f"Not read by Bandit ({_files(len(left_out))} past its limit of {bandit.MAX_FILES}, or without their text): "
+                         + ", ".join(f"`{p}`" for p in left_out[:10]))
     return lines
 
 
