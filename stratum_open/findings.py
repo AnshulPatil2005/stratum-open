@@ -160,7 +160,9 @@ def anchor_to_diff(findings: list[Finding], files: list[FileDiff]) -> list[Findi
 
 def placeable(findings: list[Finding], files: list[FileDiff]) -> list[Finding]:
     """The findings GitHub takes an inline comment on: anchored, on lines the
-    diff shows. The rest are listed in the summary."""
+    diff shows. Post only these inline, and list the rest in the summary: a
+    check's finding can carry a line the diff doesn't show (a file moved into
+    the check's scope), and GitHub refuses a comment there."""
     by_path = {file.path: file for file in files}
     return [f for f in findings if f.anchored and f.path in by_path and by_path[f.path].can_comment(f.line_start, f.line_end)]
 

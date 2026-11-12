@@ -29,6 +29,7 @@ from stratum_open.util import redact
 MAX_BANDIT_FILES = 20
 MAX_CONTEXT_FILES = 20
 MAX_MOVED_FILES = 20  # files moved into a check's scope, which the checks read in full
+MAX_MOVED_BYTES = 1_000_000  # the contents API's own limit for a file's text
 MAX_REVIEW_TEXT_FILES = 20  # files whose text is fetched for review.context_lines
 
 
@@ -266,11 +267,12 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
     when it's installed, and otherwise the Python files whose change touches
     async code, for the missing-await check. Files moved to where a check
     does more than where they were, since the diff shows none of their lines
-    as added. With `around` (the profile shows code around each hunk), the
-    biggest changes the model will read too."""
-    from stratum_open.checks import moved_in
+    as added (at most MAX_MOVED_BYTES each; a bigger one is named as unread).
+    With `around` (the profile shows code around each hunk), the biggest
+    changes the model will read too."""
+    from stratum_open.checks import bandit, moved_in
     from stratum_open.checks.awaits import touches_async
-    from stratum_open.checks.bandit import available
+    from stratum_open.checks.common import looks_binary
     from stratum_open.checks.dependencies import manifest_kind
 
     def wanted(file: FileDiff) -> bool:
@@ -280,23 +282,22 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
 
     live = [f for f in files if f.status != "deleted" and not f.binary]
     fetch = [f for f in live if wanted(f)][:MAX_CONTEXT_FILES]
-    python = sorted((f for f in live if f.path.endswith(".py")), key=lambda f: -f.additions)
-    fetch += (python if available() else [f for f in python if touches_async(f)])[:MAX_BANDIT_FILES]
-    moved = [f for f in live if moved_in(f) and f not in fetch][:MAX_MOVED_FILES]
-    fetch += moved
+    # The files Bandit reads first: a PR full of edited tests mustn't push the code out.
+    python = sorted((f for f in live if f.path.endswith(".py")), key=lambda f: (not bandit.scope(f.path), -f.additions))
+    fetch += (python if bandit.available() else [f for f in python if touches_async(f)])[:MAX_BANDIT_FILES]
+    moved = [f for f in live if moved_in(f)]  # the size cap and the binary test apply however they're fetched
+    fetch += [f for f in moved if f not in fetch][:MAX_MOVED_FILES]
     if around:
         reviewed = sorted((f for f in live if not ctx.policy.ignored(f.path) and f not in fetch), key=lambda f: -(f.additions + f.deletions))
         fetch += reviewed[:MAX_REVIEW_TEXT_FILES]
     contents: dict[str, str] = {}
     for file in fetch:
         try:
-            text = ctx.gh.file_text(file.path, head)
+            text = ctx.gh.file_text(file.path, head, max_bytes=MAX_MOVED_BYTES if file in moved else None)
         except GitHubError:
             text = None
-        if text is not None and file in moved and "\0" in text[:8000]:
-            # A move with no edits looks the same in the diff whether the file is text or
-            # not; git calls a file binary by a NUL byte near its start, and so does this.
-            file.binary = True
+        if text is not None and file in moved and looks_binary(text):
+            file.binary = True  # a moved file the diff couldn't call text or not
         elif text is not None:
             contents[file.path] = text
     return contents or None
@@ -405,7 +406,7 @@ def excluded(ctx: Context, login: str) -> bool:
 
 def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] | None, previous_head: str, files: list[FileDiff],
               contents: dict[str, str]) -> list[str]:
-    from stratum_open.checks import moved_in
+    from stratum_open.checks import bandit, moved_in
 
     lines = []
     if incremental and previous_head:
@@ -430,6 +431,11 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
     moved = [f.path for f in files if moved_in(f) and f.path in contents]
     if moved:
         lines.append("Checked in full, since they moved to where the checks do more: " + ", ".join(f"`{p}`" for p in moved[:10]))
+    if bandit.available():
+        _, left_out = bandit.plan(files, contents)
+        if left_out:
+            lines.append(f"Not read by Bandit ({_files(len(left_out))} past its limit of {bandit.MAX_FILES}, or without their text): "
+                         + ", ".join(f"`{p}`" for p in left_out[:10]))
     return lines
 
 

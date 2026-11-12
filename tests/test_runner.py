@@ -508,3 +508,47 @@ def test_findings_on_a_moved_file_keep_their_lines_in_the_summary_and_the_check_
     review_pull(context(gh, None), 7)
     assert "in `.github/workflows/ci.yml` line 9: pull_request_target runs the PR's own code" in gh.issue_comments_[7][-1]["body"]
     assert (".github/workflows/ci.yml", 9) in {(a["path"], a["start_line"]) for a in gh.checks[-1]["annotations"]}
+
+
+def bandit_finding(path, line=1):
+    return {"path": path, "test_id": "B301", "test_name": "pickle", "severity": "MEDIUM", "confidence": "HIGH",
+            "text": "Pickle can run code.", "line": line, "lines": [line]}
+
+
+def test_twenty_moves_dont_push_the_prs_own_code_out_of_bandit(monkeypatch):
+    sent = []
+    monkeypatch.setattr("stratum_open.checks.bandit.available", lambda: True)
+    monkeypatch.setattr("stratum_open.checks.bandit.run_bandit",
+                        lambda sources: sent.append(set(sources)) or ([bandit_finding("app/load.py")] if "app/load.py" in sources else []))
+    helper = "".join(f"x{i} = {i}\n" for i in range(80))
+    diff = "".join(moved(f"tests/h{i}.py", f"src/h{i}.py") for i in range(20)) + (
+        "diff --git a/app/load.py b/app/load.py\nnew file mode 100644\n--- /dev/null\n+++ b/app/load.py\n@@ -0,0 +1 @@\n+pickle.loads(data)\n")
+    files = {**{(f"src/h{i}.py", "a" * 40): helper for i in range(20)}, ("app/load.py", "a" * 40): "pickle.loads(data)\n"}
+    gh = FakeGitHub(diff=diff, files=files)
+    outcome = review_pull(context(gh, None), 7)
+    assert "bandit/B301" in {f.rule for f in outcome.findings}
+    assert "app/load.py" in sent[0] and len(sent[0]) == 20
+    assert "Not read by Bandit (1 file past its limit of 20, or without their text): `src/h19.py`" in gh.issue_comments_[7][-1]["body"]
+
+
+def test_edited_tests_dont_push_the_code_out_of_bandits_files(monkeypatch):
+    sent = []
+    monkeypatch.setattr("stratum_open.checks.bandit.available", lambda: True)
+    monkeypatch.setattr("stratum_open.checks.bandit.run_bandit", lambda sources: sent.append(set(sources)) or [])
+
+    def added(path, lines):
+        return (f"diff --git a/{path} b/{path}\nnew file mode 100644\n--- /dev/null\n+++ b/{path}\n@@ -0,0 +1,{len(lines)} @@\n"
+                + "".join(f"+{line}\n" for line in lines))
+
+    tests = {f"tests/test_t{i}.py": [f"t{j} = {j}" for j in range(5)] for i in range(25)}
+    diff = "".join(added(p, lines) for p, lines in tests.items()) + added("app/a.py", ["x = 1"])
+    files = {**{(p, "a" * 40): "\n".join(lines) + "\n" for p, lines in tests.items()}, ("app/a.py", "a" * 40): "x = 1\n"}
+    review_pull(context(FakeGitHub(diff=diff, files=files), None), 7)
+    assert sent == [{"app/a.py"}]
+
+
+def test_a_moved_file_too_big_to_fetch_is_named_as_unread(monkeypatch):
+    monkeypatch.setattr("stratum_open.runner.MAX_MOVED_BYTES", 10)
+    gh = FakeGitHub(diff=moved("tests/helper.py", "app/helper.py"), files={("app/helper.py", "a" * 40): "def f(request):\n    eval(request.args['x'])\n"})
+    outcome = review_pull(context(gh, None), 7)
+    assert {f.rule for f in outcome.findings} == {"checks/moved-unread"}

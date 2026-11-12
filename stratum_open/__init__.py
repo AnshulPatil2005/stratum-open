@@ -10,7 +10,7 @@ __version__ = "0.2.0"
 
 from stratum_open.diff import FileDiff, parse_diff  # noqa: E402
 from stratum_open.engine import EngineResult, analyze, snippet_of  # noqa: E402
-from stratum_open.findings import Finding  # noqa: E402
+from stratum_open.findings import Finding, placeable  # noqa: E402
 from stratum_open.model import Model, Reply  # noqa: E402
 from stratum_open.policy import Policy, load_policy, parse_policy  # noqa: E402
 from stratum_open.profiles import ModelInfo  # noqa: E402
@@ -32,5 +32,6 @@ __all__ = [
     "load_policy",
     "parse_diff",
     "parse_policy",
+    "placeable",
     "snippet_of",
 ]

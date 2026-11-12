@@ -12,4 +12,5 @@ build_records(repo_dir: 'str', ref: 'str' = 'HEAD', *, window_days: 'int' = 180,
 load_policy(read_default_branch_file: 'Callable[[str], str | None]') -> 'Policy'
 parse_diff(text: 'str') -> 'list[FileDiff]'
 parse_policy(text: 'str | None') -> 'Policy'
+placeable(findings: 'list[Finding]', files: 'list[FileDiff]') -> 'list[Finding]'
 snippet_of(finding: 'Finding', files: 'list[FileDiff]') -> 'str'

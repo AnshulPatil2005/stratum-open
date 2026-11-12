@@ -105,10 +105,13 @@ class GitHub:
     def repository(self) -> dict:
         return self.get(self._r)
 
-    def file_text(self, path: str, ref: str) -> str | None:
-        """A file's text at `ref`, or None when it doesn't exist there."""
+    def file_text(self, path: str, ref: str, *, max_bytes: int | None = None) -> str | None:
+        """A file's text at `ref`, or None when it doesn't exist there, or is
+        bigger than `max_bytes`."""
         data = self.request("GET", f"{self._r}/contents/{requests.utils.quote(path)}", params={"ref": ref}, ok404=True)
         if not isinstance(data, dict) or data.get("type") != "file":
+            return None
+        if max_bytes is not None and int(data.get("size") or 0) > max_bytes:
             return None
         if data.get("encoding") == "base64" and data.get("content"):
             return base64.b64decode(data["content"]).decode("utf-8", errors="replace")

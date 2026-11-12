@@ -524,6 +524,18 @@ def test_a_moved_file_without_its_text_is_named_in_a_low_finding():
     assert "checks/moved-unread" not in rules(run(moved("lib/helper.py", "app/helper.py")))  # it was checked before
 
 
+@pytest.mark.parametrize("path", ["assets/logo.png", "assets/font.woff2", "dist/app.wasm"])
+def test_a_moved_binary_file_is_not_checked_or_named(path):
+    assert rules(run(moved(f"tests/fixtures/{path.rsplit('/', 1)[-1]}", path))) == []
+
+
+def test_looks_binary_is_gits_nul_test():
+    from stratum_open.checks.common import looks_binary
+
+    assert looks_binary("\x89PNG\r\n\x1a\n\0\0\0\rIHDR") and not looks_binary("x = 1\n" * 5000)
+    assert not looks_binary("a" * 8000 + "\0")  # only the start counts, as in git
+
+
 # ── run_checks ───────────────────────────────────────────────────────────
 
 

@@ -18,9 +18,10 @@ from stratum_open.policy import Policy
 
 __all__ = ["PackageInfo", "PackageLookup", "moved_in", "run_checks"]
 
-# The checks whose rules depend on a file's path. The others look at every
-# path (hidden Unicode), or at both sides of a rename (protected paths,
-# coding-agent files).
+# The checks here whose rules depend on a file's path. Of the others, hidden
+# Unicode looks at every path, and protected paths and coding-agent files at
+# both sides of a rename. Module boundaries (repo/boundaries.py) also depend on
+# the path and don't read moved files yet: #65.
 _SCOPES = (patterns.scope, workflows.scope, dependencies.scope, bandit.scope)
 _MAX_LISTED = 10
 

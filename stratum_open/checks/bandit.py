@@ -28,7 +28,7 @@ import sys
 import tempfile
 from typing import Any
 
-from stratum_open.checks.common import checked_lines, is_test_path
+from stratum_open.checks.common import checked_lines, is_test_path, moved_in
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
 
@@ -64,20 +64,33 @@ def scope(path: str) -> frozenset[str]:
     return frozenset({"bandit"}) if path.endswith(".py") and not is_test_path(path) else frozenset()
 
 
+def plan(files: list[FileDiff], contents: dict[str, str] | None) -> tuple[list[str], list[str]]:
+    """The Python files Bandit reads, and the ones it would read but doesn't:
+    past MAX_FILES, or without their text. Files the PR edits come first,
+    biggest change first, then files moved here from the tests, biggest
+    first: a PR padded with moves can't push its own new code out."""
+    contents = contents or {}
+    candidates = [
+        file for file in files
+        if scope(file.path) and file.status != "deleted" and not file.binary and (file.added() or moved_in(file, scope))
+    ]
+
+    def rank(file: FileDiff) -> tuple[bool, int]:
+        moved = moved_in(file, scope)
+        return moved, -(len(checked_lines(file, contents, scope)) if moved else file.additions)
+
+    read = [file.path for file in sorted((f for f in candidates if f.path in contents), key=rank)[:MAX_FILES]]
+    return read, [file.path for file in candidates if file.path not in read]
+
+
 def check(files: list[FileDiff], contents: dict[str, str] | None = None, *, keep_low: bool = False) -> list[Finding]:
     if not contents or not available():
         return []
-    # A file moved here from the tests counts every line as added.
-    checked = {
-        file.path: dict(found)
-        for file in files
-        if scope(file.path) and file.path in contents and file.status != "deleted"
-        and (found := checked_lines(file, contents, scope))
-    }
-    targets = sorted(checked, key=lambda path: -len(checked[path]))[:MAX_FILES]
+    targets, _ = plan(files, contents)
     if not targets:
         return []
-    added = {path: checked[path] for path in targets}
+    # A file moved here from the tests counts every line as added.
+    added = {file.path: dict(checked_lines(file, contents, scope)) for file in files if file.path in targets}
     levels = {**_SEVERITY, **(_LOW if keep_low else {})}
     findings = []
     for issue in run_bandit({path: contents[path] for path in targets}):

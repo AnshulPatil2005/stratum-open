@@ -75,8 +75,9 @@ class FakeGitHub:
     def pull_diff(self, number):
         return self.diff
 
-    def file_text(self, path, ref):
-        return self.files.get((path, ref))
+    def file_text(self, path, ref, *, max_bytes=None):
+        text = self.files.get((path, ref))
+        return None if text is not None and max_bytes is not None and len(text.encode("utf-8")) > max_bytes else text
 
     def compare_files(self, base, head):
         return self.compare.get((base, head))
