@@ -181,7 +181,7 @@ def _ignore(ctx: Context, number: int, rule: str, thread_root: int | None, reply
     fp = None
     if thread_root is not None:
         root = gh.review_comment(thread_root) or {}
-        fp = publish.thread_fingerprint({"comments": [{"author": (root.get("user") or {}).get("login", ""), "body": root.get("body", "")}]}, ctx.bot)
+        fp = _fingerprint(root, ctx.bot)
         if fp is None:
             reply("That isn't one of Stratum's comments, so there's nothing to ignore.")
             return "ignore"
@@ -224,7 +224,7 @@ def _record_ignore(gh, number: int, bot: str, *, fingerprint: str | None, rule: 
 def _explain(ctx: Context, number: int, thread_root: int) -> str:
     gh = ctx.gh
     root = gh.review_comment(thread_root) or {}
-    fp = publish.thread_fingerprint({"comments": [{"author": (root.get("user") or {}).get("login", ""), "body": root.get("body", "")}]}, ctx.bot)
+    fp = _fingerprint(root, ctx.bot)
     existing = publish.find_summary(gh.issue_comments(number), ctx.bot)
     state = publish.State.decode(existing["body"]) if existing else publish.State()
     finding = next((f for f in state.findings if f.get("fingerprint") == fp), None)
@@ -252,6 +252,11 @@ def _explain(ctx: Context, number: int, thread_root: int) -> str:
         return f"The model couldn't answer just now ({reply.error or 'empty reply'}). Try again later."
     # The model's words are posted as a comment: an @name in them must not page anyone.
     return f"{demention(reply.text.strip())[:20000]}\n\n<sub>Explained by `{ctx.model.name}`, the model this project runs.</sub>"
+
+
+def _fingerprint(comment: dict, bot: str) -> str | None:
+    """The fingerprint of the finding a review comment is about, when Stratum wrote it."""
+    return publish.thread_fingerprint({"comments": [{"author": (comment.get("user") or {}).get("login", ""), "body": comment.get("body", "")}]}, bot)
 
 
 def _triage_text(ctx: Context, number: int) -> str:
