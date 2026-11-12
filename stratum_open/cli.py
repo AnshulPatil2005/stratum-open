@@ -64,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
     data.add_argument("--pr", type=int, help="with delete: one PR's findings and job log")
     data.add_argument("--feedback", action="store_true", help="with delete: thumbs-up/down votes and muted rules")
     data.add_argument("--all", action="store_true", help="with delete --repo: everything stored for the repo")
-    data.add_argument("--days", type=int, default=180, help="with purge: findings older than this go (jobs: 14 days)")
+    data.add_argument("--days", type=_days, default=180, help="with purge: findings older than this go (jobs: 14 days)")
 
     serve = sub.add_parser("serve", help="run the GitHub App's webhook server")
     serve.add_argument("--host", default="0.0.0.0")
@@ -265,6 +265,14 @@ def _triage(args) -> int:
     bot = os.environ.get("STRATUM_BOT_LOGIN") or "github-actions[bot]"
     print(update_queue(Context(gh=gh, policy=policy, model=None, bot=bot), post=args.post))
     return 0
+
+
+def _days(value: str) -> int:
+    """A day count for `data purge --days`, within the range the policy allows."""
+    days = int(value)
+    if not 1 <= days <= 36500:
+        raise argparse.ArgumentTypeError("must be between 1 and 36500")
+    return days
 
 
 def _data(args) -> int:

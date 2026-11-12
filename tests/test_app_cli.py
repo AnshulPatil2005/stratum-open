@@ -161,6 +161,13 @@ def test_data_on_a_file_that_isnt_a_database_or_is_newer(tmp_path):
         assert str(exit_.value).startswith(f"Couldn't open the database at {db}: ")
 
 
+@pytest.mark.parametrize("days", ["0", "999999"])
+def test_purge_days_out_of_range_is_a_usage_error(days, capsys):
+    with pytest.raises(SystemExit) as exit_:
+        cli.main(["data", "purge", "--days", days])
+    assert exit_.value.code == 2 and "must be between 1 and 36500" in capsys.readouterr().err
+
+
 def test_help_prints_where_stdout_isnt_utf8(monkeypatch):
     out = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
     monkeypatch.setattr(sys, "stdout", out)
