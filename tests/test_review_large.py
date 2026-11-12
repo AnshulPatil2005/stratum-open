@@ -278,3 +278,22 @@ def test_verify_checks_the_per_file_passes_findings_too():
     assert not any(f.source == "model" for f in result.findings)
     assert result.large.dropped == 1
     assert any(c.get("pass") == "verify" for c in result.large.calls)
+
+
+def test_unread_names_the_files_whose_per_file_call_failed_or_was_cut_off():
+    from stratum_open.review_large import LargeReview
+
+    large = LargeReview(calls=[
+        {"pass": "file", "path": "a.py", "error": ""},
+        {"pass": "lens", "path": "b.py", "error": "the reply wasn't the JSON asked for"},
+        {"pass": "file", "path": "c.py", "error": "", "salvaged": True},
+        {"pass": "synthesis", "error": "timed out"},  # the walkthrough reads no file
+    ])
+    assert large.unread == {"b.py", "c.py"}
+
+
+def test_a_per_file_call_that_failed_on_a_file_the_chunked_review_read_isnt_unread():
+    body = _posted_summary("not json", file_answer(), file_answer(),
+                           json.dumps({"summary": "Adds token checks.", "matches_description": "yes", "findings": []}), "not json")
+    assert "the chunked review still covered those files." in body
+    assert publish.State.decode(body).unread == []

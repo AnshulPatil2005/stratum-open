@@ -20,11 +20,11 @@ the environment or calls GitHub.
 from __future__ import annotations
 
 import traceback
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable, Sequence
 
 from stratum_open import __version__
-from stratum_open.diff import FileDiff
+from stratum_open.diff import FileDiff, sendable
 from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank, risk_score
 from stratum_open.model import is_model_failure
 from stratum_open.policy import Policy
@@ -46,6 +46,7 @@ class EngineResult:
     complete: bool  # every model call was read in full
     engine_version: str = __version__
     large: LargeReview | None = None  # the per-file passes and walkthrough, when the profile ran them
+    unread: set[str] = field(default_factory=set)  # paths whose model call failed or was cut off: read them again next time
 
 
 def analyze(
@@ -58,6 +59,7 @@ def analyze(
     contents: dict[str, str] | None = None,
     lookup: Any | None = None,
     only_paths: set[str] | None = None,
+    first: set[str] | frozenset[str] = frozenset(),
     previous: list[dict[str, Any]] | None = None,
     notes: Sequence[str] = (),
     hotspots: set[str] | frozenset[str] = frozenset(),
@@ -81,7 +83,8 @@ def analyze(
       read past the diff with it, and `review.context_lines` shows the code
       around each hunk from it.
     - `only_paths`: on an incremental review, the files changed since the last
-      one; an empty set means nothing new for the model to read.
+      one; an empty set means nothing new for the model to read. `first`: the
+      paths the chunked review packs before the rest (files read again).
     - `previous`: the last review's findings (as saved by `state_finding`, with
       their `snippet`); those whose code is still there are carried over.
     - `notes`, `guidance`: context for the prompt (history notes; the team's
@@ -108,7 +111,7 @@ def analyze(
                 )
             result = review(
                 title=title, description=description, files=files, policy=policy, model=model, only_paths=only_paths,
-                context=list(notes), hotspots=set(hotspots), guidance=guidance, contents=contents, log=log,
+                context=list(notes), hotspots=set(hotspots), first=first, guidance=guidance, contents=contents, log=log,
                 previous=still_there(previous or [], files) if only_paths is not None else None,
             )
         except Exception as exc:  # the model step is the one part of a review that may never stop the rest
@@ -123,7 +126,8 @@ def analyze(
             result = ReviewResult(failed_calls=1, calls=[{
                 "model": str(getattr(model, "name", "")), "seconds": 0, "ok": False, "prompt_tokens": None, "output_tokens": None,
                 "error": error, "traceback": traceback.format_exc(),
-            }])
+            }], unread={f.path for f in files  # no telling what was read, of what would have been sent
+                        if (only_paths is None or f.path in only_paths) and sendable(f, policy.ignored)})
 
     # The chunked review verifies its own findings; the per-file passes' go through the same check here.
     if large is not None and large.findings and policy.review.verify in VERIFY_PROMPTS:
@@ -134,10 +138,17 @@ def analyze(
     assign_fingerprints(found, files, contents)
     found = dedupe(found)
 
+    # The paths whose model call failed or was cut off: the caller reads them
+    # again next time, and their file-level findings can't be called fixed. A
+    # per-file call that failed on a file the chunked review read in full
+    # doesn't count: that file was read.
+    chunked = set(result.packed.reviewed) - result.unread if result and result.packed and result.ran else set()
+    unread = (result.unread if result else set()) | ((large.unread if large else set()) - chunked)
     # A model finding stays until the code it's on changes; the model not
     # repeating it on the next push doesn't make it fixed.
     reviewed_now = set(result.packed.reviewed + result.packed.clipped) if result and result.packed and result.ran else set()
     reviewed_now |= set(large.reviewed) if large else set()
+    reviewed_now -= unread
     carried, gone = carry(previous or [], files, {f.fingerprint for f in found}, reviewed_now)
     for finding in [f for f in carried if not shown(f, policy)]:  # the policy's bar may have risen since
         carried.remove(finding)
@@ -159,7 +170,8 @@ def analyze(
     complete = (result.complete if result is not None else True) and (large.complete if large is not None else True)
     total = score(kept, bonus) if score is not None else max(0, min(100, risk_score(kept) + bonus))
     verdict = conclusion(kept, total, complete) if conclusion is not None else default_conclusion(kept, complete, policy, total)
-    return EngineResult(kept, gone, excluded, result, policy, profile, profile_why, total, verdict, complete, large=large)
+    return EngineResult(kept, gone, excluded, result, policy, profile, profile_why, total, verdict, complete, large=large,
+                        unread=unread)
 
 
 def effective_policy(policy: Policy, model: Any | None) -> tuple[Policy, str, str]:

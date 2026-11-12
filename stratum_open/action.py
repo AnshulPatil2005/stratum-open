@@ -128,9 +128,10 @@ def _run(env: Mapping[str, str], event_name: str, payload: dict, gh: GitHub, loa
         done = handle(ctx, event_name, payload)
         print(f"Command: {done or 'none in this comment'}")
     elif event_name == "workflow_run":
-        # CI finished: sort the PR again with its result. Same head, so no model
-        # call. The skip settings apply here too; review.events doesn't, since
-        # this isn't a PR event.
+        # CI finished: sort the PR again with its result. Same head, so the
+        # model reads only files the last review couldn't (usually none). The
+        # skip settings apply here too; review.events doesn't, since this isn't
+        # a PR event.
         for ref in (payload.get("workflow_run") or {}).get("pull_requests") or []:
             if not isinstance(ref, dict) or not ref.get("number"):
                 continue
