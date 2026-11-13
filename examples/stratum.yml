@@ -31,13 +31,11 @@ permissions:
 jobs:
   stratum:
     # A comment starts the job only if it might hold a command: "/stratum " (with the
-    # space, so a link to stratum-org/stratum-open doesn't). v0.2.0, pinned below,
-    # reads only the older "@stratum" form, so that starts it too until 0.3.0 is
-    # out; the release commit drops it with the pin's bump.
+    # space, so a link to stratum-org/stratum-open doesn't).
     if: >-
       github.event_name == 'pull_request_target' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
       github.event_name == 'workflow_run' ||
-      contains(github.event.comment.body, '/stratum ') || contains(github.event.comment.body, '@stratum')
+      contains(github.event.comment.body, '/stratum ')
     runs-on: ubuntu-latest
     # On the job, not the workflow, so a comment without a command never joins
     # a group: GitHub keeps one pending run per group and cancels the others,
@@ -56,7 +54,7 @@ jobs:
           persist-credentials: false
 
       # Pin to a commit SHA (stratum-org/stratum-open@<sha>) so a new release reaches you only when you choose.
-      - uses: stratum-org/stratum-open@v0.2.0
+      - uses: stratum-org/stratum-open@v0.3.0
         with:
           # Runs the model on the runner: no server needed, but slow on CPU.
           # For reviews that find far more, use gpt-oss:20b and set review.reasoning: low

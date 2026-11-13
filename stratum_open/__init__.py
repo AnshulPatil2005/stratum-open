@@ -6,7 +6,7 @@ pinned by `tests/test_public_api.py`, and changing one is a new minor version
 (a new major version once 1.0 is out).
 """
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 from stratum_open.diff import FileDiff, parse_diff  # noqa: E402
 from stratum_open.engine import EngineResult, analyze, snippet_of  # noqa: E402

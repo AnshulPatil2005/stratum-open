@@ -87,9 +87,7 @@ def starts_the_job(needles: list[str], body: str) -> bool:
     return any(needle.lower() in body.lower() for needle in needles)  # GitHub's contains() ignores case
 
 
-# Until 0.3.0 is out, the example also starts a job for the "@stratum" form, the only
-# one v0.2.0 (the version it pins) reads. The release commit drops it, and this changes with it.
-@pytest.mark.parametrize("path, needles", [("examples/stratum.yml", ["/stratum ", "@stratum"]), (".github/workflows/stratum.yml", ["/stratum "])])
+@pytest.mark.parametrize("path, needles", [("examples/stratum.yml", ["/stratum "]), (".github/workflows/stratum.yml", ["/stratum "])])
 def test_the_workflow_starts_a_job_for_every_comment_the_parser_reads_as_a_command(path, needles):
     assert comment_filter(path) == needles
     commands = ["/stratum review", "/Stratum REVIEW", "thanks!\n/stratum review", "/stratum review\n", "ok\r\n/stratum  ignore code/sql\r\n",
