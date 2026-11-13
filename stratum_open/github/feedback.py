@@ -7,8 +7,7 @@ Only the GitHub App counts them, because it can store votes across PRs.
 from __future__ import annotations
 
 from stratum_open.github import publish
-from stratum_open.github.api import GitHub, GitHubError
-from stratum_open.github.commands import WRITE
+from stratum_open.github.api import WRITE, GitHub, GitHubError
 from stratum_open.storage import Storage
 
 VOTES = {"+1": 1, "-1": -1}

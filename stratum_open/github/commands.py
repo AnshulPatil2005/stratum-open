@@ -14,12 +14,11 @@ import time
 from datetime import datetime, timedelta, timezone
 
 from stratum_open.github import publish
-from stratum_open.github.api import GitHubError
+from stratum_open.github.api import WRITE, GitHubError
 from stratum_open.review import demention
 from stratum_open.runner import Context, excluded, record_for, review_pull
 
 COMMAND = re.compile(r"^\s*@stratum\s+([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
-WRITE = {"admin", "maintain", "write"}
 # Commands that can call the model: explain, and the ones that review again.
 NEEDS_MODEL = {"review", "re-review", "rereview", "ignore", "explain"}
 # Explanations per person and per PR in a day: enough to understand a review,
