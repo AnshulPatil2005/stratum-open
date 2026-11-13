@@ -93,8 +93,6 @@ def test_services_is_hosted_stratums_section_and_is_accepted_unread():
         ("review:\n  max_inline_comments: true", "review.max_inline_comments must be a whole number."),
         ("review:\n  endpoint: 8080", "review.endpoint must be text."),
         ("track_record:\n  followup_days: 0", "track_record.followup_days must be at least 1."),
-        ("track_record:\n  window_days: 999999", "track_record.window_days must be at most 36500."),
-        ("data:\n  findings_retention_days: 999999", "data.findings_retention_days must be at most 36500."),
         ("always_human:\n  paths: .github/**", "always_human.paths must be a list of text values."),
         ("version: 2", f"{POLICY_PATH} has version 2; this release reads version 1."),
         ("- a\n- b", f"{POLICY_PATH} must be a mapping of keys, not a list."),
@@ -160,6 +158,13 @@ def test_glob_rules():
     assert not policy.needs_human("docs/README.md")
     assert policy.needs_human("docs/a.txt")
     assert not policy.needs_human("docs/ab.txt")
+
+
+def test_a_day_count_past_the_cap_is_read_as_the_cap_and_the_rest_still_applies():
+    policy = parse_policy("data:\n  findings_retention_days: 99999\nreview:\n  ignore_paths: [vendor/**]\n")
+    assert (policy.source, policy.errors) == ("file", ())
+    assert policy.data.findings_retention_days == 36500 and policy.review.ignore_paths == ("vendor/**",)
+    assert policy.warnings == ("data.findings_retention_days is read as 36500, the most it can be.",)
 
 
 def test_a_pattern_ending_in_a_slash_is_a_folder():

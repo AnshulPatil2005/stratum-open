@@ -315,7 +315,7 @@ def _build(cls: type, raw: dict, path: tuple[str, ...], warnings: list[str], err
                 continue
             values[name] = _build(type(default), value, key_path, warnings, errors, explicit)
         else:
-            checked = _check(key_path, value, default, errors)
+            checked = _check(key_path, value, default, warnings, errors)
             if checked is not _INVALID:
                 values[name] = checked
                 explicit.add(_dotted(key_path))
@@ -325,7 +325,7 @@ def _build(cls: type, raw: dict, path: tuple[str, ...], warnings: list[str], err
 _INVALID = object()
 
 
-def _check(path: tuple[str, ...], value: Any, default: Any, errors: list[str]) -> Any:
+def _check(path: tuple[str, ...], value: Any, default: Any, warnings: list[str], errors: list[str]) -> Any:
     name = _dotted(path)
     if path in (("boundaries", "new_edges"), ("review", "reasoning")) and value is False:
         return "off"  # YAML reads an unquoted `off` as false
@@ -352,7 +352,9 @@ def _check(path: tuple[str, ...], value: Any, default: Any, errors: list[str]) -
             if minimum is not None and value < minimum:
                 errors.append(f"{name} must be at least {minimum}.")
             elif maximum is not None and value > maximum:
-                errors.append(f"{name} must be at most {maximum}.")
+                # Read as the cap, so one large number doesn't lose the rest of the file.
+                warnings.append(f"{name} is read as {maximum}, the most it can be.")
+                return maximum
             else:
                 return value
         else:
