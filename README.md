@@ -44,6 +44,8 @@ Copy [examples/stratum.yml](examples/stratum.yml) to `.github/workflows/stratum.
 
 That workflow runs `qwen2.5-coder:7b` with Ollama on GitHub's own runner, so you need no server. Ollama and the model go into the Actions cache on the first scheduled (or manual) run; PR runs read it, since GitHub doesn't let them write caches. GitHub's free runners have no GPU, though, so a review takes a few minutes. If your project has a machine with a GPU, run Ollama (or any OpenAI-compatible server) there instead. Then point `review.endpoint` in your policy file at it, and drop `ollama-model` from the workflow.
 
+To hear from Stratum sooner, set `review.early_checks: true` in your policy file. The Action then runs the checks before it starts the model and posts what they found straight away: on the lines, in the summary comment (with a line saying the model's review is still running), and as a check run in progress. That's usually within a minute of the job starting, since the checks need no model. When the model is done, the same comment becomes the full review and the check run gets its result. The end result is the same as without the setting. A check's early comment that the full review wouldn't have posted is deleted then: when the model reported the same problem on the same lines, or when `review.max_inline_comments` gives its place to a more serious finding. One that someone has replied to stays. If the model's review never finishes (Ollama doesn't start, or the job fails, times out or is cancelled), the summary says so, and the check run is completed with what the checks found.
+
 The workflow uses `pull_request_target` so it can comment on PRs from forks. It's safe here because the workflow checks out your default branch, never the PR, and Stratum reads the PR only through GitHub's API: no code from the PR ever runs. Keep it that way: don't add a step that checks out the PR.
 
 ## Your rules: `.stratum/policy.yml`
@@ -58,6 +60,7 @@ Every key, with its default, is in [policy.example.yml](policy.example.yml).
   - `review.min_severity` sets how serious a model finding must be to be shown (default `medium`; the checks' findings always show);
   - `review.quiet: true` posts less of what the model says, and keeps it apart from what the checks found;
   - `review.learn_from_history: true` leaves out findings like ones your maintainers rejected on recent PRs (see [Commands](#commands));
+  - `review.early_checks: true` has the Action post the checks' findings before the model runs, then complete them into the full review;
   - `always_human.paths` lists paths that always need a maintainer;
   - `boundaries` holds module rules such as `api -> db`;
   - `track_record.affects_triage` lets an author's record move their PR's label.

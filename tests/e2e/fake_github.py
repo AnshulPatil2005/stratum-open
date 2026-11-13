@@ -440,6 +440,9 @@ def _handler(fake: FakeGitHubServer) -> type[BaseHTTPRequestHandler]:
                 return 200, {"permission": role, "user": {"login": login, "role_name": role}}, {}
             if re.fullmatch(f"{r}/commits", path):
                 return self._page(fake.commits_by_author.get(query.get("author", ""), []), query, path)
+            if m := re.fullmatch(f"{r}/check-runs/(\\d+)", path):
+                run = next((run for run in fake.check_runs if run["id"] == int(m.group(1))), None)
+                return (200, run, {}) if run else None
             if m := re.fullmatch(f"{r}/commits/([^/]+)/check-runs", path):
                 runs = fake.ci_runs.get(m.group(1), []) + [run for run in fake.check_runs if run.get("head_sha") == m.group(1)]
                 return 200, {"total_count": len(runs), "check_runs": runs}, {}
@@ -609,6 +612,13 @@ def _handler(fake: FakeGitHubServer) -> type[BaseHTTPRequestHandler]:
 
         def _delete(self, path: str, query: dict[str, str], body: Any):
             r = self._r()
+            if m := re.fullmatch(f"{r}/pulls/comments/(\\d+)", path):
+                comment = self._find_review_comment(int(m.group(1)))
+                if comment is None:
+                    return None
+                with fake._lock:
+                    fake.review_comments.remove(comment)
+                return 204, None, {}
             if m := re.fullmatch(f"{r}/issues/(\\d+)/labels/(.+)", path):
                 number, name = int(m.group(1)), urllib.parse.unquote(m.group(2))
                 with fake._lock:

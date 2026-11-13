@@ -43,6 +43,20 @@ runs:
       shell: bash
       run: echo "model=$(stratum-open needs-model)" >> "$GITHUB_OUTPUT"
 
+    - name: Post the checks first
+      # Only with review.early_checks: true in .stratum/policy.yml; otherwise it reads the policy and stops.
+      # Before the model is restored and started, so the checks' findings land within a minute.
+      id: early
+      if: steps.need.outputs.model == 'true' && (github.event_name == 'pull_request' || github.event_name == 'pull_request_target')
+      shell: bash
+      env:
+        STRATUM_GITHUB_TOKEN: ${{ inputs.github-token }}
+        STRATUM_MODEL_ENDPOINT: ${{ inputs.ollama-model != '' && 'http://localhost:11434/v1' || inputs.model-endpoint }}
+        STRATUM_JOB_NAME: ${{ github.job }}
+        STRATUM_MODEL_NAME: ${{ inputs.ollama-model != '' && inputs.ollama-model || inputs.model-name }}
+        STRATUM_MODEL_API_KEY: ${{ inputs.model-api-key }}
+      run: stratum-open action --early
+
     - name: Cache Ollama and the model
       if: inputs.ollama-model != '' && steps.need.outputs.model == 'true'
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -60,6 +74,7 @@ runs:
       run: bash "$GITHUB_ACTION_PATH/scripts/start-ollama.sh" "$MODEL"
 
     - name: Review
+      id: review
       shell: bash
       env:
         STRATUM_GITHUB_TOKEN: ${{ inputs.github-token }}
@@ -71,4 +86,17 @@ runs:
         STRATUM_CONTEXT_TOKENS: ${{ inputs.ollama-model != '' && '8192' || '' }}
         STRATUM_MODEL_NAME: ${{ inputs.ollama-model != '' && inputs.ollama-model || inputs.model-name }}
         STRATUM_MODEL_API_KEY: ${{ inputs.model-api-key }}
+        STRATUM_EARLY_CHECK_RUN: ${{ steps.early.outputs.check-run }}
+        STRATUM_EARLY_CONCLUSION: ${{ steps.early.outputs.conclusion }}
       run: stratum-open action
+
+    - name: Say the model's review didn't finish
+      # The checks went up first, and the review never replaced them: Ollama didn't start, or the
+      # review failed, timed out or was cancelled. The summary and the check run say so.
+      if: always() && steps.early.outputs.posted == 'true' && steps.review.outcome != 'success'
+      shell: bash
+      env:
+        STRATUM_GITHUB_TOKEN: ${{ inputs.github-token }}
+        STRATUM_EARLY_CHECK_RUN: ${{ steps.early.outputs.check-run }}
+        STRATUM_EARLY_CONCLUSION: ${{ steps.early.outputs.conclusion }}
+      run: stratum-open action --stopped

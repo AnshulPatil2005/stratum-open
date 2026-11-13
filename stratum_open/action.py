@@ -23,7 +23,7 @@ from stratum_open.github.api import API, GitHub, GitHubError
 from stratum_open.github.commands import NEEDS_MODEL, handle, parse
 from stratum_open.model import model_from_policy
 from stratum_open.policy import Policy
-from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull, skip_reason
+from stratum_open.runner import Context, checkout_ref, load_context_policy, post_early, review_pull, skip_reason, stop_early
 from stratum_open.triage_queue import update_queue
 from stratum_open.util import redact
 
@@ -56,12 +56,13 @@ def main(env: Mapping[str, str] = os.environ) -> int:
         return _run(env, event_name, payload, gh, loaded)
     except (GitHubError, requests.RequestException) as exc:
         print(f"::error::Stratum couldn't finish: {_describe(exc)}")
-        _fail_check(gh, payload, _describe(exc), loaded.check_name)
+        _fail_check(gh, payload, _describe(exc), loaded.check_name, _early_run(env))
         return 1
     except Exception as exc:  # anything else is a bug: one line for the job, the details in the log
         print(f"::error::Stratum hit a bug and couldn't finish: {type(exc).__name__}: {exc}")
         print(redact(traceback.format_exc()), file=sys.stderr)
-        _fail_check(gh, payload, f"Stratum hit a bug ({type(exc).__name__}) and couldn't finish this review.", loaded.check_name)
+        _fail_check(gh, payload, f"Stratum hit a bug ({type(exc).__name__}) and couldn't finish this review.", loaded.check_name,
+                    _early_run(env))
         return 1
 
 
@@ -77,16 +78,17 @@ def _describe(exc: BaseException) -> str:
     return f"couldn't reach GitHub ({type(exc).__name__})"
 
 
-def _fail_check(gh: GitHub, payload: dict, message: str, name: str = publish.CHECK_NAME) -> None:
+def _fail_check(gh: GitHub, payload: dict, message: str, name: str = publish.CHECK_NAME, run_id: int = 0) -> None:
     """Best effort: a completed, neutral check run on the PR's head saying the
     review didn't happen, so nobody waits on a check that never comes. `name`
     is the policy's `review.check_name` when the policy was read, which is the
-    name branch protection waits for."""
+    name branch protection waits for. `run_id`: the run `review.early_checks`
+    left in progress, which this completes instead of posting another."""
     head = ((payload.get("pull_request") or {}).get("head") or {}).get("sha")
     if not head or not gh.repo:
         return
     try:
-        gh.check_run(head, name, "neutral", "Stratum couldn't finish", redact(message)[:1000], "", [])
+        gh.check_run(head, name, "neutral", "Stratum couldn't finish", redact(message)[:1000], "", [], **({"run_id": run_id} if run_id else {}))
     except (GitHubError, requests.RequestException) as exc:
         print(f"::warning::Stratum couldn't post its check run either: {_describe(exc)}")
 
@@ -101,17 +103,7 @@ def _run(env: Mapping[str, str], event_name: str, payload: dict, gh: GitHub, loa
     for warning in policy.warnings:
         print(f"::notice::.stratum/policy.yml: {warning}")
 
-    checkout = _checkout(env.get("GITHUB_WORKSPACE"))
-    ctx = Context(
-        gh=gh,
-        policy=policy,
-        model=model_from_policy(policy, env),
-        bot=env.get("STRATUM_BOT_LOGIN") or DEFAULT_BOT,
-        checkout=checkout,
-        history_ref=checkout_ref(checkout, default_branch) if checkout else "HEAD",
-        lookup=PackageLookup(),
-        own_checks=tuple(name for name in (env.get("GITHUB_JOB"), env.get("STRATUM_JOB_NAME")) if name),
-    )
+    ctx = _context(env, gh, policy, model_from_policy(policy, env), default_branch)
 
     if event_name in ("pull_request", "pull_request_target"):
         pull = payload.get("pull_request") or {}
@@ -124,6 +116,9 @@ def _run(env: Mapping[str, str], event_name: str, payload: dict, gh: GitHub, loa
         else:
             outcome = review_pull(ctx, pull["number"])
             print(f"PR #{outcome.number}: {outcome.status}, {len(outcome.findings)} finding(s)" + (f", {outcome.triage.key}" if outcome.triage else ""))
+            if outcome.status != "published" and _early_run(env):  # the early post waits for a review that won't come
+                stop_early(gh, pull["number"], (pull.get("head") or {}).get("sha", ""), bot=ctx.bot, name=policy.review.check_name,
+                           run_id=_early_run(env), conclusion=env.get("STRATUM_EARLY_CONCLUSION", ""))
     elif event_name in ("issue_comment", "pull_request_review_comment"):
         done = handle(ctx, event_name, payload)
         print(f"Command: {done or 'none in this comment'}")
@@ -146,6 +141,96 @@ def _run(env: Mapping[str, str], event_name: str, payload: dict, gh: GitHub, loa
         print("Triage queue updated.")
     else:
         print(f"Stratum doesn't handle {event_name} events.")
+    return 0
+
+
+def _context(env: Mapping[str, str], gh: GitHub, policy: Policy, model, default_branch: str) -> Context:
+    checkout = _checkout(env.get("GITHUB_WORKSPACE"))
+    return Context(
+        gh=gh,
+        policy=policy,
+        model=model,
+        bot=env.get("STRATUM_BOT_LOGIN") or DEFAULT_BOT,
+        checkout=checkout,
+        history_ref=checkout_ref(checkout, default_branch) if checkout else "HEAD",
+        lookup=PackageLookup(),
+        own_checks=tuple(name for name in (env.get("GITHUB_JOB"), env.get("STRATUM_JOB_NAME")) if name),
+    )
+
+
+def _early_run(env: Mapping[str, str]) -> int:
+    """The check run `stratum-open action --early` left in progress in this job, or 0."""
+    raw = (env.get("STRATUM_EARLY_CHECK_RUN") or "").strip()
+    return int(raw) if raw.isdigit() else 0
+
+
+def early(env: Mapping[str, str] = os.environ) -> int:
+    """`stratum-open action --early`, the step before the model starts: with
+    `review.early_checks` on, a PR event that will be reviewed by a model
+    gets the checks' findings posted now (see `runner.post_early`). The
+    step's outputs tell the later steps what it left in progress. It never
+    fails the job: whatever goes wrong, the review step runs as it would
+    without it."""
+    try:
+        return _early(env)
+    except Exception as exc:  # the full review still comes; this step only goes first
+        print(f"::warning::Stratum couldn't post the checks first ({type(exc).__name__}: {redact(str(exc))[:300]}); the full review follows.")
+        return 0
+
+
+def _early(env: Mapping[str, str]) -> int:
+    if env.get("GITHUB_EVENT_NAME") not in ("pull_request", "pull_request_target"):
+        return 0
+    with open(env["GITHUB_EVENT_PATH"], encoding="utf-8") as handle_file:
+        payload = json.load(handle_file)
+    token = env.get("STRATUM_GITHUB_TOKEN") or env.get("GITHUB_TOKEN")
+    pull = (payload.get("pull_request") or {}) if isinstance(payload, dict) else {}
+    if not token or not isinstance(pull, dict) or not pull.get("number"):
+        return 0  # the review step says what's wrong
+    repo = env.get("GITHUB_REPOSITORY") or (payload.get("repository") or {}).get("full_name") or ""
+    gh = GitHub(token, repo, api=env.get("GITHUB_API_URL") or API)
+    default_branch = (payload.get("repository") or {}).get("default_branch") or gh.repository().get("default_branch") or "main"
+    policy = context_from_env(load_context_policy(gh, default_branch), env)
+    if not policy.review.early_checks:
+        return 0
+    model = model_from_policy(policy, env)
+    if model is None:  # a review with only the checks takes no longer than this would
+        return 0
+    reason = skip_reason(pull, payload.get("action", ""), policy)
+    if reason:
+        return 0
+    outcome = post_early(_context(env, gh, policy, model, default_branch), pull["number"])
+    if outcome.early is None:
+        print(f"PR #{outcome.number}: {outcome.status}; nothing posted early")
+        return 0
+    print(f"PR #{outcome.number}: the checks' {len(outcome.findings)} finding(s) posted; the model's review follows")
+    if env.get("GITHUB_OUTPUT"):
+        with open(env["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+            out.write(f"posted=true\ncheck-run={outcome.early.check_run}\nconclusion={outcome.early.conclusion}\n")
+    return 0
+
+
+def stopped(env: Mapping[str, str] = os.environ) -> int:
+    """`stratum-open action --stopped`, after the review step failed, timed
+    out or was cancelled: the early post says the model's review didn't
+    finish, and its check run is completed. Best effort; never fails."""
+    try:
+        with open(env["GITHUB_EVENT_PATH"], encoding="utf-8") as handle_file:
+            payload = json.load(handle_file)
+        pull = payload.get("pull_request") or {}
+        head = (pull.get("head") or {}).get("sha", "")
+        token = env.get("STRATUM_GITHUB_TOKEN") or env.get("GITHUB_TOKEN")
+        if not token or not pull.get("number") or not head:
+            return 0
+        repo = env.get("GITHUB_REPOSITORY") or (payload.get("repository") or {}).get("full_name") or ""
+        gh = GitHub(token, repo, api=env.get("GITHUB_API_URL") or API)
+        default_branch = (payload.get("repository") or {}).get("default_branch") or gh.repository().get("default_branch") or "main"
+        name = load_context_policy(gh, default_branch).review.check_name
+        changed = stop_early(gh, pull["number"], head, bot=env.get("STRATUM_BOT_LOGIN") or DEFAULT_BOT, name=name,
+                             run_id=_early_run(env), conclusion=env.get("STRATUM_EARLY_CONCLUSION", ""))
+        print("The model's review didn't finish; the summary says so." if changed else "The model's review didn't finish.")
+    except Exception as exc:
+        print(f"::warning::Stratum couldn't say that the model's review didn't finish ({type(exc).__name__}: {redact(str(exc))[:300]}).")
     return 0
 
 
