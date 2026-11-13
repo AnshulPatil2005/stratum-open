@@ -166,9 +166,10 @@ def _review_local(args, base: str) -> int:
 
     try:
         # The flags keep out what the user's git config can change: an external
-        # diff tool, textconv filters, and other prefixes than a/ and b/.
+        # diff tool, textconv filters, other prefixes than a/ and b/, paths
+        # relative to a subfolder, and the number of context lines.
         text = _git(".", "diff", "--no-color", "--no-ext-diff", "--no-textconv", "--src-prefix=a/", "--dst-prefix=b/",
-                    "--find-renames", f"{base}...HEAD")
+                    "--no-relative", "-U3", "--find-renames", f"{base}...HEAD")
     except subprocess.CalledProcessError as exc:
         sys.exit(f"git couldn't compare {base} with HEAD: {(exc.stderr or '').strip() or 'is this a git repo, and does that branch exist?'}")
     files = parse_diff(text)
@@ -269,7 +270,10 @@ def _triage(args) -> int:
 
 def _days(value: str) -> int:
     """A day count for `data purge --days`, within the range the policy allows."""
-    days = int(value)
+    try:
+        days = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError("must be a whole number") from None
     if not 1 <= days <= 36500:
         raise argparse.ArgumentTypeError("must be between 1 and 36500")
     return days

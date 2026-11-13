@@ -134,6 +134,31 @@ def test_review_local_runs_the_checks(tmp_path, capsys, monkeypatch):
     assert json.loads((tmp_path / "out.json").read_text())[0]["rule"] == "code/secret"
 
 
+def test_review_local_from_a_subfolder_with_diff_relative(tmp_path, capsys, monkeypatch):
+    empty = tmp_path / "gitconfig"
+    empty.write_text("")
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": str(empty), "GIT_CONFIG_NOSYSTEM": "1",
+           "GIT_AUTHOR_NAME": "a", "GIT_AUTHOR_EMAIL": "a@example.com", "GIT_COMMITTER_NAME": "a", "GIT_COMMITTER_EMAIL": "a@example.com"}
+    repo = tmp_path / "repo"
+    (repo / "sub").mkdir(parents=True)
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, env=env)
+
+    git("init", "-q", "-b", "main")
+    (repo / "sub" / "app.py").write_text("x = 1\n")
+    git("add", ".")
+    git("commit", "-q", "-m", "init")
+    git("checkout", "-q", "-b", "feature")
+    (repo / "sub" / "app.py").write_text('x = 1\nAPI_KEY = "sk-live-0123456789abcdef0123"\n')
+    git("commit", "-q", "-am", "Add key")
+    git("config", "diff.relative", "true")
+    monkeypatch.chdir(repo / "sub")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    assert cli.main(["review", "--local", "main", "--no-model"]) == 1
+    assert "sub/app.py:2" in capsys.readouterr().out  # the path from the repo root, not from sub/
+
+
 def test_data_commands(tmp_path, capsys):
     db = str(tmp_path / "s.db")
     storage = SQLiteStorage(db)
@@ -161,11 +186,12 @@ def test_data_on_a_file_that_isnt_a_database_or_is_newer(tmp_path):
         assert str(exit_.value).startswith(f"Couldn't open the database at {db}: ")
 
 
-@pytest.mark.parametrize("days", ["0", "999999"])
-def test_purge_days_out_of_range_is_a_usage_error(days, capsys):
+@pytest.mark.parametrize("days, message", [("0", "must be between 1 and 36500"), ("999999", "must be between 1 and 36500"),
+                                           ("abc", "must be a whole number")])
+def test_purge_days_out_of_range_is_a_usage_error(days, message, capsys):
     with pytest.raises(SystemExit) as exit_:
         cli.main(["data", "purge", "--days", days])
-    assert exit_.value.code == 2 and "must be between 1 and 36500" in capsys.readouterr().err
+    assert exit_.value.code == 2 and f"--days: {message}" in capsys.readouterr().err
 
 
 def test_help_prints_where_stdout_isnt_utf8(monkeypatch):

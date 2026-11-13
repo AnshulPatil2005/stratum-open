@@ -83,3 +83,9 @@ def test_the_queue_pings_nobody_named_in_a_title():
     titled = facts(number=5, title="Ping @acme/security-team and @octocat")
     text = render_queue([(titled, triage(titled, [], POLICY)), (facts(number=6, title="cc @mona"), None)], POLICY)
     assert "Ping `@acme`/security-team and `@octocat`" in text and "#6 cc `@mona`" in text
+
+
+def test_the_queue_pings_nobody_named_in_the_reasons():
+    pr = facts(number=5)
+    result = triage(pr, [], POLICY, matches_description="no", mismatch="It also emails @octocat.")
+    assert "emails `@octocat`." in render_queue([(pr, result)], POLICY)
