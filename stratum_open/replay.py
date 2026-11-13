@@ -222,7 +222,7 @@ def notes(policy: Policy) -> list[str]:
         "- The author's track record as of that day, so `track_record.affects_triage` does nothing here.",
         "- The labels the PR had then, so `review.skip_labels` isn't applied.",
         "- Package registries: whether a new dependency existed, or was days old, on that day (`deps/missing`, `deps/young`).",
-        "- What needs the repo's history or an earlier review: `boundaries.new_edges`, `@stratum ignore` and muted rules.",
+        "- What needs the repo's history or an earlier review: `boundaries.new_edges`, `/stratum ignore` and muted rules.",
     ]
 
 

@@ -559,7 +559,7 @@ def test_a_file_level_finding_on_a_file_the_model_didnt_answer_for_isnt_called_f
     review_pull(context(gh, FakeModel(model_answer(findings=[]), model_answer(findings=about_beta)), policy=SPLIT), 7)
     assert "No tests" in gh.issue_comments_[7][0]["body"]
 
-    # `@stratum review` reads everything again; beta's call fails, so its finding stays.
+    # `/stratum review` reads everything again; beta's call fails, so its finding stays.
     review_pull(context(gh, FakeModel(model_answer(findings=[]), DOWN), policy=SPLIT), 7, full=True)
     body = gh.issue_comments_[7][0]["body"]
     assert "No tests" in body.split("<details>")[0]
@@ -659,7 +659,7 @@ def test_a_file_the_size_limit_never_sends_doesnt_stay_unread(gh, first):
     gh.move_head(7, "b" * 40)
     gh.compare[("a" * 40, "b" * 40)] = ["app/small.py", "app/big.py"]
     healthy()  # a push
-    healthy(full=True)  # `@stratum review`
+    healthy(full=True)  # `/stratum review`
 
 
 def test_an_ignore_makes_no_model_call_even_when_the_head_wasnt_kept(gh, monkeypatch):
@@ -671,7 +671,7 @@ def test_an_ignore_makes_no_model_call_even_when_the_head_wasnt_kept(gh, monkeyp
 
     gh.permissions["mona"] = "admin"
     model = FakeModel(model_answer())
-    event, payload = comment_event("@stratum ignore code/sql", login="mona")
+    event, payload = comment_event("/stratum ignore code/sql", login="mona")
     assert handle(context(gh, model), event, payload) == "ignore"
     body = gh.issue_comments_[7][0]["body"]
     assert model.prompts == [] and publish.State.decode(body).head == ""
@@ -705,7 +705,7 @@ def test_an_ignore_redraws_without_calling_the_model(gh):
     review_pull(context(gh, FakeModel(DOWN)), 7)
     gh.permissions["mona"] = "admin"
     model = FakeModel(model_answer())
-    event, payload = comment_event("@stratum ignore code/sql", login="mona")
+    event, payload = comment_event("/stratum ignore code/sql", login="mona")
     assert handle(context(gh, model), event, payload) == "ignore"
     body = gh.issue_comments_[7][0]["body"]
     assert model.prompts == [] and publish.State.decode(body).unread == ["app/users.py"]
