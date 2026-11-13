@@ -22,6 +22,10 @@ Each rule reports only what the diff proves, so a quiet run proves little:
   below its first line or below a hunk header that names it. Where a hunk
   doesn't say which function it starts in, assertions added in the hunk
   before, under the same header, count as possibly replacing the removed ones.
+
+A test deleted outright is not reported. On merged PRs that was nearly always
+the test of something the PR removed or reverted, which the diff shows anyway
+(benchmark/results/2026-11-13-weakened-tests).
 """
 
 from __future__ import annotations
@@ -40,7 +44,6 @@ SKIPPED = "tests/skipped"
 ONLY = "tests/only"
 ASSERTIONS = "tests/assertions-removed"
 TOLERANCE = "tests/tolerance-loosened"
-DELETED = "tests/deleted"
 
 _LANGUAGES = {".py": "python", ".go": "go", ".rs": "rust"} | {ext: "javascript" for ext in JAVASCRIPT}
 _SLASHES = re.compile(r"^\s*(?://|/\*|\*)")
@@ -79,7 +82,6 @@ _ASSERTION = {
 
 def check(files: list[FileDiff]) -> list[Finding]:
     findings: list[Finding] = []
-    readings: list[_Reading] = []
     for file in files:
         language = _LANGUAGES.get(extension(file.path))
         if language is None or file.binary or file.status == "deleted" or not file.hunks:
@@ -92,12 +94,6 @@ def check(files: list[FileDiff]) -> list[Finding]:
         if test:
             findings.extend(_assertions_removed(read))
             findings.extend(_tolerance_loosened(read))
-            readings.append(read)
-    # A test deleted counts only beside a change to the code it tested, and not when it moved to another file.
-    if any(not is_test_path(file.path) and extension(file.path) in _LANGUAGES and file.hunks for file in files):
-        moved = {name for read in readings for name, (_, _, function) in read.functions("+").items() if function.test}
-        for read in readings:
-            findings.extend(_deleted(read, moved))
     return findings
 
 
@@ -244,18 +240,18 @@ class _Reading:
             runs.append(run)
         return runs
 
-    def functions(self, kind: str) -> dict[str, tuple[Hunk, int, _Function]]:
-        """The named functions whose first line is of this kind ("+" added, "-" removed, " " unchanged), and where."""
+    def functions(self, kind: str) -> set[str]:
+        """The names of the functions whose first line the PR adds ("+") or removes ("-")."""
         return self._functions[kind]
 
     @cached_property
-    def _functions(self) -> dict[str, dict[str, tuple[Hunk, int, _Function]]]:
-        found: dict[str, dict[str, tuple[Hunk, int, _Function]]] = {"+": {}, "-": {}, " ": {}}
+    def _functions(self) -> dict[str, set[str]]:
+        found: dict[str, set[str]] = {"+": set(), "-": set()}
         for side in (self.old, self.new):
             for hunk, row in zip(self.file.hunks, side):
-                for index, function in enumerate(row):
-                    if function is not None and function.name and function.first is hunk.lines[index]:
-                        found[hunk.lines[index].kind][function.name] = (hunk, index, function)
+                for line, function in zip(hunk.lines, row):
+                    if function is not None and function.name and function.first is line and line.kind != " ":
+                        found[line.kind].add(function.name)
         return found
 
     @cached_property
@@ -531,25 +527,3 @@ def _tolerance_loosened(read: _Reading) -> list[Finding]:
                     "Keep the old tolerance and fix what moved the result, or say in the PR why the result may now differ by more.",
                 ))
     return findings
-
-
-# ── a test deleted ───────────────────────────────────────────────────────
-
-
-def _deleted(read: _Reading, moved: set[str]) -> list[Finding]:
-    if any(function is not None and function.test and function.first is line and line.kind == "+"
-           for hunk, row in zip(read.file.hunks, read.new) for line, function in zip(hunk.lines, row)):
-        return []  # the file gains a test: more likely rewritten or renamed than dropped
-    kept = read.functions(" ")
-    gone = {name: where for name, where in read.functions("-").items() if where[2].test and name not in kept and name not in moved}
-    if not gone:
-        return []
-    names = list(gone)
-    hunk, index, _ = gone[names[0]]
-    run = read.runs[read.file.hunks.index(hunk)][index]
-    listed = ", ".join(f"`{_quote(name, 60)}`" for name in names[:5]) + (f" and {len(names) - 5} more" if len(names) > 5 else "")
-    return [_finding(
-        read.file, _anchor(hunk, run), DELETED, f"`{_quote(names[0], 60)}` is deleted" if len(names) == 1 else f"{len(names)} tests are deleted",
-        f"This PR deletes {listed} from this file, adds no test to it, and changes code outside the tests.",
-        "Say in the PR what the deleted tests covered and why that no longer needs a test.",
-    )]

@@ -56,14 +56,6 @@
   ]
  },
  {
-  "id": "tests-deleted-pytest",
-  "rule": "tests/deleted",
-  "caught": true,
-  "found": [
-   "tests/deleted"
-  ]
- },
- {
   "id": "tests-control-rewritten-assertion",
   "rule": "tests/assertions-removed",
   "caught": false,
@@ -79,7 +71,7 @@
  },
  {
   "id": "tests-control-renamed-test",
-  "rule": "tests/assertions-removed or tests/deleted",
+  "rule": "tests/assertions-removed",
   "caught": false,
   "found": [],
   "control": true
@@ -100,7 +92,7 @@
  },
  {
   "id": "tests-control-moved-test",
-  "rule": "tests/assertions-removed or tests/deleted",
+  "rule": "tests/assertions-removed",
   "caught": false,
   "found": [],
   "control": true

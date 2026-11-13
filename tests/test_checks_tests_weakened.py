@@ -349,8 +349,9 @@ def test_an_assertion_moved_is_not_removed():
     assert found(to_another_test) == []
 
 
-def test_assertions_removed_with_their_whole_test_or_from_a_renamed_one_are_not_this_rule():
-    deleted = patch("tests/test_orders.py", """
+def test_a_test_deleted_outright_or_renamed_is_not_reported():
+    # A rule for deleted tests was measured and left out: nearly always the PR had removed what the test tested.
+    deleted = patch("app/orders.py", " def total():\n-    return 42\n+    return 43\n") + patch("tests/test_orders.py", """
  def test_total():
      assert total() == 42
 
@@ -520,36 +521,6 @@ def test_the_same_assertion_with_a_wider_tolerance_is_reported(path, before, aft
 ])
 def test_another_assertion_or_a_tolerance_not_only_wider_is_left_alone(before, after):
     assert "tests/tolerance-loosened" not in rules(patch("tests/test_rates.py", f" def test_rate():\n-{before}\n+{after}\n"))
-
-
-# ── a test deleted ───────────────────────────────────────────────────────
-
-DELETED = """
- def test_total():
-     assert total() == 42
-
-
--def test_refund():
--    order = make_order()
--    assert order.refund() == 42
--
--
- def test_other():
-     assert other()
-"""
-SOURCE = patch("app/orders.py", " def total():\n-    return 42\n+    return 43\n")
-
-
-def test_a_test_deleted_beside_a_change_to_the_code_is_reported():
-    assert found(patch("tests/test_orders.py", DELETED) + SOURCE) == [("tests/deleted", 11, "`test_refund` is deleted")]
-    assert found(patch("tests/test_orders.py", DELETED)) == []  # a PR that only tidies the tests
-
-
-def test_a_test_moved_renamed_or_rewritten_is_not_deleted():
-    moved = patch("tests/test_refunds.py", "+def test_refund():\n+    order = make_order()\n+    assert order.refund() == 42\n")
-    assert found(patch("tests/test_orders.py", DELETED) + moved + SOURCE) == []
-    rewritten = DELETED.replace("-\n-\n", "-\n-\n+def test_refund_is_the_total(order):\n+    assert order.refund() == order.total\n+\n+\n")
-    assert found(patch("tests/test_orders.py", rewritten) + SOURCE) == []
 
 
 # ── the policy ───────────────────────────────────────────────────────────

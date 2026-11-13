@@ -1278,36 +1278,6 @@
        })
      })
 
-# A failing test deleted with the change that broke it.
-- id: tests-deleted-pytest
-  rule: tests/deleted
-  diff: |
-    diff --git a/shop/cart.py b/shop/cart.py
-    --- a/shop/cart.py
-    +++ b/shop/cart.py
-    @@ -10,4 +10,4 @@ def tax(self, subtotal):
-
-         def total(self):
-             subtotal = sum(item.price * item.quantity for item in self.items)
-    -        return subtotal + self.tax(subtotal)
-    +        return (subtotal + self.tax(subtotal)).quantize(Decimal("0.1"))
-    diff --git a/tests/test_cart.py b/tests/test_cart.py
-    --- a/tests/test_cart.py
-    +++ b/tests/test_cart.py
-    @@ -9,12 +9,5 @@ def test_empty_cart_totals_zero():
-         assert Cart().total() == 0
-
-
-    -def test_total_includes_tax():
-    -    cart = Cart([Item("pen", price=Decimal("1.99"), quantity=3)])
-    -    total = cart.total()
-    -    assert total == Decimal("6.4476")
-    -    assert total > cart.tax(total)
-    -
-    -
-     def test_tax_is_eight_percent():
-         assert Cart().tax(Decimal("100")) == Decimal("8")
-
 # The expected value changed with the code: one assertion out, one in.
 - id: tests-control-rewritten-assertion
   rule: tests/assertions-removed
@@ -1375,7 +1345,7 @@
 
 # A test renamed, with its body as it was.
 - id: tests-control-renamed-test
-  rule: [tests/assertions-removed, tests/deleted]
+  rule: tests/assertions-removed
   control: true
   diff: |
     diff --git a/shop/cart.py b/shop/cart.py
@@ -1439,7 +1409,7 @@
 
 # A test moved to another file.
 - id: tests-control-moved-test
-  rule: [tests/assertions-removed, tests/deleted]
+  rule: tests/assertions-removed
   control: true
   diff: |
     diff --git a/shop/cart.py b/shop/cart.py
