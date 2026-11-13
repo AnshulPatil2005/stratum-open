@@ -173,15 +173,23 @@ def _keep_marks(path: Path, rows: list[dict], key: tuple[str, ...], marks: tuple
             row[mark] = row[mark] or old.get(mark, "")
 
 
-def _score(out: Path) -> int:
-    rows = planted._read(out / "checks.csv")
-    markers = planted._read(out / "markers.csv")
+def scores(out: Path) -> dict:
+    """What a run adds up to, for its summary and the results page alike."""
     cases = json.loads((out / "planted.json").read_text(encoding="utf-8"))
     lists = json.loads((out / "lists.json").read_text(encoding="utf-8"))
-    dropped = planted._read(out / "dropped.csv") if (out / "dropped.csv").exists() else []
-    merged = [row for row in rows if row["set"] == "merged"]
-    risks, controls = [c for c in cases if not c.get("control")], [c for c in cases if c.get("control")]
-    total = {key: sum(entry[key] for entry in lists) for key in COUNTS}
+    return {
+        "risks": [c for c in cases if not c.get("control")], "controls": [c for c in cases if c.get("control")],
+        "merged": [row for row in planted._read(out / "checks.csv") if row["set"] == "merged"],
+        "markers": planted._read(out / "markers.csv"),
+        "dropped": planted._read(out / "dropped.csv") if (out / "dropped.csv").exists() else [],
+        "lists": lists, "total": {key: sum(entry[key] for entry in lists) for key in COUNTS},
+    }
+
+
+def _score(out: Path) -> int:
+    numbers = scores(out)
+    risks, controls, merged, markers, dropped, lists, total = (
+        numbers[key] for key in ("risks", "controls", "merged", "markers", "dropped", "lists", "total"))
     lines = [
         "# Weakened tests: the check on merged PRs",
         "",

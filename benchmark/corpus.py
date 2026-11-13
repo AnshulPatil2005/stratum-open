@@ -250,13 +250,19 @@ def graphql(**variables) -> dict:
 # ── the summary ──────────────────────────────────────────────────────────
 
 
-def _summary(out: Path) -> int:
+def scores(out: Path) -> dict[str, tuple[list[dict], list[dict]]]:
+    """Each group's merged PRs and the findings on them, for the summary and the results page alike."""
     runs: dict[str, tuple[list[dict], list[dict]]] = {}
     for group in GROUPS:
         if (out / group / "checks.csv").exists():
             with (out / group / "checks.csv").open(encoding="utf-8", newline="") as handle:
                 rows = [row for row in csv.DictReader(handle) if row["set"] == "merged"]
             runs[group] = (json.loads((out / group / "prs.json").read_text(encoding="utf-8")), rows)
+    return runs
+
+
+def _summary(out: Path) -> int:
+    runs = scores(out)
     if not runs:
         raise SystemExit(f"Nothing to sum up in {out}: no js/, go/, rust/ or infra/ with a checks.csv")
     every = [row for _, rows in runs.values() for row in rows]
