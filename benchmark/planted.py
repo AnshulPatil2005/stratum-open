@@ -30,7 +30,8 @@ each of which should get its rule's finding, and on merged PRs as they are,
 where every finding is a possible false alarm for a person to mark. A case
 marked `control: true` is the other way round: files its rule must leave
 alone. `--policy` is a policy file, for a rule that is off until a key
-turns it on.
+turns it on. `checks.ruff` is turned on as well, so Ruff's rules are
+measured when Ruff is installed.
 
 `validate` reads every case of a case file against its PR, before a model
 does: the fields are in order, the line is one the PR adds and reads `find`,
@@ -42,6 +43,7 @@ holds; `--strict` fails on those too.
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import ast
 import csv
 import json
@@ -65,6 +67,7 @@ from bench import CACHE, _fetch, _token, _write  # noqa: E402
 from stratum_open.checks import run_checks  # noqa: E402
 from stratum_open.checks.bandit import available as bandit_available  # noqa: E402
 from stratum_open.checks.dependencies import PackageLookup, manifest_kind  # noqa: E402
+from stratum_open.checks.ruff import available as ruff_available  # noqa: E402
 from stratum_open.diff import FileDiff, Hunk, Line, parse_diff  # noqa: E402
 from stratum_open.engine import analyze  # noqa: E402
 from stratum_open.github.api import GitHub, GitHubError  # noqa: E402
@@ -499,6 +502,7 @@ def _checks(args) -> int:
     policy = parse_policy(Path(args.policy).read_text(encoding="utf-8") if args.policy else "")
     if policy.errors or policy.warnings:  # a mistyped key would leave its rule off, and the run would measure nothing
         raise SystemExit(f"{args.policy}: " + " ".join(policy.errors + policy.warnings))
+    policy = dataclasses.replace(policy, checks=dataclasses.replace(policy.checks, ruff=True))  # off by default, and measured here like the rest
     lookup = PackageLookup()
     rows, results = [], []
     for case in yaml.safe_load(Path(args.risks).read_text(encoding="utf-8")):
@@ -533,6 +537,8 @@ def _checks(args) -> int:
         print("Bandit isn't installed, so its cases are missed: pip install bandit.")
     if not policy.dependencies.known_vulnerabilities:
         print("dependencies.known_vulnerabilities is off, so its cases are missed: --policy benchmark/planted/variants/known-vulnerabilities.yml.")
+    if not ruff_available():
+        print("Ruff isn't installed, so its cases are missed: pip install ruff.")
     return _score(out)
 
 
@@ -545,7 +551,8 @@ def _checks_summary(out: Path) -> str:
     groups: dict[str, list[dict]] = defaultdict(list)
     for case in planted:
         groups[case["rule"].split("/")[0].split(" ")[0]].append(case)
-    names = {"code": "Secrets and risky code", "bandit": "Bandit (optional extra)", "workflow": "GitHub workflows",
+    names = {"code": "Secrets and risky code", "bandit": "Bandit (optional extra)", "ruff": "Ruff (optional extra, off by default)",
+             "workflow": "GitHub workflows",
              "deps": "Dependencies", "agents": "Coding-agent files", "unicode": "Hidden Unicode"}
     lines = [
         "# Checks that need no model",
@@ -615,7 +622,7 @@ def _added_files(spec: dict[str, str]) -> tuple[list[FileDiff], dict[str, str]]:
 
 def _head_contents(repo: str, number: int, files: list[FileDiff]) -> dict[str, str]:
     """The files the Action reads in full for the checks (manifests,
-    workflows, and Python for Bandit), at the PR's head, cached."""
+    workflows, and Python for Bandit and Ruff), at the PR's head, cached."""
     path = CACHE / f"{repo.replace('/', '__')}__{number}__contents.json"
     if path.exists():
         return json.loads(path.read_text(encoding="utf-8"))

@@ -1,0 +1,60 @@
+rule,case,prs,path,line,code,reported,verdict,note
+ruff/B006,Textualize/textual#6402,1,src/textual/css/styles.py,624,"def is_relative_width(self, _relative_units={Unit.FRACTION, Unit.PERCENT}) -> bool:",,wrong,"The set is a constant the method only reads, kept as a default so it's built once."
+ruff/B006,Textualize/textual#6402,1,src/textual/css/styles.py,630,"def is_relative_height(self, _relative_units={Unit.FRACTION, Unit.PERCENT}) -> bool:",,wrong,"The set is a constant the method only reads, kept as a default so it's built once."
+ruff/B006,Textualize/textual#6402,1,src/textual/css/styles.py,649,"self, _dynamic_units={Unit.AUTO, Unit.FRACTION, Unit.PERCENT}",,wrong,"The set is a constant the method only reads, kept as a default so it's built once."
+ruff/B006,psf/black#5609,1,src/blib2to3/pytree.py,502,"fixers_applied: list[Any] = [],",,wrong,"The list is copied before it's kept (`fixers_applied[:]`), so the shared default is never changed."
+ruff/B008,Textualize/rich#4075,5,rich/console.py,646,"highlighter: Optional[""HighlighterType""] = ReprHighlighter(),",,wrong,The default is built once on purpose and only read.
+ruff/B008,Textualize/textual#6410,1,src/textual/scrollbar.py,108,"back_color: Color = Color.parse(""#555555""),",,wrong,The default is built once on purpose and only read.
+ruff/B008,Textualize/textual#6410,1,src/textual/scrollbar.py,109,"bar_color: Color = Color.parse(""bright_magenta""),",,wrong,The default is built once on purpose and only read.
+ruff/B008,python-attrs/attrs#1606,4,src/attr/_make.py,100,"def __reduce__(self, _none_constructor=type(None), _args=()):  # noqa: B008",,wrong,The default is built once on purpose and only read. The project marks it `# noqa`.
+ruff/B008,scrapy/scrapy#8440,1,scrapy/core/_http2/agent.py,164,"context_factory: _PolicyForHTTPS = BrowserLikePolicyForHTTPS(),  # noqa: B008",,wrong,The default is built once on purpose and only read. The project marks it `# noqa`.
+ruff/B018,Textualize/rich#4075,5,rich/console.py,508,get_ipython  # type: ignore[name-defined],,wrong,A probe inside `try/except NameError`: the lookup is the point.
+ruff/B018,Textualize/textual#6410,1,src/textual/message_pump.py,179,self._message_queue,,wrong,Reading the property creates the queue or event in the current thread (`_thread_init`).
+ruff/B018,Textualize/textual#6410,1,src/textual/message_pump.py,180,self._mounted_event,,wrong,Reading the property creates the queue or event in the current thread (`_thread_init`).
+ruff/B018,Textualize/textual#6410,2,src/textual/message_pump.py,894,self.app.screen,,wrong,"Inside a `try`: reading the property raises when there is no screen, which is what's tested."
+ruff/B018,Textualize/textual#6471,4,src/textual/app.py,924,self._message_queue,,wrong,Reading the property creates the queue or event in the current thread (`_thread_init`).
+ruff/B018,Textualize/textual#6471,4,src/textual/app.py,925,self._mounted_event,,wrong,Reading the property creates the queue or event in the current thread (`_thread_init`).
+ruff/B018,Textualize/textual#6471,4,src/textual/app.py,926,self._exception_event,,wrong,Reading the property creates the queue or event in the current thread (`_thread_init`).
+ruff/B018,Textualize/textual#6471,1,src/textual/app.py,5003,self.screen,,wrong,"Inside a `try`: reading the property raises when there is no screen, which is what's tested."
+ruff/B018,pallets/flask#6176,1,src/flask/app.py,532,request.host  # noqa:B018,,wrong,Reading `request.host` checks it against the trusted hosts. The project marks it `# noqa`.
+ruff/B018,psf/requests#7497,1,src/requests/auth.py,300,r.content,,wrong,"Reading `.content` consumes the response body, which is what the line is for."
+ruff/B018,psf/requests#7497,2,src/requests/sessions.py,212,resp.content  # Consume socket so it can be released,,wrong,"Reading `.content` consumes the response body, which is what the line is for."
+ruff/B018,psf/requests#7497,2,src/requests/sessions.py,827,r.content,,wrong,"Reading `.content` consumes the response body, which is what the line is for."
+ruff/B018,psf/requests#7505,3,src/requests/models.py,822,self.content,,wrong,"Reading `.content` consumes the response body, which is what the line is for."
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,49,c.a,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,57,D(1).a,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,65,"Derived(1, 2).a",,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,66,"Derived(1, 2).b",,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,77,e.x,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,78,e.args,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,88,attrs.fields(AliasExample).without_alias.alias,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,89,attrs.fields(AliasExample)._with_alias.alias,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,202,attrs.converters.optional,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,203,attrs.exceptions.FrozenError,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,204,attrs.filters.include,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,205,attrs.filters.exclude,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,206,attrs.setters.frozen,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,207,attrs.validators.and_,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,208,attrs.cmp_using,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,217,cp.added_init,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B018,python-attrs/attrs#1592,1,typing-examples/baseline.py,219,cp.is_slotted,,wrong,A file of expressions for a type checker to read; none is meant to do anything.
+ruff/B020,Textualize/textual#6402,1,src/textual/widgets/_markdown.py,740,for block in block._blocks:,,wrong,"The loop variable reuses the name of what it loops over. Python reads the iterable once, so it works."
+ruff/B020,pypa/pip#14347,1,src/pip/_internal/commands/configuration.py,207,"for key, value in sorted(value.items()):",,wrong,"The loop variable reuses the name of what it loops over. Python reads the iterable once, so it works."
+ruff/B023,Textualize/rich#3935,1,rich/table.py,855,if header_row:,,wrong,"The function is called inside the same turn of the loop, so it sees the value it was written for."
+ruff/B023,Textualize/rich#3935,1,rich/table.py,857,elif footer_row:,,wrong,"The function is called inside the same turn of the loop, so it sees the value it was written for."
+ruff/B023,Textualize/rich#3935,1,rich/table.py,861,"return _Segment.align_top(cell, width, row_height, style)",,wrong,"The function is called inside the same turn of the loop, so it sees the value it was written for."
+ruff/B023,Textualize/rich#3935,1,rich/table.py,863,"return _Segment.align_middle(cell, width, row_height, style)",,wrong,"The function is called inside the same turn of the loop, so it sees the value it was written for."
+ruff/B023,Textualize/rich#3935,1,rich/table.py,864,"return _Segment.align_bottom(cell, width, row_height, style)",,wrong,"The function is called inside the same turn of the loop, so it sees the value it was written for."
+ruff/B023,Textualize/textual#6478,3,src/textual/dom.py,378,return setter,,wrong,"`setter` is the function defined just above the `return`, not the loop's variable of that name."
+ruff/B023,Textualize/textual#6592,3,src/textual/_xterm_parser.py,235,if sequence == ESC:,,wrong,"The function is called inside the same turn of the loop, so it sees the value it was written for."
+ruff/B023,Textualize/textual#6592,3,src/textual/_xterm_parser.py,238,"reissue_sequence_as_keys(sequence, process_alt=process_alt)",,wrong,"The function is called inside the same turn of the loop, so it sees the value it was written for."
+ruff/B023,pydantic/pydantic#14196,1,pydantic/_internal/_known_annotated_metadata.py,249,"f""Unable to apply constraint '{constraint}' to supplied value {value} for schema of type '{schema_type}'""  # noqa: B023",,unsure,"The function outlives the loop and reads `constraint` only to word an error, which could then name a later constraint. The project marks it `# noqa`."
+ruff/B023,pydantic/pydantic#14196,2,pydantic/_internal/_known_annotated_metadata.py,320,predicate_satisfied = annotation.func(v)  # noqa: B023,,wrong,"The project's comment says the loop has one item here, so the value can't change. It marks the line `# noqa`."
+ruff/B023,pydantic/pydantic#14196,1,pydantic/_internal/_known_annotated_metadata.py,324,"f'Predicate {predicate_name}failed',  # pyright: ignore[reportArgumentType]  # noqa: B023",,wrong,"The project's comment says the loop has one item here, so the value can't change. It marks the line `# noqa`."
+ruff/B023,pydantic/pydantic#14196,1,pydantic/_internal/_known_annotated_metadata.py,335,"f'Not of {predicate_name}failed',  # pyright: ignore[reportArgumentType]  # noqa: B023",,wrong,"The project's comment says the loop has one item here, so the value can't change. It marks the line `# noqa`."
+ruff/F821,Textualize/textual#6402,1,src/textual/css/styles.py,163,scrollbar_visibility: ScrollbarVisibility,yes,right,"A real slip that was merged: the annotation names `ScrollbarVisibility`, which the file never imports. Nothing fails until something reads the annotation."
+ruff/F821,pypa/pip#14352,1,src/pip/_vendor/truststore/__init__.py,33,"del _api, _sys  # type: ignore[name-defined] # noqa: F821",,wrong,"`from ._api import ...` in a package's `__init__.py` binds `_api` too, so the `del` works. The check now leaves this out."
+ruff/PLE0302,psf/black#5617,1,src/blib2to3/pytree.py,95,def __deepcopy__(self: _P) -> _P:,yes,right,"A real bug that was merged: `copy.deepcopy()` calls `__deepcopy__(memo)`, so with no `memo` parameter it raises TypeError."
+ruff/PLE0704,pallets/flask#6013,4,src/flask/sansio/app.py,1011,raise,,wrong,"The method is called while an exception is being handled, and the bare `raise` re-raises it."
+ruff/PLE0704,pallets/flask#6176,6,src/flask/app.py,912,raise,,wrong,"The method is called while an exception is being handled, and the bare `raise` re-raises it."
+ruff/PLE0704,pallets/werkzeug#3329,1,src/werkzeug/serving.py,840,raise,,wrong,"The method is called while an exception is being handled, and the bare `raise` re-raises it."
