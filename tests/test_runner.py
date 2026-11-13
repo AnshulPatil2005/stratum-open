@@ -847,3 +847,24 @@ def test_a_moved_file_too_big_to_fetch_is_named_as_unread(monkeypatch):
     gh = FakeGitHub(diff=moved("tests/helper.py", "app/helper.py"), files={("app/helper.py", "a" * 40): "def f(request):\n    eval(request.args['x'])\n"})
     outcome = review_pull(context(gh, None), 7)
     assert {f.rule for f in outcome.findings} == {"checks/moved-unread"}
+
+
+def test_a_name_its_module_doesnt_define_is_reported_when_the_policy_asks(tmp_path):
+    for path, text in {"app/__init__.py": "", "app/db.py": "def connect():\n    pass\n", "app/users.py": "import sqlite3\n"}.items():
+        (tmp_path / path).parent.mkdir(exist_ok=True)
+        (tmp_path / path).write_text(text)
+    diff = ("diff --git a/app/users.py b/app/users.py\n--- a/app/users.py\n+++ b/app/users.py\n@@ -1 +1,2 @@\n import sqlite3\n"
+            "+from app.db import connect, disconnect\n")
+    on = parse_policy("checks:\n  unknown_names: true\n")
+
+    def found(policy, **kwargs):
+        gh = FakeGitHub(diff=diff)
+        return gh, [f for f in review_pull(context(gh, None, policy, **kwargs), 7).findings if f.rule == "code/unknown-name"]
+
+    gh, [finding] = found(on, checkout=str(tmp_path))
+    assert (finding.path, finding.line_start, finding.severity, finding.title) == ("app/users.py", 2, "high", "`app/db.py` has no `disconnect`")
+    [comment] = [c for review in gh.reviews for c in review["comments"]]
+    assert comment["line"] == 2 and "`app/db.py` has no `disconnect`" in comment["body"]
+    # Off by default, and nothing to read without a checkout.
+    assert found(parse_policy(""), checkout=str(tmp_path))[1] == []
+    assert found(on)[1] == []

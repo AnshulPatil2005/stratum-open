@@ -368,6 +368,7 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
     default branch's checkout. Without one (the CLI on a PR URL), boundaries
     still work from the diff alone."""
     from stratum_open.repo.boundaries import boundary_findings
+    from stratum_open.repo.unknown_names import unknown_name_findings
 
     notes: list[str] = []
     hot: set[str] = set()
@@ -414,6 +415,7 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
     except Exception as exc:
         ctx.log(f"boundaries: {type(exc).__name__}: {exc}")
         boundary = []
+    boundary += unknown_name_findings(files, ctx.policy, ctx.checkout)
     return notes, hot, boundary, file_notes
 
 

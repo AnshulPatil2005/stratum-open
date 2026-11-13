@@ -230,6 +230,37 @@ def test_review_local_from_a_subfolder_with_diff_relative(tmp_path, capsys, monk
     assert "sub/app.py:2" in capsys.readouterr().out  # the path from the repo root, not from sub/
 
 
+def test_review_local_looks_names_up_in_the_modules_as_the_branch_leaves_them(tmp_path, capsys, monkeypatch):
+    empty = tmp_path / "gitconfig"
+    empty.write_text("")
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": str(empty), "GIT_CONFIG_NOSYSTEM": "1",
+           "GIT_AUTHOR_NAME": "a", "GIT_AUTHOR_EMAIL": "a@example.com", "GIT_COMMITTER_NAME": "a", "GIT_COMMITTER_EMAIL": "a@example.com"}
+    repo = tmp_path / "repo"
+    (repo / "app").mkdir(parents=True)
+    (repo / ".stratum").mkdir()
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, env=env)
+
+    git("init", "-q", "-b", "main")
+    (repo / ".stratum" / "policy.yml").write_text("checks:\n  unknown_names: true\n")
+    (repo / "app" / "__init__.py").write_text("")
+    (repo / "app" / "db.py").write_text("def connect():\n    pass\n")
+    (repo / "app" / "users.py").write_text("import sqlite3\n")
+    git("add", ".")
+    git("commit", "-q", "-m", "init")
+    git("checkout", "-q", "-b", "feature")
+    (repo / "app" / "db.py").write_text("def connect():\n    pass\n\n\ndef close():\n    pass\n")
+    (repo / "app" / "users.py").write_text("import sqlite3\nfrom app.db import close, connect, disconnect\n")
+    git("commit", "-q", "-am", "Close the connection")
+    monkeypatch.chdir(repo / "app")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    assert cli.main(["review", "--local", "main", "--no-model"]) == 0
+    out = capsys.readouterr().out
+    assert "app/users.py:2" in out and "`app/db.py` has no `disconnect`" in out
+    assert "`close`" not in out  # the branch adds it
+
+
 def test_a_redelivered_webhook_is_ignored(server):
     def deliver(delivery):
         body = pr_event()
