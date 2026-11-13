@@ -93,6 +93,63 @@ def test_without_a_quote_a_replacement_is_never_offered():
     assert finding.line_start == 5 and finding.replacement is None
 
 
+def test_a_quote_across_a_blank_line_is_found():
+    from stratum_open.review import _locate
+    [file] = parse_diff(DIFF)
+    assert _locate("import requests\n\ndef get_user(conn, user_id):", file, near=None) == (2, 4, True)
+    assert _locate("import requests\ndef get_user(conn, user_id):", file, near=None) == (2, 4, False)  # the blank line left out
+    assert _locate("\nimport requests\n\n", file, near=None) == (2, 2, True)
+    assert _locate("import requests\n\n\ndef get_user(conn, user_id):", file, near=None) == (2, 4, False)  # one blank too many
+
+
+SPACED = """diff --git a/app/calc.py b/app/calc.py
+new file mode 100644
+--- /dev/null
++++ b/app/calc.py
+@@ -0,0 +1,5 @@
++def total(xs):
++    return sum(xs)
++
++
++RATE = 0.2 * 100
+"""
+
+
+@pytest.mark.parametrize("code, offered", [
+    ("    return sum(xs)\n\n\nRATE = 0.2 * 100", True),
+    ("    return sum(xs)\nRATE = 0.2 * 100", False),  # the two blank lines left out
+    ("    return sum(xs)\n\n\n\nRATE = 0.2 * 100", False),  # one blank too many
+])
+def test_a_replacement_is_only_offered_where_the_quote_matched_blank_lines_and_all(code, offered):
+    data = {"summary": "s", "findings": [{
+        "file": "app/calc.py", "code": code, "line": 2, "severity": "medium", "category": "bug",
+        "title": "Rate as a percentage", "detail": "RATE is a fraction everywhere else.",
+        "replacement": "    return sum(xs)\n\n\nRATE = 0.2",
+    }]}
+    [finding] = review(title="t", description="d", files=parse_diff(SPACED), policy=parse_policy(None),
+                       model=FakeModel(json.dumps(data))).findings
+    assert (finding.line_start, finding.line_end) == (2, 5)
+    assert (finding.replacement is not None) == offered
+
+
+def test_a_quote_across_two_hunks_is_not_found():
+    from stratum_open.review import _locate
+    [file] = parse_diff("""diff --git a/app/a.py b/app/a.py
+--- a/app/a.py
++++ b/app/a.py
+@@ -1,2 +1,2 @@
+ x = 1
+-y = 2
++y = 3
+@@ -10,2 +10,2 @@
+-z = 4
++z = 5
+ w = 6
+""")
+    # Lines 2 and 10 sit side by side in what the diff shows, but GitHub can't take one comment across both.
+    assert _locate("y = 3\nz = 5", file, near=None) is None
+
+
 def test_bad_parts_of_a_reply_are_dropped_not_passed_on():
     findings = [
         {"file": "nope.py", "title": "x", "detail": "not in the diff"},
@@ -276,6 +333,9 @@ def test_the_verifier_is_shown_the_flagged_line_even_in_a_long_hunk():
     ("a_@alice_b", "a_@alice_b"),
     ("1_@alice", "1_@alice"),
     ("x `@alice` y", "x `@alice` y"),
+    ("x ` @alice ` y", "x ` @alice ` y"),
+    # A backtick with no closing one opens no code span, so GitHub links what follows.
+    ("Fix ` thing @octocat", "Fix ` thing `@octocat`"),
 ])
 def test_demention_escapes_every_mention_github_would_link(text, escaped):
     assert demention(text) == escaped

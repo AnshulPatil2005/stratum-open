@@ -49,6 +49,19 @@ def test_python_package_roots(tmp_path):
     assert found["app/models.py"].examples == ["scripts/seed.py"]
 
 
+def test_a_package_beats_a_module_of_the_same_name(tmp_path):
+    repo = write(tmp_path, {
+        "a/__init__.py": "",
+        "a/b.py": "",
+        "a/b/__init__.py": "",
+        "main.py": "import a.b\n",
+        "other.py": "from a import b\n",
+    })
+    found = importers(repo, ["a/b.py", "a/b/__init__.py"])
+    assert found["a/b/__init__.py"].examples == ["main.py", "other.py"]
+    assert found["a/b.py"].count == 0
+
+
 def test_js_and_ts_imports(tmp_path):
     repo = write(tmp_path, {
         "web/src/api/client.ts": "export const get = 1\n",

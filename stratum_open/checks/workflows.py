@@ -91,7 +91,7 @@ _TRIGGER_KEY = re.compile(
 )
 _HEAD = (
     r"github\.event\.pull_request\.head\.(?:sha|ref|repo\.full_name)|github\.head_ref"
-    r"|github\.event\.pull_request\.number|github\.event\.number|refs/pull/"
+    r"|github\.event\.pull_request\.(?:number|merge_commit_sha)|github\.event\.number|refs/pull/"
 )
 # Checking out the PR's code: a `ref:`/`repository:` input naming its head,
 # or a git command fetching it. A bare `github.head_ref` elsewhere (often in
@@ -239,9 +239,10 @@ _EXPRESSION = re.compile(r"\$\{\{(.*?)\}\}")
 _UNTRUSTED = re.compile(
     r"\bgithub\.event\.(?:issue|pull_request|comment|review|review_comment|head_commit|commits|pages|discussion"
     r"|discussion_comment|workflow_run)(?:\.[\w-]+|\[[^\]]*\]|\.\*)*?"
-    r"\.(?:title|body|message|name|label|ref|email|head_ref|page_name|head_branch|display_title)(?![\w.-])"
+    r"\.(?:title|body|message|name|label|ref|email|head_ref|page_name|head_branch|display_title|default_branch)(?![\w.-])"
     r"|\bgithub\.head_ref\b"
 )
+_BASE_REPO = re.compile(r"\.(?:base|repository)\.")
 
 
 def _script_lines(lines: list[tuple[int, str]]) -> set[int]:
@@ -271,7 +272,8 @@ def _injection(path: str, number: int, text: str) -> list[Finding]:
     untrusted = []
     for expression in _EXPRESSION.finditer(text):
         match = _UNTRUSTED.search(expression.group(1))
-        if match and ".base." not in match.group(0):
+        # `.base.` and `.repository.` (not `.head_repository.`) name the base repo, which its maintainers control.
+        if match and not _BASE_REPO.search(match.group(0)):
             untrusted.append(match.group(0))
     if not untrusted:
         return []

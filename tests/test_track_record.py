@@ -168,6 +168,12 @@ def test_prs_outside_the_window_are_left_out(repo):
     assert [pr.number for pr in result["bob@example.com"].merged] == [13, 14]
 
 
+@pytest.mark.parametrize("window_days", [20000, 36500])
+def test_a_window_back_past_1973_still_reads_the_history(repo, window_days):
+    repo.squash(12, "Add login", email=ALICE, day=10)
+    assert [pr.number for pr in records(repo, window_days=window_days)["alice"].merged] == [12]
+
+
 def test_stacked_pr_is_credited_only_with_its_own_commits(repo):
     repo.merge(50, "Base", "base", [(ALICE, "a1"), (ALICE, "a2")], day=10)
     repo.git("checkout", "-q", "-b", "stacked", "base")

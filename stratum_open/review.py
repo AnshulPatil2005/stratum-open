@@ -419,7 +419,7 @@ def _to_finding(raw: Any, by_path: dict[str, FileDiff]) -> Finding | None:
     located = _locate(_text(raw.get("code"), 2000), file, near=start)
     quoted = located is not None
     if quoted:
-        start, end = located
+        start, end, exact = located
     elif start is not None and not file.can_comment(start, end):
         if file.can_comment(start):
             end = start
@@ -428,8 +428,10 @@ def _to_finding(raw: Any, by_path: dict[str, FileDiff]) -> Finding | None:
     replacement = raw.get("replacement")
     replacement = replacement if isinstance(replacement, str) and replacement.strip() else None
     # A suggestion replaces the lines it sits on, so it's only offered where
-    # the model showed which lines it meant.
-    if replacement is not None and (not quoted or "..." in replacement or _norm(replacement) == _norm(file.snippet(start, end))):
+    # the model showed which lines it meant: a quote that left out or added a
+    # blank line would have its replacement drop or add one too.
+    if replacement is not None and (not quoted or not exact or "..." in replacement
+                                    or _norm(replacement) == _norm(file.snippet(start, end))):
         replacement = None
     if replacement is not None:
         replacement = _reindent(replacement, file, start, end)
@@ -484,26 +486,40 @@ def _reindent(replacement: str, file: FileDiff, start: int, end: int) -> str:
     return "\n".join(lines)
 
 
-def _locate(code: str, file: FileDiff, near: int | None) -> tuple[int, int] | None:
+def _locate(code: str, file: FileDiff, near: int | None) -> tuple[int, int, bool] | None:
     """Where the quoted code sits on the new side of the diff, preferring
-    added lines and the match nearest the line number the model gave."""
+    added lines and the match nearest the line number the model gave, and
+    whether it matched blank lines included."""
     wanted = [_norm(_NUMBERED.sub("", line).removeprefix("+")) for line in code.splitlines()]
-    wanted = [line for line in wanted if line]
+    while wanted and not wanted[0]:
+        wanted.pop(0)
+    while wanted and not wanted[-1]:
+        wanted.pop()
     if not wanted:
         return None
-    added = {number for number, _ in file.added()}
     side = sorted(file.new_side().items())
+    matches = _matches(wanted, side, file, near)
+    exact = bool(matches)
+    if not matches:  # the quote dropped or added a blank line: match the lines with code only
+        matches = _matches([want for want in wanted if want], [(n, text) for n, text in side if text.strip()], file, near)
+    if not matches:
+        return None
+    _, _, start, end = min(matches)
+    return start, end, exact
+
+
+def _matches(wanted: list[str], side: list[tuple[int, str]], file: FileDiff, near: int | None) -> list[tuple[bool, int, int, int]]:
+    """Each run of `side` that reads as `wanted`. A hunk's new lines have no
+    gaps, so a run inside one hunk is one stretch of the file."""
+    added = {number for number, _ in file.added()}
     matches = []
     for i, (number, _) in enumerate(side):
         window = side[i:i + len(wanted)]
         if len(window) == len(wanted) and all(_norm(text) == want for (_, text), want in zip(window, wanted)):
             last = window[-1][0]
-            if last - number == len(wanted) - 1 and file.can_comment(number, last):
+            if file.can_comment(number, last):
                 matches.append((number not in added, abs(number - (near or number)), number, last))
-    if not matches:
-        return None
-    _, _, start, end = min(matches)
-    return start, end
+    return matches
 
 
 def _match_path(name: str, by_path: dict[str, FileDiff]) -> str | None:
@@ -540,7 +556,9 @@ def demention(text: str) -> str:
     command. The bot's own comments are skipped by the command parser too;
     this covers people."""
     def swap(match: re.Match) -> str:
-        if text.count("`", 0, match.start()) % 2:  # already inside a code span: GitHub won't link it, and more backticks would break the span
+        # Already inside a code span: GitHub won't link it, and more backticks
+        # would break the span. A backtick with none after it opens no span.
+        if text.count("`", 0, match.start()) % 2 and "`" in text[match.end():]:
             return match.group(0)
         return f"`@{match.group(1)}`"
 

@@ -238,7 +238,10 @@ def describe_subprocess_error(exc: BaseException, limit: int = 200) -> str:
 
 
 def _history(repo_dir: str, ref: str, since: datetime) -> dict[str, _Commit]:
-    out = _git(repo_dir, "log", f"--since={int(since.timestamp())}", "--format=%H%x1f%P%x1f%aE%x1f%ct%x1f%B%x1e", ref)
+    # "@<seconds> +0000" is always read as a timestamp; a bare number is only
+    # when it has 9+ digits, so a window back past 1973 would match nothing.
+    # It takes no time before 1970, and no commit is that old.
+    out = _git(repo_dir, "log", f"--since=@{max(0, int(since.timestamp()))} +0000", "--format=%H%x1f%P%x1f%aE%x1f%ct%x1f%B%x1e", ref)
     commits = {}
     for record in out.split("\x1e"):
         record = record.strip("\n")

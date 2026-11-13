@@ -80,7 +80,7 @@ class Model:
             else:
                 reply = self._openai_chat(system, user, max_tokens, json_mode)
         except requests.RequestException as exc:
-            reply = Reply("", self.name, 0, error=f"couldn't reach the model at {self.endpoint}: {type(exc).__name__}")
+            reply = Reply("", self.name, 0, error=f"couldn't reach the model at {_shown(self.endpoint)}: {type(exc).__name__}")
         except ModelError as exc:
             # A server's error text can quote the request back, API key included; it ends up in a PR comment.
             reply = Reply("", self.name, 0, error=redact(str(exc)))
@@ -235,6 +235,18 @@ def _count(value: Any) -> int | None:
 
 def _excerpt(text: str, limit: int = 160) -> str:
     return " ".join((text or "").split())[:limit]
+
+
+def _shown(endpoint: str) -> str:
+    """The endpoint without a user:password or query string, which can hold a key."""
+    try:
+        url = urlparse(endpoint)
+    except ValueError:  # an unclosed [IPv6 address
+        url = None
+    # Without a scheme, urlparse reads `user:pass@host` as scheme `user` and a path holding the password.
+    if url is None or url.scheme not in ("http", "https") or not url.netloc:
+        return "an endpoint that isn't a valid http:// or https:// URL"
+    return f"{url.scheme}://{url.netloc.rpartition('@')[2]}{url.path}"
 
 
 def model_from_policy(policy: Policy, env: Mapping[str, str] = os.environ) -> Model:

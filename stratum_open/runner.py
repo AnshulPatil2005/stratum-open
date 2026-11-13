@@ -308,7 +308,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
             ctx.log(f"couldn't apply the triage label: {exc}")
 
     try:
-        ctx.storage.record_review(gh.repo, number, head, score, result.summary if result else "", findings)
+        ctx.storage.record_review(gh.repo, number, head, score, summary.model_summary, findings)  # the summary as posted
     except Exception as exc:  # the review is on GitHub already; a broken database loses only the App's copy
         ctx.log(redact(f"couldn't store the review: {type(exc).__name__}: {exc}"))
     return Outcome(number, "published", findings, sorted_pr, result, body)

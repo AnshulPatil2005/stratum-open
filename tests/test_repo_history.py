@@ -313,3 +313,12 @@ def test_commit_subjects_are_read(repo):
     repo.commit({"a.py": "x\n"}, day=0)
     repo.commit({"a.py": "y\n"}, day=1, message="Fix the parser\n\nA longer body.")
     assert recent_commits(repo.path, now=NOW)[0].subject == "Fix the parser"
+
+
+@pytest.mark.parametrize("window_days", [20000, 36500])
+def test_a_window_back_past_1973_still_reads_the_commits(repo, window_days):
+    from stratum_open.repo.history import recent_commits
+
+    repo.commit({"a.py": "x\n"}, day=0)
+    repo.commit({"a.py": "y\n"}, day=1, message="Fix the parser")
+    assert [c.subject for c in recent_commits(repo.path, now=NOW, window_days=window_days)] == ["Fix the parser"]

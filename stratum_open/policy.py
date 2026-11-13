@@ -200,6 +200,8 @@ _MINIMUMS = {
     ("dependencies", "min_package_age_days"): 0,
     ("data", "findings_retention_days"): 1,
 }
+# Day counts past a century would overflow the date arithmetic.
+_MAXIMUMS = {path: 36500 for path in _MINIMUMS if path[1].endswith("_days")}
 _MAPPINGS = {("boundaries", "modules")}  # name -> list of text values
 _META = {"source", "warnings", "errors", "explicit"}
 # Top-level sections that hosted Stratum reads from this file and this engine
@@ -313,7 +315,7 @@ def _build(cls: type, raw: dict, path: tuple[str, ...], warnings: list[str], err
                 continue
             values[name] = _build(type(default), value, key_path, warnings, errors, explicit)
         else:
-            checked = _check(key_path, value, default, errors)
+            checked = _check(key_path, value, default, warnings, errors)
             if checked is not _INVALID:
                 values[name] = checked
                 explicit.add(_dotted(key_path))
@@ -323,7 +325,7 @@ def _build(cls: type, raw: dict, path: tuple[str, ...], warnings: list[str], err
 _INVALID = object()
 
 
-def _check(path: tuple[str, ...], value: Any, default: Any, errors: list[str]) -> Any:
+def _check(path: tuple[str, ...], value: Any, default: Any, warnings: list[str], errors: list[str]) -> Any:
     name = _dotted(path)
     if path in (("boundaries", "new_edges"), ("review", "reasoning")) and value is False:
         return "off"  # YAML reads an unquoted `off` as false
@@ -346,9 +348,13 @@ def _check(path: tuple[str, ...], value: Any, default: Any, errors: list[str]) -
         errors.append(f"{name} must be true or false.")
     elif isinstance(default, int):
         if isinstance(value, int) and not isinstance(value, bool):
-            minimum = _MINIMUMS.get(path)
+            minimum, maximum = _MINIMUMS.get(path), _MAXIMUMS.get(path)
             if minimum is not None and value < minimum:
                 errors.append(f"{name} must be at least {minimum}.")
+            elif maximum is not None and value > maximum:
+                # Read as the cap, so one large number doesn't lose the rest of the file.
+                warnings.append(f"{name} is read as {maximum}, the most it can be.")
+                return maximum
             else:
                 return value
         else:
@@ -385,8 +391,10 @@ def _glob(pattern: str) -> re.Pattern:
     """`**` crosses folders, `*` and `?` stay inside one, like .gitignore."""
     compiled = _GLOB_CACHE.get(pattern)
     if compiled is None:
-        out, i = [], 0
+        out, i, key = [], 0, pattern
         pattern = pattern.lstrip("/")
+        if pattern.endswith("/"):  # a folder: everything in it
+            pattern += "**"
         while i < len(pattern):
             if pattern.startswith("**/", i):
                 out.append("(?:.*/)?")
@@ -403,5 +411,5 @@ def _glob(pattern: str) -> re.Pattern:
             else:
                 out.append(re.escape(pattern[i]))
                 i += 1
-        compiled = _GLOB_CACHE[pattern] = re.compile("".join(out))
+        compiled = _GLOB_CACHE[key] = re.compile("".join(out))
     return compiled
