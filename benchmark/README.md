@@ -155,6 +155,13 @@ python benchmark/planted.py run --bugs benchmark/planted/bugs-2.json --set dev -
 
 On GitHub's runners, give the **Planted-bug benchmark** workflow the file as its `bugs` input. Results on the second set are reported separately from the first set's, in a run folder of their own, so every "of 39" stays comparable.
 
+## Other reviewers
+
+[others/](others/README.md) runs another open-source reviewer, PR-Agent,
+through the same planted bugs with the same local model on the same runner,
+and writes the same files, so `planted.py score` puts both in one table. Its
+README says how PR-Agent is set up and what the comparison doesn't show.
+
 ## Results
 
 Each run is a folder in [results/](results/), holding its `summary.md`, every
@@ -176,3 +183,4 @@ finding and every call. The machine each run used is noted in its summary.
 | [2026-11-13-ruff](results/2026-11-13-ruff/summary.md) | Any (no model) | The Ruff check (`checks.ruff`, off by default): 55 of 55 planted errors caught and no finding on the lines 184 merged PRs add; 53 of its 55 rules fire nowhere in those files, so their false alarms aren't measured |
 | [2026-11-13-checks-beyond-python](results/2026-11-13-checks-beyond-python/summary.md) | Any (no model) | The checks on 233 merged PRs from JavaScript and TypeScript, Go and Rust projects: 87 findings, none plainly wrong, 2 unsure. The rules for code had almost nothing to read there |
 | [2026-11-13-floating-promises](results/2026-11-13-floating-promises/summary.md) | Any (no model) | `checks.floating_promises` on JavaScript and TypeScript: 42 of 126 dropped awaits caught, nothing on 60 merged PRs. On 1.56 million lines of six other projects read as new, 28 findings, 6 of them real mistakes and 16 false alarms |
+| [2026-11-13-pr-agent-actions-cpu](results/2026-11-13-pr-agent-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | PR-Agent 0.50.0 on the 19 dev cases with the same `gpt-oss:20b`: 10 found against 6 for stratum-open in the same run, and 20 findings on the 19 clean PRs against 8 ([notes](results/2026-11-13-pr-agent-actions-cpu/notes.md)) |

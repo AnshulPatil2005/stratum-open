@@ -1,5 +1,6 @@
 """A fake model server that speaks both Ollama's `/api/chat` and the
-OpenAI-compatible `/v1/chat/completions`, scriptable per test.
+OpenAI-compatible `/v1/chat/completions`, scriptable per test. It also answers
+Ollama's `/api/generate`, which other tools' clients call (benchmark/others).
 
     with FakeModelServer() as fake:
         fake.queue(Response.ok(json_reply(findings=[...])))
@@ -201,7 +202,7 @@ def _handler(fake: FakeModelServer) -> type[BaseHTTPRequestHandler]:
                 body = {"_unparsed": raw[:200].decode("utf-8", "replace")}
             fake.calls.append({"method": "POST", "path": path, "body": body, "time": time.monotonic(),
                                "headers": {k: v for k, v in self.headers.items()}})
-            if path not in ("/api/chat", "/v1/chat/completions"):
+            if path not in ("/api/chat", "/api/generate", "/v1/chat/completions"):
                 return self._json(404, {"error": "not found"})
             response = fake._next()
             if response.kind == "hang":
@@ -229,10 +230,10 @@ def _handler(fake: FakeModelServer) -> type[BaseHTTPRequestHandler]:
 
         def _shape(self, path: str, body: dict | None, response: Response) -> dict[str, Any]:
             model = (body or {}).get("model") or "fake-7b"
-            if path == "/api/chat":
+            if path in ("/api/chat", "/api/generate"):
+                answer = {"message": {"role": "assistant", "content": response.text}} if path == "/api/chat" else {"response": response.text}
                 return {
-                    "model": model, "created_at": "2026-01-01T00:00:00Z", "done": True, "done_reason": "stop",
-                    "message": {"role": "assistant", "content": response.text},
+                    "model": model, "created_at": "2026-01-01T00:00:00Z", "done": True, "done_reason": "stop", **answer,
                     "prompt_eval_count": response.prompt_tokens, "eval_count": response.output_tokens,
                     "total_duration": 1_000_000_000,
                 }

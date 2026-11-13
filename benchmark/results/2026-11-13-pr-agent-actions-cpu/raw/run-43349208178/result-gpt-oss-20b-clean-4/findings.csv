@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/textual#6464,gpt-oss:20b,reasoning-low-verify-strict,clean,high,bug,src/textual/screen.py,1544,,Unconditional use of vertical_breakpoints,"If vertical_breakpoints is None, the comprehension `{breakpoint for _, breakpoint in vertical_breakpoints}` raises a TypeError because None is not iterable. This occurs when only horizontal breakpoints are provided.",,
