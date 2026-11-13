@@ -1444,3 +1444,638 @@
     +
     +def test_tax_is_eight_percent():
     +    assert Cart().tax(Decimal("100")) == Decimal("8")
+
+# ── names their module doesn't define ────────────────────────────────────
+# The rule is off by default: run with
+# --policy benchmark/planted/variants/unknown-names.yml.
+# It reads the repository, so these cases have `repo` too: the files already
+# on the default branch, which the PR's new files import from. The controls
+# are code the rule can't be sure about, one for each reason it stays quiet;
+# in some of them the name may well be missing.
+
+- id: name-import-near-miss
+  rule: code/unknown-name
+  seen: a helper that looks right and was never written (the module spells it `normalise_path`)
+  repo:
+    app/__init__.py: ""
+    app/utils.py: |
+      import os
+
+
+      def normalise_path(path):
+          return os.path.normpath(os.path.expanduser(path))
+  files:
+    app/uploads.py: |
+      from app.utils import normalize_path
+
+
+      def target(name):
+          return normalize_path("~/uploads/" + name)
+
+- id: name-module-attribute
+  rule: code/unknown-name
+  repo:
+    app/__init__.py: ""
+    app/storage.py: |
+      def upload(path, bucket):
+          ...
+
+
+      def download(key, bucket):
+          ...
+  files:
+    app/backup.py: |
+      from app import storage
+
+
+      def run(paths):
+          for path in paths:
+              storage.upload_file(path, bucket="backups")
+
+- id: name-relative-import
+  rule: code/unknown-name
+  repo:
+    shop/__init__.py: ""
+    shop/text.py: |
+      import re
+
+
+      def strip_tags(html):
+          return re.sub(r"<[^>]+>", "", html)
+  files:
+    shop/products.py: |
+      from .text import slugify, strip_tags
+
+
+      def url_for(product):
+          return "/p/" + slugify(strip_tags(product.title))
+
+- id: name-package-init
+  rule: code/unknown-name
+  repo:
+    server/__init__.py: |
+      from server.app import make_app
+
+      __all__ = ["make_app"]
+    server/app.py: |
+      def make_app(config=None):
+          ...
+  files:
+    wsgi.py: |
+      from server import create_app
+
+      application = create_app()
+
+- id: name-dotted-chain
+  rule: code/unknown-name
+  repo:
+    app/__init__.py: ""
+    app/db/__init__.py: ""
+    app/db/session.py: |
+      from contextlib import contextmanager
+
+
+      @contextmanager
+      def session_scope():
+          yield
+  files:
+    app/jobs.py: |
+      import app.db.session
+
+
+      def cleanup():
+          with app.db.session.get_session() as session:
+              session.execute("DELETE FROM jobs WHERE done")
+
+- id: name-in-a-module-the-pr-adds
+  rule: code/unknown-name
+  repo:
+    billing/__init__.py: ""
+  files:
+    billing/rates.py: |
+      VAT = 0.2
+
+
+      def with_vat(amount):
+          return amount * (1 + VAT)
+    billing/invoice.py: |
+      from billing.rates import with_vat, with_discount
+
+
+      def total(lines):
+          return with_discount(with_vat(sum(lines)))
+
+- id: name-src-layout-from-tests
+  rule: code/unknown-name
+  repo:
+    src/parcel/__init__.py: ""
+    src/parcel/codec.py: |
+      def encode(value):
+          return repr(value).encode()
+
+
+      def decode(data):
+          return int(data.decode())
+  files:
+    tests/test_codec.py: |
+      from parcel.codec import decode, encode, encode_many
+
+
+      def test_round_trip():
+          assert decode(encode(1)) == 1
+          assert encode_many([1]) == [encode(1)]
+
+- id: name-script-beside-its-helper
+  rule: code/unknown-name
+  repo:
+    scripts/helpers.py: |
+      def load_rows(path):
+          with open(path) as handle:
+              return handle.readlines()
+  files:
+    scripts/report.py: |
+      from helpers import load_rows, write_rows
+
+      write_rows("out.csv", load_rows("in.csv"))
+
+- id: name-import-inside-a-function
+  rule: code/unknown-name
+  repo:
+    app/__init__.py: ""
+    app/mail.py: |
+      def send(to, subject, body):
+          ...
+  files:
+    app/signup.py: |
+      def welcome(user):
+          from app.mail import send_template
+
+          send_template(user.email, "welcome")
+
+- id: name-missing-from-every-branch
+  rule: code/unknown-name
+  repo:
+    app/__init__.py: ""
+    app/compat.py: |
+      import sys
+
+      if sys.version_info >= (3, 11):
+          import tomllib as toml
+      else:
+          import tomli as toml
+
+      try:
+          from yaml import CSafeLoader as Loader
+      except ImportError:
+          from yaml import SafeLoader as Loader
+  files:
+    app/settings.py: |
+      from app.compat import Loader, toml, json_loads
+
+- id: name-missing-behind-star-imports
+  rule: code/unknown-name
+  repo:
+    shapes/__init__.py: |
+      from .round import *
+      from .square import *
+    shapes/round.py: |
+      __all__ = ["circle"]
+
+
+      def circle(r):
+          ...
+    shapes/square.py: |
+      def square(side):
+          ...
+  files:
+    draw.py: |
+      from shapes import circle, square, triangle
+
+- id: name-stdlib-os-path
+  rule: code/unknown-name
+  seen: "`os.makedirs` exists; `os.path.makedirs` never has"
+  files:
+    tools/export.py: |
+      import os
+
+
+      def prepare(folder):
+          if not os.path.exists(folder):
+              os.path.makedirs(folder)
+
+- id: name-stdlib-json
+  rule: code/unknown-name
+  files:
+    tools/config.py: |
+      import json
+
+
+      def parse(text):
+          return json.load_string(text)
+
+- id: name-stdlib-from-import
+  rule: code/unknown-name
+  files:
+    tools/sync.py: |
+      from shutil import copy_tree
+
+
+      def mirror(source, target):
+          copy_tree(source, target)
+
+- id: name-stdlib-python-2
+  rule: code/unknown-name
+  seen: "`string.letters` is Python 2; Python 3 has `string.ascii_letters`"
+  files:
+    tools/tokens.py: |
+      import random
+      import string
+
+
+      def token(length=12):
+          return "".join(random.choice(string.letters) for _ in range(length))
+
+- id: name-stdlib-submodule
+  rule: code/unknown-name
+  files:
+    tools/links.py: |
+      import urllib.parse
+
+
+      def search(query):
+          return "https://example.org/?q=" + urllib.parse.urlescape(query)
+
+- id: name-stdlib-logging
+  rule: code/unknown-name
+  files:
+    tools/log.py: |
+      import logging
+
+      log = logging.get_logger(__name__)
+
+# Out of the rule's reach, and kept as the misses they are: a package from
+# outside the repository, and a standard-library module whose names can't be
+# listed from its source.
+
+- id: name-third-party
+  rule: code/unknown-name
+  seen: "`requests.get(url).json()` exists; `requests.get_json` doesn't"
+  files:
+    tools/fetch.py: |
+      import requests
+
+
+      def load(url):
+          return requests.get_json(url)
+
+- id: name-stdlib-unlisted-module
+  rule: code/unknown-name
+  seen: "`os.getcwdu` is Python 2"
+  files:
+    tools/where.py: |
+      import os
+
+      HERE = os.getcwdu()
+
+- id: name-control-module-getattr
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/lazy.py: |
+      import importlib
+
+
+      def __getattr__(name):
+          return importlib.import_module("app.plugins." + name)
+  files:
+    app/main.py: |
+      from app import lazy
+      from app.lazy import exporter
+
+      lazy.importer.run()
+
+- id: name-control-star-import-in-the-module
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/models.py: |
+      from sqlalchemy import *
+  files:
+    app/schema.py: |
+      from app.models import Colum, Integer
+
+- id: name-control-star-import-in-the-file
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/utils.py: |
+      def read(path):
+          ...
+    app/shortcuts.py: |
+      import types
+
+      utils = types.SimpleNamespace(read_text=open)
+  files:
+    app/views.py: |
+      from app import utils
+      from app.shortcuts import *
+
+      utils.read_text("a")
+
+- id: name-control-set-through-globals
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/colors.py: |
+      for _name, _code in (("red", 31), ("green", 32)):
+          globals()[_name] = "\033[%dm" % _code
+  files:
+    app/cli.py: |
+      from app.colors import green, blue
+
+- id: name-control-set-through-sys-modules
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/flags.py: |
+      import sys
+
+      for _flag in ("BETA", "DEBUG"):
+          setattr(sys.modules[__name__], _flag, False)
+  files:
+    app/cli.py: |
+      from app import flags
+
+      if flags.BETA or flags.VERBOSE:
+          print("beta")
+
+- id: name-control-set-from-another-file
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/hooks.py: |
+      def before():
+          ...
+    app/plugins.py: |
+      from app import hooks
+
+      hooks.after = lambda: None
+  files:
+    app/run.py: |
+      from app import hooks
+
+      hooks.before()
+      hooks.after()
+
+- id: name-control-defined-in-a-branch
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/compat.py: |
+      import sys
+
+      if sys.platform == "win32":
+          def lock(handle):
+              ...
+      else:
+          lock = None
+
+      try:
+          from orjson import loads
+      except ImportError:
+          from json import loads
+  files:
+    app/store.py: |
+      from app.compat import loads, lock
+
+- id: name-control-reexported-by-the-package
+  rule: code/unknown-name
+  control: true
+  repo:
+    shapes/__init__.py: |
+      from .round import *
+      from .square import square as box
+    shapes/round.py: |
+      __all__ = ["circle"]
+
+
+      def circle(r):
+          ...
+    shapes/square.py: |
+      def square(side):
+          ...
+  files:
+    draw.py: |
+      import shapes
+      from shapes import box, circle, round
+
+      shapes.square.square(2)
+      shapes.circle(1)
+
+- id: name-control-type-checking
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/models.py: |
+      from typing import TYPE_CHECKING
+
+      if TYPE_CHECKING:
+          from decimal import Decimal as Money
+  files:
+    app/prices.py: |
+      from typing import TYPE_CHECKING
+
+      from app.models import Money
+
+      if TYPE_CHECKING:
+          from app.models import Currency
+
+
+      def total(lines: "list[Currency]") -> "Money":
+          ...
+
+- id: name-control-two-places-for-one-package
+  rule: code/unknown-name
+  control: true
+  repo:
+    src/parcel/__init__.py: ""
+    src/parcel/codec.py: |
+      def encode(value):
+          ...
+    legacy/parcel/__init__.py: ""
+    legacy/parcel/codec.py: |
+      def encode(value):
+          ...
+
+
+      def encode_many(values):
+          ...
+  files:
+    tests/test_codec.py: |
+      from parcel.codec import encode, encode_many
+
+- id: name-control-namespace-package
+  rule: code/unknown-name
+  control: true
+  repo:
+    plugins/csv_export.py: |
+      def export(rows):
+          ...
+  files:
+    app.py: |
+      from plugins.csv_export import export, export_all
+
+- id: name-control-compiled-module
+  rule: code/unknown-name
+  control: true
+  repo:
+    fastjson/__init__.py: |
+      from fastjson._speedups import dumps
+    fastjson/_speedups.c: |
+      /* built into fastjson._speedups */
+    fastjson/_speedups.py: |
+      def dumps(value):
+          ...
+    Cargo.toml: |
+      [lib]
+      name = "_rust"
+      crate-type = ["cdylib"]
+  files:
+    bench.py: |
+      from fastjson import _rust
+      from fastjson._speedups import dumps, loads
+
+- id: name-control-stub-only-module
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/native.pyi: |
+      def checksum(data: bytes) -> int: ...
+  files:
+    app/verify.py: |
+      from app import native
+      from app.native import checksum, checksum_file
+
+      native.verify(b"")
+
+- id: name-control-module-written-by-the-build
+  rule: code/unknown-name
+  control: true
+  repo:
+    .gitignore: |
+      __pycache__/
+      /app/_version.py
+    app/__init__.py: ""
+  files:
+    app/about.py: |
+      from app import _version
+      from app._version import version
+
+- id: name-control-name-bound-again
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/utils.py: |
+      def read(path):
+          ...
+  files:
+    app/api.py: |
+      import json
+
+      from app import utils
+
+
+      def parse(request, json=None):
+          json = json or request.body
+          return json.as_dict()
+
+
+      def tools(utils):
+          return utils.registry
+
+- id: name-control-not-a-module
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/clients.py: |
+      class Client:
+          ...
+
+
+      default = Client()
+  files:
+    app/sync.py: |
+      import os
+
+      from app.clients import Client, default
+
+      default.fetch_all()
+      Client.from_env().close()
+      os.environ.setdefault("MODE", "sync")
+
+- id: name-control-guarded
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/utils.py: |
+      def read(path):
+          ...
+  files:
+    app/fast.py: |
+      import json
+      import sys
+
+      from app import utils
+
+      try:
+          from app.utils import read_fast
+      except ImportError:
+          read_fast = utils.read
+
+      if hasattr(utils, "read_many"):
+          read_many = utils.read_many
+
+      if sys.version_info >= (3, 99):
+          loads = json.load_string
+
+- id: name-control-other-python-versions
+  rule: code/unknown-name
+  control: true
+  files:
+    tools/paths.py: |
+      import os
+      import shutil
+      import subprocess
+      import tomllib
+      from os.path import isjunction, splitroot
+
+      RESERVED = os.path.isreserved
+      OLD_ERROR = shutil.ExecError
+      FLAGS = subprocess.CREATE_NO_WINDOW
+      load = tomllib.load
+
+- id: name-control-own-module-named-like-the-stdlib
+  rule: code/unknown-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/json.py: |
+      def load_string(text):
+          ...
+  files:
+    app/config.py: |
+      import json
+
+      SETTINGS = json.load_string("{}")

@@ -1,0 +1,3 @@
+# Flag an import or a call of a name its module doesn't define. It reads the repository, so the merged PRs need --repos.
+checks:
+  unknown_names: true

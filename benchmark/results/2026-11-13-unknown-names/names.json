@@ -1,0 +1,1678 @@
+{
+ "merged": {
+  "Textualize/rich#3180": {
+   "base": "b32e42bda00c6275d4e18dcbe298268094359549",
+   "tally": {
+    "file: read": 4,
+    "import of a module of the repository: defined": 1,
+    "import: outside what is read": 4
+   }
+  },
+  "Textualize/rich#3777": {
+   "base": "26af5f5eb4a499422f8294148c9165a517dd80ed",
+   "tally": {
+    "attribute of the standard library: defined": 5,
+    "file: read": 3,
+    "import: outside what is read": 3
+   }
+  },
+  "Textualize/rich#3782": {
+   "base": "3b70db5a2997de191f7db3e422dbe4da35ca1c95",
+   "tally": {
+    "attribute of the standard library: defined": 1,
+    "attribute: outside what is read": 2,
+    "file: read": 2,
+    "import: outside what is read": 2
+   }
+  },
+  "Textualize/rich#3783": {
+   "base": "21b3800894f6a81d3f68a0e34796be67e3ccd39f",
+   "tally": {
+    "file: read": 1,
+    "import: outside what is read": 10
+   }
+  },
+  "Textualize/rich#3807": {
+   "base": "9c9b011187bba772dca57653c9114005b489f005",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "Textualize/rich#3845": {
+   "base": "7f40063da781f4990d21423f23f7ccb3165ce0bd",
+   "tally": {
+    "file: read": 1,
+    "import of the standard library: defined": 1,
+    "import: outside what is read": 1
+   }
+  },
+  "Textualize/rich#3879": {
+   "base": "abd5a2afc41ff1196fe4d901b8784bb08acf3140",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "Textualize/rich#3894": {
+   "base": "ffc639a3738e79ad73d35db09a70c338b35045a6",
+   "tally": {
+    "file: read": 2,
+    "import of the standard library: defined": 1
+   }
+  },
+  "Textualize/rich#3905": {
+   "base": "22b26678419dcb1c13fedda9c98faec022774940",
+   "tally": {
+    "attribute of the standard library: defined": 1,
+    "file: read": 2
+   }
+  },
+  "Textualize/rich#3906": {
+   "base": "7a4a7a614b4893a8197d06800b241c2c28036ad4",
+   "tally": {
+    "file: read": 2,
+    "import of a module of the repository: defined": 1
+   }
+  },
+  "Textualize/rich#3934": {
+   "base": "6764b24739b580c0c32ff5ef0b971ed4cfcf4f75",
+   "tally": {
+    "file: read": 3,
+    "import of a module of the repository: defined": 1,
+    "import: outside what is read": 3
+   }
+  },
+  "Textualize/rich#3935": {
+   "base": "fe55a131c2780fa856464ad04d7d6dc8a1079b72",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 3
+   }
+  },
+  "Textualize/rich#3937": {
+   "base": "05a6b9b17a7c778756187f15d6d4bf693db6345f",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "Textualize/rich#3938": {
+   "base": "05ff970926cbd0b5d0acb6fc18cdbd1fc971e582",
+   "tally": {
+    "attribute: outside what is read": 5,
+    "file: read": 4
+   }
+  },
+  "Textualize/rich#3939": {
+   "base": "3286095ff8b70e093dbbc4136ff7ba7d51944bec",
+   "tally": {
+    "file: read": 1,
+    "import: outside what is read": 3
+   }
+  },
+  "Textualize/rich#3941": {
+   "base": "a9c4aaba7ead5599d969aa4c8f3c6dae5549cef4",
+   "tally": {
+    "file: no text": 1
+   }
+  },
+  "Textualize/rich#3953": {
+   "base": "1d402e0c59f8765e420a5a4440eb2fca7465d1ae",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "Textualize/rich#4006": {
+   "base": "27701029082052c6541031b6f139097230253900",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 2
+   }
+  },
+  "Textualize/rich#4075": {
+   "base": "1fc7cb210ae52eb099df39818ddb9569e5b14c7b",
+   "tally": {
+    "attribute of the standard library: defined": 1,
+    "file: read": 2,
+    "import: outside what is read": 1
+   }
+  },
+  "Textualize/rich#4079": {
+   "base": "19c67b9a3479841e9133bea94607c89ee931d3fc",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "Textualize/textual#6335": {
+   "base": "7593cab7d9a60034e67b5c0f14b08e219bb1763c",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "Textualize/textual#6362": {
+   "base": "f901b376025084da84ad14a53ea20de3a84ca984",
+   "tally": {
+    "attribute: outside what is read": 3,
+    "file: read": 4
+   }
+  },
+  "Textualize/textual#6374": {
+   "base": "e49cc9485f4b55cc99df07b737cdf76ff9005216",
+   "tally": {
+    "attribute: outside what is read": 7,
+    "file: read": 4,
+    "import of a module of the repository: defined": 1,
+    "import: outside what is read": 5
+   }
+  },
+  "Textualize/textual#6392": {
+   "base": "576104f515481cc05005ac2f013cd2eef852f7ad",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "Textualize/textual#6397": {
+   "base": "ac7ef91ee17f298d8ff24750905cffd36d46eed4",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "Textualize/textual#6402": {
+   "base": "260fc3f62854131e298d6c254634663b23b0fda0",
+   "tally": {
+    "attribute of the standard library: defined": 3,
+    "file: read": 4
+   }
+  },
+  "Textualize/textual#6405": {
+   "base": "55d1eac0b8531908718fda842ed92dc023dd7cea",
+   "tally": {
+    "file: read": 2,
+    "import: outside what is read": 1
+   }
+  },
+  "Textualize/textual#6410": {
+   "base": "431dc7d32c64948d0197851654729262f8ed35be",
+   "tally": {
+    "attribute: outside what is read": 5,
+    "file: read": 7,
+    "import of a module of the repository: defined": 1,
+    "import of the standard library: defined": 2
+   }
+  },
+  "Textualize/textual#6455": {
+   "base": "e84eacc1899f940ea068c4ae5c7eca2dd4a489db",
+   "tally": {
+    "attribute: outside what is read": 3,
+    "file: read": 3,
+    "import of a module of the repository: unknown": 1
+   }
+  },
+  "Textualize/textual#6464": {
+   "base": "04b03c8db64266a6a7811cc161bae9986e53b1a1",
+   "tally": {
+    "file: read": 4
+   }
+  },
+  "Textualize/textual#6470": {
+   "base": "32f1d23330efd7a47891a5ce90edd7677664fbc1",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "Textualize/textual#6471": {
+   "base": "f044be2a115a1f3655b8de9f734d2ba57ab2207e",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "Textualize/textual#6478": {
+   "base": "634ca6e786885ffebe211fc73e0e8a04e030f3c3",
+   "tally": {
+    "file: read": 3,
+    "import: outside what is read": 1
+   }
+  },
+  "Textualize/textual#6542": {
+   "base": "f1929043fc5a9346a7a13649c1c2bc6ac4199a3b",
+   "tally": {
+    "attribute: outside what is read": 3,
+    "file: read": 5,
+    "import of a module of the repository: defined": 2,
+    "import: outside what is read": 4
+   }
+  },
+  "Textualize/textual#6543": {
+   "base": "e03efd50f83a8453f023e404fda3865773dc0c37",
+   "tally": {
+    "attribute: outside what is read": 6,
+    "file: read": 3
+   }
+  },
+  "Textualize/textual#6544": {
+   "base": "3d2ed3566eab21e998eb891a357773d8b6685b42",
+   "tally": {
+    "attribute: outside what is read": 4,
+    "file: read": 5,
+    "import of a module of the repository: unknown": 2,
+    "import of the standard library: defined": 1
+   }
+  },
+  "Textualize/textual#6592": {
+   "base": "aea9d4b5529841757aead36670a8a7f75aa61ed9",
+   "tally": {
+    "attribute: outside what is read": 3,
+    "file: read": 2
+   }
+  },
+  "Textualize/textual#6594": {
+   "base": "13eef1fe6acac857c82d3ff854a1cce54d0c8749",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 3
+   }
+  },
+  "encode/httpx#3412": {
+   "base": "189fc4bcbe5f314128775dec66a616ac9a31ad48",
+   "tally": {
+    "attribute of a module of the repository: unknown": 2,
+    "attribute: outside what is read": 2,
+    "file: read": 3
+   }
+  },
+  "encode/httpx#3418": {
+   "base": "47f4a96ffaaaa07dca1614409549b5d7a6e7af49",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "encode/httpx#3419": {
+   "base": "a33c87852b8a0dddc65e5f739af1e0a6fca4b91f",
+   "tally": {
+    "attribute of the standard library: defined": 1,
+    "attribute: outside what is read": 7,
+    "file: read": 5,
+    "import of a module of the repository: defined": 8
+   }
+  },
+  "encode/httpx#3670": {
+   "base": "f9d5e1204978c0c66666fa169edada1bf719f8ba",
+   "tally": {
+    "attribute of a module of the repository: unknown": 3,
+    "attribute of the standard library: defined": 2,
+    "file: read": 5
+   }
+  },
+  "encode/httpx#3672": {
+   "base": "4acf5c2c37714cc63b5cf71b3e284fca83c90311",
+   "tally": {
+    "file: read": 8
+   }
+  },
+  "encode/httpx#3673": {
+   "base": "68989ae47d9fd10381a3859619a3880014d187f6",
+   "tally": {
+    "file: no text": 8
+   }
+  },
+  "encode/httpx#3690": {
+   "base": "20380490fd0bd13c68704080754c1385bff96d69",
+   "tally": {
+    "file: read": 4
+   }
+  },
+  "fastapi/fastapi#16598": {
+   "base": "80c8742d141e67beaf747343405c8facf999bc0c",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "fastapi/typer#1942": {
+   "base": "407d924044759cf9687662cd9638e940664a70f9",
+   "tally": {
+    "file: read": 7,
+    "import of a module of the repository: defined": 15
+   }
+  },
+  "fastapi/typer#1972": {
+   "base": "11b083b92126fb8e149ab9e7d5c9a0f5594dfe58",
+   "tally": {
+    "attribute of a module of the repository: defined": 5,
+    "attribute: outside what is read": 7,
+    "file: read": 5,
+    "import of a module of the repository: defined": 13,
+    "import: outside what is read": 1
+   }
+  },
+  "marshmallow-code/marshmallow#3024": {
+   "base": "c7b559a1fa3aba57ca6dba0ab336841c5038a782",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "marshmallow-code/marshmallow#3034": {
+   "base": "0c05c83d8a0602bef2520e54f5fd62c2f8ccc955",
+   "tally": {
+    "file: read": 5
+   }
+  },
+  "pallets/click#3777": {
+   "base": "61b69e967e525bd502f5bf42def4d551e761fe0e",
+   "tally": {
+    "attribute of a module of the repository: defined": 11,
+    "attribute of the standard library: defined": 5,
+    "attribute: outside what is read": 23,
+    "file: read": 2
+   }
+  },
+  "pallets/click#3780": {
+   "base": "420c8fb44eeadb537cae69d2fee3796e808558dd",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "pallets/click#3781": {
+   "base": "2103e157683c5e4cadc8ee1838df526a54bde9a4",
+   "tally": {
+    "attribute of a module of the repository: defined": 4,
+    "attribute: outside what is read": 5,
+    "file: read": 4,
+    "import: outside what is read": 2
+   }
+  },
+  "pallets/click#3805": {
+   "base": "3cbcf9b11546f4cf10b36d3e2e531733ba6fe001",
+   "tally": {
+    "attribute of a module of the repository: defined": 1,
+    "attribute of the standard library: defined": 4,
+    "attribute: outside what is read": 7,
+    "file: read": 2,
+    "import of a module of the repository: defined": 1
+   }
+  },
+  "pallets/click#3818": {
+   "base": "b47c0529e99129d4785fecc2cb39a8ec8b4aa5f8",
+   "tally": {
+    "attribute of a module of the repository: defined": 10,
+    "attribute: outside what is read": 7,
+    "file: read": 2
+   }
+  },
+  "pallets/click#3821": {
+   "base": "be13b152cf5949a362926322c835fa76019cc6fe",
+   "tally": {
+    "attribute of a module of the repository: defined": 3,
+    "attribute: outside what is read": 2,
+    "file: read": 2
+   }
+  },
+  "pallets/click#3858": {
+   "base": "7944461a80b780d060899c8835acab3c273a04a6",
+   "tally": {
+    "attribute of a module of the repository: defined": 17,
+    "attribute: outside what is read": 24,
+    "file: read": 3,
+    "import: outside what is read": 1
+   }
+  },
+  "pallets/click#3860": {
+   "base": "70689853e39c30e36eb0d83d586cc914a74db9d3",
+   "tally": {
+    "attribute of a module of the repository: defined": 16,
+    "attribute: outside what is read": 4,
+    "file: no text": 1,
+    "file: read": 1
+   }
+  },
+  "pallets/click#3861": {
+   "base": "86949d19b930ef68a45566544cb4b9508d895d0d",
+   "tally": {
+    "attribute of a module of the repository: defined": 2,
+    "attribute: outside what is read": 9,
+    "file: read": 2
+   }
+  },
+  "pallets/click#3865": {
+   "base": "d036881798e34289a49b18a5c550c7cf687e5a7a",
+   "tally": {
+    "attribute of the standard library: unknown": 1,
+    "attribute: outside what is read": 12,
+    "file: read": 2
+   }
+  },
+  "pallets/click#3884": {
+   "base": "bb695aaecdef95832d167fc1d508921745aa824e",
+   "tally": {
+    "attribute of a module of the repository: defined": 4,
+    "attribute: outside what is read": 3,
+    "file: read": 2
+   }
+  },
+  "pallets/click#3899": {
+   "base": "5e7cf6b6db197de4259e91b299bd4313beb481b4",
+   "tally": {
+    "attribute of a module of the repository: defined": 5,
+    "attribute: outside what is read": 1,
+    "file: read": 1
+   }
+  },
+  "pallets/flask#5700": {
+   "base": "c7c8dc38ea2890d62b7aaff7e4c016e4b98101b0",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "pallets/flask#5799": {
+   "base": "49b7e7bc8fb69d605719991d1c0a99fcee689053",
+   "tally": {
+    "attribute of a module of the repository: unknown": 4,
+    "attribute: outside what is read": 2,
+    "file: read": 2,
+    "import of a module of the repository: defined": 1
+   }
+  },
+  "pallets/flask#5898": {
+   "base": "eb58d862cc4a8f31a369b6e9ad1724e9e642f13f",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "pallets/flask#5899": {
+   "base": "0292047b22c82921dcf165322d93a0b988328c2e",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 2
+   }
+  },
+  "pallets/flask#5917": {
+   "base": "d3b78fd18a8d9e224cb9ef58a23cec9b1ffc9ce9",
+   "tally": {
+    "attribute of a module of the repository: defined": 3,
+    "file: read": 5,
+    "import of a module of the repository: defined": 2
+   }
+  },
+  "pallets/flask#6013": {
+   "base": "06ea505ce2b2042af26e96d35ebf159af7c0869d",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "pallets/flask#6095": {
+   "base": "8285adf5a4f572dbf7a0a3b8f3a96ca0b19c50a4",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "pallets/flask#6096": {
+   "base": "514fc6b3e8402e4c646d5284e97a4f0ab50a7c4b",
+   "tally": {
+    "attribute of a module of the repository: defined": 1,
+    "file: read": 4,
+    "import of the standard library: defined": 1
+   }
+  },
+  "pallets/flask#6133": {
+   "base": "3596b1ab61cea85edb8970e83ff61daa073facf8",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 2,
+    "import of the standard library: defined": 1
+   }
+  },
+  "pallets/flask#6176": {
+   "base": "d04a0c15a83c78186cf31dc5d226b3110321b9e5",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "pallets/jinja#1979": {
+   "base": "e82013c39970c336ed33906b3c38464f1fadbd30",
+   "tally": {
+    "attribute of the standard library: unknown": 1,
+    "file: read": 2
+   }
+  },
+  "pallets/jinja#2017": {
+   "base": "13c42b3aabe57511537e14cf4736a5730b1a8782",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "pallets/jinja#2026": {
+   "base": "39d9ffff1f33a5e5141af655857f9dbe6b6df03d",
+   "tally": {
+    "attribute of the standard library: defined": 2,
+    "attribute: outside what is read": 5,
+    "file: read": 2,
+    "import of a module of the repository: defined": 5
+   }
+  },
+  "pallets/jinja#2029": {
+   "base": "ba8847a466d0f3ad622502f86e819737a4b9fdc7",
+   "tally": {
+    "attribute: outside what is read": 4,
+    "file: read": 2
+   }
+  },
+  "pallets/jinja#2061": {
+   "base": "767b23617628419ae3709ccfb02f9602ae9fe51f",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "pallets/jinja#2098": {
+   "base": "dfe82ade3dc7d112d7d166ca0d7ae7f794fe19e6",
+   "tally": {
+    "attribute: outside what is read": 2,
+    "file: read": 1,
+    "import: outside what is read": 1
+   }
+  },
+  "pallets/werkzeug#3270": {
+   "base": "f27af2652a798931aa00c2476a4de130f597c1d3",
+   "tally": {
+    "attribute of a module of the repository: unknown": 1,
+    "attribute: outside what is read": 3,
+    "file: read": 4
+   }
+  },
+  "pallets/werkzeug#3273": {
+   "base": "a33190bffb7f6dd4c7084c08257b4542689b8c66",
+   "tally": {
+    "attribute: outside what is read": 4,
+    "file: read": 3,
+    "import of a module of the repository: unknown": 1,
+    "import: outside what is read": 1
+   }
+  },
+  "pallets/werkzeug#3276": {
+   "base": "f97c305673ba121a1dae6764c37e8be48907a1d1",
+   "tally": {
+    "attribute of a module of the repository: unknown": 7,
+    "attribute: outside what is read": 5,
+    "file: read": 4
+   }
+  },
+  "pallets/werkzeug#3277": {
+   "base": "7641d4990f06d583425a4e6ba25e9d2f18934885",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "pallets/werkzeug#3278": {
+   "base": "56aa21d050c739944b623c087a50850dad40803c",
+   "tally": {
+    "attribute of the standard library: unknown": 10,
+    "file: read": 1,
+    "import of the standard library: defined": 1
+   }
+  },
+  "pallets/werkzeug#3282": {
+   "base": "e27473b7f765ad0d774a612cb76aa0b8a0332c27",
+   "tally": {
+    "attribute: outside what is read": 7,
+    "file: read": 5,
+    "import of a module of the repository: defined": 3
+   }
+  },
+  "pallets/werkzeug#3287": {
+   "base": "6d03c6a3ff43a7577db742e13d54448384a1d0f8",
+   "tally": {
+    "attribute of the standard library: defined": 1,
+    "file: read": 5,
+    "import of a module of the repository: defined": 3,
+    "import of a module of the repository: unknown": 2,
+    "import: outside what is read": 1
+   }
+  },
+  "pallets/werkzeug#3292": {
+   "base": "6048fa48753c7b61e35cc34537667809dee8fa35",
+   "tally": {
+    "attribute: outside what is read": 19,
+    "file: read": 4,
+    "import of a module of the repository: unknown": 3
+   }
+  },
+  "pallets/werkzeug#3293": {
+   "base": "cdc9e2d2fff5f576580d7c73ad5280778ec5d55b",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "pallets/werkzeug#3298": {
+   "base": "25663ddc295879d362a206b4c33f16ea2e694392",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "pallets/werkzeug#3299": {
+   "base": "fa93b5cee027bc9baadba67f21360a8a39b2317b",
+   "tally": {
+    "attribute: outside what is read": 3,
+    "file: read": 1
+   }
+  },
+  "pallets/werkzeug#3300": {
+   "base": "d4b67549221d050e3e7300dfaa002b8b59672a12",
+   "tally": {
+    "attribute of a module of the repository: defined": 3,
+    "attribute: outside what is read": 1,
+    "file: read": 4,
+    "import of a module of the repository: defined": 1
+   }
+  },
+  "pallets/werkzeug#3304": {
+   "base": "b5c57f308465deb39bcc801017c4edde1f81d6ea",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "pallets/werkzeug#3306": {
+   "base": "4eabe333c6b359979664cc313c3241b5a770ee84",
+   "tally": {
+    "attribute of a module of the repository: defined": 2,
+    "file: read": 5,
+    "import of a module of the repository: unknown": 1
+   }
+  },
+  "pallets/werkzeug#3309": {
+   "base": "4efac9df7ebabe13f82ab0823d5ca0109db20bc3",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "pallets/werkzeug#3322": {
+   "base": "ed82ed5e8c37f34b04a5910d58200c40b866605f",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "pallets/werkzeug#3327": {
+   "base": "0819a2a9b262aceab39d19ef30f3824d6048daf4",
+   "tally": {
+    "attribute: outside what is read": 2,
+    "file: read": 5,
+    "import of a module of the repository: defined": 2
+   }
+  },
+  "pallets/werkzeug#3329": {
+   "base": "456407ae4201661b14f726e1409db185418b6df7",
+   "tally": {
+    "attribute: outside what is read": 3,
+    "file: read": 2
+   }
+  },
+  "pallets/werkzeug#3332": {
+   "base": "ac7d7dd8a4dc0755ada16f7105afd14f736da831",
+   "tally": {
+    "file: read": 3,
+    "import of a module of the repository: defined": 1,
+    "import of a module of the repository: unknown": 1
+   }
+  },
+  "pallets/werkzeug#3337": {
+   "base": "242a7380abcc325c7f0bc8f44eaf51377d6b5d8f",
+   "tally": {
+    "attribute of a module of the repository: unknown": 5,
+    "attribute of the standard library: unknown": 4,
+    "file: read": 5,
+    "import of a module of the repository: defined": 1,
+    "import of a module of the repository: unknown": 2
+   }
+  },
+  "pallets/werkzeug#3338": {
+   "base": "ec95ee993a7975460c2e6468ebeccdd7c67386ba",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "pallets/werkzeug#3339": {
+   "base": "b73dce5a2ce14f7c7fd645699d1d878de48d2948",
+   "tally": {
+    "file: read": 4,
+    "import of a module of the repository: defined": 1
+   }
+  },
+  "pallets/werkzeug#3341": {
+   "base": "2adaad1ab68312fa46efb07ff072b15b720e2444",
+   "tally": {
+    "attribute of the standard library: defined": 1,
+    "file: read": 8
+   }
+  },
+  "psf/black#5510": {
+   "base": "fe241ccc443acbabbd75c8240d2fbc06ba4e52d6",
+   "tally": {
+    "attribute: outside what is read": 16,
+    "file: read": 2,
+    "import: outside what is read": 3
+   }
+  },
+  "psf/black#5606": {
+   "base": "976bbe4863e69775d05b66dc3d489e8ad8f7e72f",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "psf/black#5609": {
+   "base": "f56455da375e6d122ae814c3ea9a5138c67f623e",
+   "tally": {
+    "file: no text": 1,
+    "file: read": 2
+   }
+  },
+  "psf/black#5610": {
+   "base": "917ef58f86302a9fce8d5604f3d9166bd93abf1e",
+   "tally": {
+    "file: no text": 1,
+    "file: read": 1
+   }
+  },
+  "psf/black#5612": {
+   "base": "67a69216d12f67ae6ae93eb165e4e6c55844df3c",
+   "tally": {
+    "file: no text": 1,
+    "file: read": 1
+   }
+  },
+  "psf/black#5613": {
+   "base": "03a21a51940f7e1b5a9c703741bfc3f931ac8fdb",
+   "tally": {
+    "file: read": 3
+   }
+  },
+  "psf/black#5615": {
+   "base": "b75b3552192915e1878592e76d2f920775a7cefe",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "psf/black#5617": {
+   "base": "cb094d192bb6225ef01534e25108e8aed560fa61",
+   "tally": {
+    "attribute of a module of the repository: defined": 3,
+    "attribute of the standard library: defined": 1,
+    "attribute: outside what is read": 1,
+    "file: read": 5
+   }
+  },
+  "psf/black#5618": {
+   "base": "f80efd49a60af5e202ac49499406cadd5305c154",
+   "tally": {
+    "file: no text": 1,
+    "file: read": 1
+   }
+  },
+  "psf/black#5620": {
+   "base": "04afd895bf343e5dc41fc168ba3f8ac378a7ee5f",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 3
+   }
+  },
+  "psf/black#5621": {
+   "base": "80db630ac532f0e2f3ba33493e42cc19106eb261",
+   "tally": {
+    "file: read": 3
+   }
+  },
+  "psf/black#5625": {
+   "base": "062d76a492d7337f3de951bd7ef1af1096a439ee",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 2
+   }
+  },
+  "psf/black#5626": {
+   "base": "d16946630ead57eebf0db464c0cf2a58e4df7101",
+   "tally": {
+    "attribute: outside what is read": 2,
+    "file: read": 2
+   }
+  },
+  "psf/black#5628": {
+   "base": "f74dfd7f6dceb729ceee27ed636245f6dfd700d3",
+   "tally": {
+    "attribute: outside what is read": 3,
+    "file: read": 2
+   }
+  },
+  "psf/black#5630": {
+   "base": "a74759ef4c9703e8c40e2f4ef165835a78592326",
+   "tally": {
+    "attribute: outside what is read": 10,
+    "file: read": 2
+   }
+  },
+  "psf/black#5631": {
+   "base": "9485ad42045c3b4384beabec7841a7d1b7da27ce",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "psf/black#5634": {
+   "base": "c61c1db94a712346dd7029d297f3fccfb9fa4dd9",
+   "tally": {
+    "attribute of a module of the repository: defined": 4,
+    "file: no text": 1,
+    "file: read": 1
+   }
+  },
+  "psf/black#5635": {
+   "base": "ad56c609f491c9ec86053188cdc881565e19f933",
+   "tally": {
+    "attribute: outside what is read": 9,
+    "file: read": 2
+   }
+  },
+  "psf/black#5637": {
+   "base": "2231c3877d6274004df2a78357202a44dc2ef0c9",
+   "tally": {
+    "attribute of a module of the repository: defined": 10,
+    "attribute: outside what is read": 4,
+    "file: read": 3,
+    "import of a module of the repository: defined": 1
+   }
+  },
+  "psf/black#5638": {
+   "base": "4ef88cd219c3e6c86b21de2d37425ebcc333b387",
+   "tally": {
+    "attribute of a module of the repository: unknown": 1,
+    "file: read": 2
+   }
+  },
+  "psf/black#5641": {
+   "base": "408211f4ae4ec7f119aae8a773ad14bcc6a17cba",
+   "tally": {
+    "attribute of a module of the repository: defined": 1,
+    "file: read": 2
+   }
+  },
+  "psf/black#5643": {
+   "base": "324e93c0cb20d7dab06345131c14aab9c9fa5d5b",
+   "tally": {
+    "attribute of a module of the repository: defined": 3,
+    "attribute: outside what is read": 1,
+    "file: doesn't parse": 1,
+    "file: read": 6,
+    "import of a module of the repository: defined": 2,
+    "import: outside what is read": 2
+   }
+  },
+  "psf/black#5645": {
+   "base": "2f0b40783a273eeb907b0f052a0eadc326c1e1c3",
+   "tally": {
+    "attribute of a module of the repository: defined": 1,
+    "attribute: outside what is read": 1,
+    "file: read": 2
+   }
+  },
+  "psf/black#5647": {
+   "base": "e0d5d1fa43105a1fd993b4e9ee447b4ed753fb3c",
+   "tally": {
+    "file: read": 2,
+    "import of a module of the repository: defined": 1
+   }
+  },
+  "psf/black#5649": {
+   "base": "a755b562f5ed7d941bce785a6600fde233126fe0",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "psf/black#5651": {
+   "base": "945d902bef347d2e7e1d26897aa89a9c177fb535",
+   "tally": {
+    "attribute of a module of the repository: unknown": 1,
+    "file: read": 2,
+    "import: outside what is read": 2
+   }
+  },
+  "psf/black#5652": {
+   "base": "b1c244db985218e4b643a37153870d059a3f1e21",
+   "tally": {
+    "attribute: outside what is read": 8,
+    "file: read": 2
+   }
+  },
+  "psf/black#5657": {
+   "base": "fcfcc92d2497f1a04536ecc6ce74e801ecf5e046",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 4
+   }
+  },
+  "psf/requests#7427": {
+   "base": "3816cfa1abd42dca21b9e837f26c59b246016aaf",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 2
+   }
+  },
+  "psf/requests#7429": {
+   "base": "a4f9a5999bdb9bf2d6e7c8aa973b28cacb17134f",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "psf/requests#7436": {
+   "base": "2144213c307691710c9d665700860fc4993c3035",
+   "tally": {
+    "file: read": 1,
+    "import of the standard library: defined": 5
+   }
+  },
+  "psf/requests#7496": {
+   "base": "3be097d450ee4ca8a2f9c1a3a58eb61ed19936b0",
+   "tally": {
+    "file: read": 4,
+    "import: outside what is read": 1
+   }
+  },
+  "psf/requests#7497": {
+   "base": "fbd0eb37320376740a1010f52f2b9870e8210d88",
+   "tally": {
+    "attribute: outside what is read": 3,
+    "file: no text": 1,
+    "file: read": 8,
+    "import of a module of the repository: defined": 7,
+    "import of a module of the repository: unknown": 1,
+    "import: outside what is read": 1
+   }
+  },
+  "psf/requests#7505": {
+   "base": "6f205ff422bccd5e4c4fc0b64c5f3e7df5181db6",
+   "tally": {
+    "attribute of a module of the repository: unknown": 1,
+    "attribute: outside what is read": 3,
+    "file: read": 3,
+    "import of a module of the repository: unknown": 1
+   }
+  },
+  "pydantic/pydantic#14163": {
+   "base": "49faa6ebb9bb2145c5c54d870f9eaad4498b8f5d",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: no text": 1,
+    "file: read": 2
+   }
+  },
+  "pydantic/pydantic#14172": {
+   "base": "b0ddd2633b2126ea2f670fc970f8d5c60c1e9770",
+   "tally": {}
+  },
+  "pydantic/pydantic#14176": {
+   "base": "66d175c471f34404aabec5e223fb1791b3780ae9",
+   "tally": {
+    "attribute: outside what is read": 15,
+    "file: read": 2,
+    "import of a module of the repository: unknown": 3,
+    "import: outside what is read": 1
+   }
+  },
+  "pydantic/pydantic#14195": {
+   "base": "a5a6daa207e4c224bb58a9ad93793e9e58d1cec6",
+   "tally": {
+    "file: read": 2,
+    "import of a module of the repository: unknown": 6
+   }
+  },
+  "pydantic/pydantic#14196": {
+   "base": "ff6550685d6e13fcc5de3a5f661aabf7063cb8e7",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "pydantic/pydantic#14199": {
+   "base": "a9f3f3fccc180c05190df0478a17487ec9908e4e",
+   "tally": {
+    "file: read": 6,
+    "import of a module of the repository: defined": 5,
+    "import of the standard library: defined": 4,
+    "import: outside what is read": 5
+   }
+  },
+  "pydantic/pydantic#14202": {
+   "base": "b4adbe01e4740d98518509181cc49f9dd3a79da5",
+   "tally": {
+    "file: read": 1
+   }
+  },
+  "pydantic/pydantic#14213": {
+   "base": "5740091dcd08e4a92940ceae841434a83331cb09",
+   "tally": {
+    "attribute: outside what is read": 2,
+    "file: read": 2,
+    "import: outside what is read": 1
+   }
+  },
+  "pydantic/pydantic#14244": {
+   "base": "c9b92900dc74802a04cc20519b753a7d8f3d2844",
+   "tally": {
+    "file: no text": 2
+   }
+  },
+  "pypa/pip#14347": {
+   "base": "e76262b871e8dda909b64d2266fd2d37d543edd0",
+   "tally": {
+    "attribute: outside what is read": 3,
+    "file: no text": 1,
+    "file: read": 1,
+    "import of a module of the repository: defined": 1,
+    "import of a module of the repository: unknown": 2,
+    "import: outside what is read": 1
+   }
+  },
+  "pypa/pip#14349": {
+   "base": "fb1d16609222a4a44c64bd8b12805a5e10d65a06",
+   "tally": {
+    "attribute: outside what is read": 5,
+    "file: read": 5,
+    "import of a module of the repository: defined": 1,
+    "import: outside what is read": 2
+   }
+  },
+  "pypa/pip#14352": {
+   "base": "ed2dc7b925cefb3607ebf91e1e3e4b4fd6a7e342",
+   "tally": {
+    "attribute of the standard library: defined": 1,
+    "attribute: outside what is read": 3,
+    "file: read": 5,
+    "import of a module of the repository: defined": 3,
+    "import: outside what is read": 2
+   }
+  },
+  "pypa/pip#14395": {
+   "base": "0d09686649a97c2dd304322b191e44eb06ab4d44",
+   "tally": {
+    "attribute of the standard library: defined": 2,
+    "attribute: outside what is read": 5,
+    "file: read": 1
+   }
+  },
+  "pypa/pip#14398": {
+   "base": "1901663abcf0a220fe9cad5ee36a656daaf9bf66",
+   "tally": {
+    "attribute: outside what is read": 2,
+    "file: read": 1
+   }
+  },
+  "pypa/pip#14403": {
+   "base": "7eb531933a88291d78f859d6aa0957ab16ac2635",
+   "tally": {
+    "attribute: outside what is read": 6,
+    "file: no text": 1,
+    "file: read": 5,
+    "import of a module of the repository: defined": 7,
+    "import of a module of the repository: unknown": 1,
+    "import of the standard library: defined": 1
+   }
+  },
+  "pypa/pip#14407": {
+   "base": "3549bb4fe15ff1a026e1ae0cc94b84b530155aab",
+   "tally": {
+    "attribute: outside what is read": 2,
+    "file: read": 3,
+    "import: outside what is read": 1
+   }
+  },
+  "pypa/pip#14424": {
+   "base": "8e3414c2255324ad806fe83931009ea1b8dc4db9",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "python-attrs/attrs#1541": {
+   "base": "57b314c0dc8e0b80c0ed8f61c0be81965137ea41",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 2
+   }
+  },
+  "python-attrs/attrs#1571": {
+   "base": "f616f732c6c5f87a8f7a762176422baed250a6be",
+   "tally": {
+    "attribute: outside what is read": 4,
+    "file: read": 2,
+    "import of a module of the repository: defined": 1
+   }
+  },
+  "python-attrs/attrs#1592": {
+   "base": "d3a98cf05ab15769003dcca3eae91cdd6504b83b",
+   "tally": {
+    "attribute of a module of the repository: unknown": 18,
+    "attribute: outside what is read": 4,
+    "file: read": 7,
+    "import of a module of the repository: defined": 3,
+    "import: outside what is read": 4
+   }
+  },
+  "python-attrs/attrs#1600": {
+   "base": "ca0f04585d3fb132c6e2f6baa9d7d966d8036760",
+   "tally": {
+    "attribute of the standard library: unknown": 2,
+    "attribute: outside what is read": 1,
+    "file: read": 6,
+    "import: outside what is read": 6
+   }
+  },
+  "python-attrs/attrs#1606": {
+   "base": "f38b8a3f1625060aa4245930822c34c11c252f83",
+   "tally": {
+    "attribute of a module of the repository: unknown": 1,
+    "file: read": 2
+   }
+  },
+  "python-poetry/poetry#11042": {
+   "base": "628f7fcb4297299fcd74794fea0bc46c84f03645",
+   "tally": {
+    "attribute: outside what is read": 8,
+    "file: read": 9,
+    "import: outside what is read": 3
+   }
+  },
+  "python-poetry/poetry#11072": {
+   "base": "52fd2873d26240db0ba68795b88d57d906d0a0b8",
+   "tally": {
+    "attribute of the standard library: defined": 2,
+    "attribute: outside what is read": 3,
+    "file: read": 2,
+    "import: outside what is read": 1
+   }
+  },
+  "python-poetry/poetry#11073": {
+   "base": "8711c8380c044992e84276783b9e27b18573017d",
+   "tally": {
+    "attribute of the standard library: defined": 1,
+    "attribute: outside what is read": 2,
+    "file: read": 2
+   }
+  },
+  "python-poetry/poetry#11074": {
+   "base": "e078ebfa5a01412bdf68d851c494ef483595af98",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 2
+   }
+  },
+  "python-poetry/poetry#11077": {
+   "base": "165fb4b42e0138249abf58e3228d1f2d14cee826",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 9,
+    "import: outside what is read": 3
+   }
+  },
+  "python-poetry/poetry#11099": {
+   "base": "d4fd21e4711ae948f04e18a1736d9ee85b590e87",
+   "tally": {
+    "attribute of the standard library: defined": 5,
+    "attribute: outside what is read": 5,
+    "file: read": 2,
+    "import of the standard library: defined": 1,
+    "import: outside what is read": 2
+   }
+  },
+  "python-poetry/poetry#11131": {
+   "base": "906ba21dff6f08c0df7d381a5e7879e12f6102e0",
+   "tally": {
+    "attribute: outside what is read": 4,
+    "file: read": 2
+   }
+  },
+  "python-poetry/poetry#11141": {
+   "base": "b1e370bf70a73545fd77066a4ee7fa83f760d161",
+   "tally": {
+    "attribute: outside what is read": 8,
+    "file: read": 2
+   }
+  },
+  "python-poetry/poetry#11171": {
+   "base": "d59ff3b47c5d70b5e4934db874e94ea78b98feb8",
+   "tally": {
+    "attribute of the standard library: defined": 2,
+    "attribute: outside what is read": 1,
+    "file: read": 2
+   }
+  },
+  "python-poetry/poetry#11175": {
+   "base": "d4e6333b5577d1c13c0b3580dd6cfc3141a2faff",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "scrapy/scrapy#8382": {
+   "base": "33ac758244e0a544609276aa600da6aa4935530c",
+   "tally": {
+    "attribute: outside what is read": 7,
+    "file: read": 2,
+    "import of a module of the repository: defined": 2
+   }
+  },
+  "scrapy/scrapy#8385": {
+   "base": "ca5f3c1acf430429563485997e207661d24b11da",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "scrapy/scrapy#8386": {
+   "base": "4001c07fea040cbbaaac505412698ee91c7a1034",
+   "tally": {
+    "attribute: outside what is read": 3,
+    "file: read": 2,
+    "import of a module of the repository: defined": 2,
+    "import: outside what is read": 3
+   }
+  },
+  "scrapy/scrapy#8391": {
+   "base": "53998e2b656798d6240a24b1377af01d57a6d18f",
+   "tally": {
+    "attribute of the standard library: defined": 1,
+    "file: read": 6,
+    "import of a module of the repository: defined": 5,
+    "import: outside what is read": 5
+   }
+  },
+  "scrapy/scrapy#8392": {
+   "base": "1e0ff6dd7c439b9c6de1d0b39704ec065af8cd18",
+   "tally": {
+    "attribute: outside what is read": 3,
+    "file: read": 6,
+    "import of a module of the repository: defined": 11,
+    "import of the standard library: defined": 1,
+    "import: outside what is read": 2
+   }
+  },
+  "scrapy/scrapy#8394": {
+   "base": "4d372f0275c315dd7b0eb2fc9c514951c0085e0a",
+   "tally": {
+    "attribute: outside what is read": 2,
+    "file: read": 2,
+    "import of a module of the repository: defined": 2,
+    "import: outside what is read": 1
+   }
+  },
+  "scrapy/scrapy#8413": {
+   "base": "62b57431e8d478a6c455ae814f8f5d64996545b3",
+   "tally": {
+    "attribute of the standard library: defined": 3,
+    "attribute: outside what is read": 4,
+    "file: read": 4,
+    "import of a module of the repository: defined": 3,
+    "import: outside what is read": 1
+   }
+  },
+  "scrapy/scrapy#8414": {
+   "base": "3e4d0faf0eefcaf3700c92bdb8973b7b9b82f996",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 3,
+    "import of a module of the repository: defined": 2
+   }
+  },
+  "scrapy/scrapy#8416": {
+   "base": "5c7886a3f27dbf8b66f557cc9945dbc4a6aceaac",
+   "tally": {
+    "attribute: outside what is read": 1,
+    "file: read": 2
+   }
+  },
+  "scrapy/scrapy#8431": {
+   "base": "943e31d5d69f2c9802e6673b3478975795670c57",
+   "tally": {
+    "attribute: outside what is read": 2,
+    "file: read": 2
+   }
+  },
+  "scrapy/scrapy#8440": {
+   "base": "2d22bf9ae9a2953bc55e017bc89f3ec469c820c8",
+   "tally": {
+    "file: read": 8,
+    "import of a module of the repository: defined": 1,
+    "import: outside what is read": 8
+   }
+  },
+  "scrapy/scrapy#8457": {
+   "base": "8810d37ba97c642cc15707fc0520131ca5714edd",
+   "tally": {
+    "attribute: outside what is read": 5,
+    "file: read": 2,
+    "import of a module of the repository: defined": 3
+   }
+  },
+  "scrapy/scrapy#8460": {
+   "base": "60c218c2cf0673a544166e5c292bc2b256f0fdd2",
+   "tally": {
+    "attribute of the standard library: defined": 3,
+    "attribute: outside what is read": 2,
+    "file: read": 4,
+    "import of a module of the repository: defined": 3,
+    "import: outside what is read": 3
+   }
+  },
+  "scrapy/scrapy#8461": {
+   "base": "20df334115ca4d8a3fe246ac644049ca18749026",
+   "tally": {
+    "file: read": 2
+   }
+  },
+  "scrapy/scrapy#8463": {
+   "base": "596523da9120f115042ecbfbccfc895a1d052b13",
+   "tally": {
+    "attribute of the standard library: unknown": 4,
+    "file: read": 2
+   }
+  },
+  "scrapy/scrapy#8464": {
+   "base": "a0e3b34479d272129b1710f6aabe0652ddb9939c",
+   "tally": {
+    "file: read": 3,
+    "import: outside what is read": 1
+   }
+  },
+  "scrapy/scrapy#8466": {
+   "base": "ae4c0cee172630b4516ef793840336bac13c80d6",
+   "tally": {
+    "attribute: outside what is read": 2,
+    "file: read": 3,
+    "import of a module of the repository: defined": 3,
+    "import: outside what is read": 1
+   }
+  }
+ },
+ "source": {
+  "Textualize/rich": {
+   "commit": "3a109ccdffe5b2d0e30684a304fbd388e99ce57b",
+   "files": 212,
+   "tally": {
+    "a made-up name in its place: caught": 1343,
+    "a made-up name in its place: not caught": 2,
+    "attribute of a module of the repository: defined": 95,
+    "attribute of a module of the repository: unknown": 7,
+    "attribute of the standard library: defined": 229,
+    "attribute: outside what is read": 1229,
+    "file: read": 212,
+    "import of a module of the repository: defined": 980,
+    "import of the standard library: defined": 44,
+    "import: outside what is read": 386
+   }
+  },
+  "Textualize/textual": {
+   "commit": "5e5b7ef58b8c5572c13a3ff9027d756623661495",
+   "files": 987,
+   "tally": {
+    "a made-up name in its place: caught": 3878,
+    "a made-up name in its place: not caught": 1,
+    "attribute of a module of the repository: defined": 31,
+    "attribute of a module of the repository: unknown": 2,
+    "attribute of the standard library: defined": 88,
+    "attribute of the standard library: unknown": 4,
+    "attribute: outside what is read": 2787,
+    "file: read": 987,
+    "import of a module of the repository: defined": 3668,
+    "import of a module of the repository: missing": 1,
+    "import of a module of the repository: unknown": 1196,
+    "import of the standard library: defined": 110,
+    "import: outside what is read": 1660,
+    "set elsewhere": 0
+   }
+  },
+  "encode/httpx": {
+   "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+   "files": 60,
+   "tally": {
+    "a made-up name in its place: caught": 246,
+    "attribute of a module of the repository: defined": 16,
+    "attribute of a module of the repository: unknown": 981,
+    "attribute of the standard library: defined": 52,
+    "attribute of the standard library: unknown": 6,
+    "attribute: outside what is read": 650,
+    "file: read": 60,
+    "import of a module of the repository: defined": 181,
+    "import of the standard library: defined": 17,
+    "import: outside what is read": 67
+   }
+  },
+  "fastapi/fastapi": {
+   "commit": "5add7a458d629b07311d48261f696b5ac2bb9a5f",
+   "files": 1221,
+   "tally": {
+    "a made-up name in its place: caught": 3194,
+    "a made-up name in its place: not caught": 1,
+    "attribute of a module of the repository: defined": 128,
+    "attribute of a module of the repository: unknown": 1,
+    "attribute of the standard library: defined": 188,
+    "attribute of the standard library: unknown": 19,
+    "attribute: outside what is read": 2427,
+    "file: read": 1221,
+    "import of a module of the repository: defined": 2689,
+    "import of the standard library: defined": 191,
+    "import: outside what is read": 1969
+   }
+  },
+  "fastapi/typer": {
+   "commit": "73500169e87b4e31717d687818c5ed955b584c18",
+   "files": 643,
+   "tally": {
+    "a made-up name in its place: caught": 2141,
+    "a made-up name in its place: not caught": 3,
+    "attribute of a module of the repository: defined": 1129,
+    "attribute of a module of the repository: unknown": 1,
+    "attribute of the standard library: defined": 421,
+    "attribute of the standard library: unknown": 1,
+    "attribute: outside what is read": 1344,
+    "file: read": 643,
+    "import of a module of the repository: defined": 550,
+    "import of the standard library: defined": 87,
+    "import: outside what is read": 551
+   }
+  },
+  "marshmallow-code/marshmallow": {
+   "commit": "a38b7f6842042e65fd1a485ed152ca99f87880c0",
+   "files": 38,
+   "tally": {
+    "a made-up name in its place: caught": 550,
+    "attribute of a module of the repository: defined": 290,
+    "attribute of the standard library: defined": 65,
+    "attribute: outside what is read": 1802,
+    "file: read": 38,
+    "import of a module of the repository: defined": 186,
+    "import of the standard library: defined": 9,
+    "import: outside what is read": 42
+   }
+  },
+  "pallets/click": {
+   "commit": "e38188e9e205005d5af5f9e59df51904c984586a",
+   "files": 91,
+   "tally": {
+    "a made-up name in its place: caught": 2513,
+    "a made-up name in its place: not caught": 3,
+    "attribute of a module of the repository: defined": 2089,
+    "attribute of a module of the repository: unknown": 11,
+    "attribute of the standard library: defined": 178,
+    "attribute of the standard library: unknown": 25,
+    "attribute: outside what is read": 1201,
+    "file: read": 91,
+    "import of a module of the repository: defined": 218,
+    "import of a module of the repository: unknown": 29,
+    "import of the standard library: defined": 35,
+    "import: outside what is read": 92
+   }
+  },
+  "pallets/flask": {
+   "commit": "49943b5a94413a530761350f04e896f76e8d620e",
+   "files": 83,
+   "tally": {
+    "a made-up name in its place: caught": 803,
+    "attribute of a module of the repository: defined": 539,
+    "attribute of a module of the repository: unknown": 5,
+    "attribute of the standard library: defined": 49,
+    "attribute of the standard library: unknown": 81,
+    "attribute: outside what is read": 631,
+    "file: read": 83,
+    "import of a module of the repository: defined": 191,
+    "import of a module of the repository: missing": 1,
+    "import of a module of the repository: unknown": 39,
+    "import of the standard library: defined": 24,
+    "import: outside what is read": 201,
+    "set elsewhere": 0
+   }
+  },
+  "pallets/jinja": {
+   "commit": "5ef70112a1ff19c05324ff889dd30405b1002044",
+   "files": 60,
+   "tally": {
+    "a made-up name in its place: caught": 570,
+    "a made-up name in its place: not caught": 6,
+    "attribute of a module of the repository: defined": 239,
+    "attribute of a module of the repository: unknown": 29,
+    "attribute of the standard library: defined": 33,
+    "attribute of the standard library: unknown": 89,
+    "attribute: outside what is read": 360,
+    "file: read": 60,
+    "import of a module of the repository: defined": 274,
+    "import of a module of the repository: unknown": 53,
+    "import of the standard library: defined": 30,
+    "import: outside what is read": 60
+   }
+  },
+  "pallets/werkzeug": {
+   "commit": "0f43c6ebd426039e4b99ec22535c2c8a2ec2f69f",
+   "files": 142,
+   "tally": {
+    "a made-up name in its place: caught": 1242,
+    "a made-up name in its place: not caught": 10,
+    "attribute of a module of the repository: defined": 521,
+    "attribute of a module of the repository: unknown": 178,
+    "attribute of the standard library: defined": 158,
+    "attribute of the standard library: unknown": 216,
+    "attribute: outside what is read": 1231,
+    "file: read": 142,
+    "import of a module of the repository: defined": 479,
+    "import of a module of the repository: unknown": 265,
+    "import of the standard library: defined": 94,
+    "import: outside what is read": 227
+   }
+  },
+  "psf/black": {
+   "commit": "cf3e0938971fc5cd0d71e7b696e86a6fb953332a",
+   "files": 436,
+   "tally": {
+    "a made-up name in its place: caught": 1112,
+    "attribute of a module of the repository: defined": 537,
+    "attribute of a module of the repository: unknown": 525,
+    "attribute of the standard library: defined": 103,
+    "attribute: outside what is read": 1275,
+    "file: doesn't parse": 27,
+    "file: read": 407,
+    "import of a module of the repository: defined": 429,
+    "import of a module of the repository: unknown": 23,
+    "import of the standard library: defined": 49,
+    "import: outside what is read": 456
+   }
+  },
+  "psf/requests": {
+   "commit": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+   "files": 37,
+   "tally": {
+    "a made-up name in its place: caught": 361,
+    "a made-up name in its place: not caught": 3,
+    "attribute of a module of the repository: defined": 2,
+    "attribute of a module of the repository: unknown": 293,
+    "attribute of the standard library: defined": 70,
+    "attribute of the standard library: unknown": 13,
+    "attribute: outside what is read": 395,
+    "file: read": 37,
+    "import of a module of the repository: defined": 257,
+    "import of a module of the repository: unknown": 5,
+    "import of the standard library: defined": 49,
+    "import: outside what is read": 120
+   }
+  },
+  "pydantic/pydantic": {
+   "commit": "560f0f96a37d6913afdfddb2de22030ef08e68c3",
+   "files": 3156,
+   "tally": {
+    "a made-up name in its place: caught": 7833,
+    "a made-up name in its place: not caught": 1333,
+    "attribute of a module of the repository: defined": 1010,
+    "attribute of a module of the repository: unknown": 315,
+    "attribute of the standard library: defined": 384,
+    "attribute of the standard library: unknown": 138,
+    "attribute: outside what is read": 11635,
+    "file: read": 3156,
+    "import of a module of the repository: defined": 7427,
+    "import of a module of the repository: missing": 2,
+    "import of a module of the repository: unknown": 1528,
+    "import of the standard library: defined": 356,
+    "import: outside what is read": 8735,
+    "set elsewhere": 0
+   }
+  },
+  "pypa/pip": {
+   "commit": "4b71f36fb4dfbc87ce65ac4710eeccf81d379f55",
+   "files": 694,
+   "tally": {
+    "a made-up name in its place: caught": 5557,
+    "a made-up name in its place: not caught": 860,
+    "attribute of a module of the repository: defined": 357,
+    "attribute of a module of the repository: unknown": 96,
+    "attribute of the standard library: defined": 1681,
+    "attribute of the standard library: unknown": 598,
+    "attribute: outside what is read": 4861,
+    "file: read": 694,
+    "import of a module of the repository: defined": 3870,
+    "import of a module of the repository: unknown": 81,
+    "import of the standard library: defined": 541,
+    "import: outside what is read": 1778
+   }
+  },
+  "python-attrs/attrs": {
+   "commit": "9d9f94a043de7fc4012459853a4ed597a5577855",
+   "files": 56,
+   "tally": {
+    "a made-up name in its place: caught": 176,
+    "a made-up name in its place: not caught": 1,
+    "attribute of a module of the repository: unknown": 1141,
+    "attribute of the standard library: defined": 54,
+    "attribute of the standard library: unknown": 63,
+    "attribute: outside what is read": 610,
+    "file: read": 56,
+    "import of a module of the repository: defined": 111,
+    "import of a module of the repository: unknown": 110,
+    "import of the standard library: defined": 13,
+    "import: outside what is read": 68
+   }
+  },
+  "python-poetry/poetry": {
+   "commit": "4acc75e19f128c8340c6f977a35e53b5f7f39071",
+   "files": 452,
+   "tally": {
+    "a made-up name in its place: caught": 486,
+    "a made-up name in its place: not caught": 2,
+    "attribute of the standard library: defined": 398,
+    "attribute: outside what is read": 3263,
+    "file: read": 452,
+    "import of the standard library: defined": 90,
+    "import: outside what is read": 2637
+   }
+  },
+  "scrapy/scrapy": {
+   "commit": "f1e29c3822468f03f090d22714020f86b3d6e9a2",
+   "files": 546,
+   "tally": {
+    "a made-up name in its place: caught": 4324,
+    "a made-up name in its place: not caught": 31,
+    "attribute of a module of the repository: defined": 338,
+    "attribute of a module of the repository: unknown": 19,
+    "attribute of the standard library: defined": 588,
+    "attribute of the standard library: unknown": 224,
+    "attribute: outside what is read": 3357,
+    "file: read": 546,
+    "import of a module of the repository: defined": 3085,
+    "import of a module of the repository: unknown": 42,
+    "import of the standard library: defined": 361,
+    "import: outside what is read": 2183
+   }
+  }
+ }
+}
