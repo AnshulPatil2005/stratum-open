@@ -56,6 +56,10 @@ Marking findings on merged PRs needs a maintainer for every row, so
   [whole_files.py](whole_files.py) runs the Ruff check's rules, and the ones
   left out of it, on every line of those PRs' Python files, since on the
   added lines alone they find next to nothing to judge.
+  Those PRs are from Python projects. [corpus.py](corpus.py) picks 233 more from
+  JavaScript and TypeScript, Go and Rust projects (`clean-js.json`,
+  `clean-go.json`, `clean-rust.json`) and from PRs that change workflows or
+  dependency manifests (`clean-infra.json`), and sums up a run on them.
 
 ```sh
 python benchmark/planted.py checks --risks benchmark/planted/risks.yml --prs benchmark/planted/clean.json \
@@ -119,3 +123,4 @@ finding and every call. The machine each run used is noted in its summary.
 | [2026-11-08-cache-fit-actions-cpu](results/2026-11-08-cache-fit-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | Models that fit the Actions cache, on the 19 dev cases: `qwen3:14b` 4, `phi4:14b` 3, `gemma3:12b` 1, against 7 for `qwen2.5-coder:14b` |
 | [2026-11-13-osv](results/2026-11-13-osv/summary.md) | Any (no model) | `dependencies.known_vulnerabilities` on: 6 of 6 pins with known advisories caught, 3 of 3 controls left alone. No pinned version in the 184 merged PRs; in 47 more that change a manifest, 3 of 18 pins flagged, all 3 right |
 | [2026-11-13-ruff](results/2026-11-13-ruff/summary.md) | Any (no model) | The Ruff check (`checks.ruff`, off by default): 55 of 55 planted errors caught and no finding on the lines 184 merged PRs add; 53 of its 55 rules fire nowhere in those files, so their false alarms aren't measured |
+| [2026-11-13-checks-beyond-python](results/2026-11-13-checks-beyond-python/summary.md) | Any (no model) | The checks on 233 merged PRs from JavaScript and TypeScript, Go and Rust projects: 87 findings, none plainly wrong, 2 unsure. The rules for code had almost nothing to read there |
