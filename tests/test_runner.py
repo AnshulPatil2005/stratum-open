@@ -236,32 +236,49 @@ def test_parse_commands():
     assert parse("no command") is None
 
 
+def as_0_2_posted_it(gh):
+    for thread in gh.threads:
+        root = thread["comments"][0]
+        root["body"] = root["body"].replace(publish.HINT, publish.OLD_HINT)
+
+
 def test_hints_from_before_0_3_are_rewritten_once_and_kept_when_a_thread_closes(gh):
     ctx = context(gh, FakeModel(model_answer()))
     review_pull(ctx, 7)
-    for thread in gh.threads:  # what 0.2 posted
-        thread["comments"][0]["body"] = thread["comments"][0]["body"].replace("`/stratum ", "`@stratum ")
+    as_0_2_posted_it(gh)
     threads = gh.review_threads(7)
-    assert len(threads) >= 2 and all("Reply `@stratum ignore`" in t["comments"][0]["body"] for t in threads)
+    assert len(threads) >= 2 and all(publish.OLD_HINT in t["comments"][0]["body"] for t in threads)
 
     gone = {publish.thread_fingerprint(threads[0], BOT): "Fixed."}
-    assert publish.refresh_hints(gh, threads, bot=BOT) == len(threads)
-    publish.resolve_threads(gh, 7, threads, gone, bot=BOT)
+    edits = len(gh.edited)
+    assert publish.update_threads(gh, 7, threads, gone, bot=BOT) == 1
+    assert len(gh.edited) == edits + len(threads)  # one edit per comment, the closed one too
     bodies = [t["comments"][0]["body"] for t in gh.threads]
-    assert all("@stratum" not in body and "Reply `/stratum ignore`" in body for body in bodies)
-    assert publish.RESOLVED_MARKER in bodies[0]
+    assert all("@stratum" not in body and publish.HINT in body for body in bodies)
+    assert publish.RESOLVED_MARKER in bodies[0] and publish.RESOLVED_MARKER not in bodies[1]
     edits = len(gh.edited)
     review_pull(ctx, 7)
     assert len(gh.edited) == edits  # nothing left to rewrite
 
 
+def test_rewriting_the_old_hint_leaves_a_suggestion_as_it_was(gh):
+    review_pull(context(gh, FakeModel(model_answer())), 7)
+    as_0_2_posted_it(gh)
+    root = gh.threads[0]["comments"][0]
+    code = f"```suggestion\nmsg = `@stratum hi`\nhelp = \"{publish.OLD_HINT}\"\n```\n\n"
+    root["body"] = root["body"].replace("<sub>", code + "<sub>")
+    threads = gh.review_threads(7)
+    assert publish.update_threads(gh, 7, threads, {}, bot=BOT) == 0
+    body = gh.threads[0]["comments"][0]["body"]
+    assert code in body and body.count(publish.OLD_HINT) == 1 and publish.HINT in body.rpartition("<sub>")[2]
+
+
 def test_a_review_rewrites_the_old_hints(gh):
     ctx = context(gh, FakeModel(model_answer()))
     review_pull(ctx, 7)
-    for thread in gh.threads:
-        thread["comments"][0]["body"] = thread["comments"][0]["body"].replace("`/stratum ", "`@stratum ")
+    as_0_2_posted_it(gh)
     review_pull(ctx, 7)
-    assert all("Reply `/stratum ignore`" in t["comments"][0]["body"] for t in gh.threads)
+    assert all(publish.HINT in t["comments"][0]["body"] and publish.OLD_HINT not in t["comments"][0]["body"] for t in gh.threads)
 
 
 def test_ignore_needs_write_access_and_resolves_the_thread(gh):

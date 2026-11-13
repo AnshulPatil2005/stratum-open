@@ -33,6 +33,9 @@ QUIET_SHOWN = 5  # `review.quiet`: the model's findings in view at most, on the 
 QUIET_NOTES = 3  # ... and the history notes shown; the rest go under "What was reviewed"
 COMMENT_LIMIT = 65000
 LABEL = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low"}
+# The hint under each inline comment, and the one 0.1 and 0.2 posted.
+HINT = "Reply `/stratum ignore` to hide it on this PR, or `/stratum explain` for more."
+OLD_HINT = "Reply `@stratum ignore` to hide it on this PR, or `@stratum explain` for more."
 
 
 @dataclass
@@ -110,7 +113,7 @@ def comment_body(finding: Finding, *, feedback: bool) -> str:
         fence = "`" * max(3, longest + 1)
         lines += ["", f"{fence}suggestion", finding.replacement.rstrip("\n"), fence]
     source = f"a check (`{finding.rule}`)" if finding.source == "check" else "the model"
-    hint = f"From {source}. Reply `/stratum ignore` to hide it on this PR, or `/stratum explain` for more."
+    hint = f"From {source}. {HINT}"
     if feedback:
         hint += " 👍 or 👎 tells Stratum whether this was useful."
     lines += ["", f"<sub>{hint}</sub>", f"<!-- stratum:finding {finding.fingerprint} {finding.rule} -->"]
@@ -194,31 +197,21 @@ def _inline(finding: Finding, feedback: bool) -> dict[str, Any]:
     return comment
 
 
-def refresh_hints(gh: GitHub, threads: list[dict], *, bot: str, log=lambda line: None) -> int:
-    """Rewrite "Reply `@stratum ignore`" in Stratum's open threads from before
-    0.3.0 as `/stratum`, the form that's read now. It edits `threads` too, so a
-    thread closed after this keeps the new hint. Each comment is edited once;
-    after that this does nothing, so it can go once 0.2 reviews are gone."""
-    fixed = 0
-    for thread in threads:
-        root = thread["comments"][0]
-        if not thread_fingerprint(thread, bot) or not is_open(thread, bot) or "`@stratum " not in root["body"]:
-            continue
-        body = root["body"].replace("`@stratum ", "`/stratum ")
-        try:
-            gh.edit_review_comment(root["id"], body)
-        except GitHubError as exc:
-            log(f"couldn't update a finding's comment to the /stratum commands: {exc}")
-            continue
-        root["body"] = body
-        fixed += 1
-    return fixed
+def _new_hint(body: str) -> str:
+    """The comment with the hint from before 0.3.0 rewritten, and nothing else
+    changed. The hint is in the last <sub>, after any suggestion, whose code
+    has to stay as it was posted."""
+    head, sub, tail = body.rpartition("<sub>")
+    return head + sub + tail.replace(OLD_HINT, HINT, 1) if sub else body
 
 
-def resolve_threads(gh: GitHub, number: int, threads: list[dict], gone: dict[str, str], *, bot: str,
-                    log=lambda line: None) -> int:
-    """Close Stratum's open threads whose finding is gone, saying why. `gone`
-    maps a fingerprint to the reason.
+def update_threads(gh: GitHub, number: int, threads: list[dict], gone: dict[str, str], *, bot: str,
+                   log=lambda line: None) -> int:
+    """Close Stratum's open threads whose finding is gone, saying why, and
+    rewrite the hint 0.2 posted in the open ones, so it names `/stratum`, the
+    form that's read now. `gone` maps a fingerprint to the reason. A comment
+    is edited at most once per review; once no open thread has the old hint,
+    only closing edits anything. Returns how many were closed.
 
     The comment itself is edited to say it's closed, because GitHub refuses
     to let an Actions token resolve threads, even its own; resolving is tried
@@ -226,19 +219,26 @@ def resolve_threads(gh: GitHub, number: int, threads: list[dict], gone: dict[str
     closed = 0
     for thread in threads:
         fp = thread_fingerprint(thread, bot)
-        if fp not in gone or not is_open(thread, bot):
+        if not fp or not is_open(thread, bot):
             continue
         root = thread["comments"][0]
-        try:
-            gh.edit_review_comment(root["id"], closed_body(root["body"], gone[fp]))
-        except GitHubError as exc:
-            log(f"couldn't mark a finding's comment as closed: {exc}")
-            continue
-        closed += 1
-        try:
-            gh.resolve_thread(thread["id"])
-        except GitHubError:
-            pass  # the edit already says it's closed
+        body = _new_hint(root["body"])
+        if fp in gone:
+            try:
+                gh.edit_review_comment(root["id"], closed_body(body, gone[fp]))
+            except GitHubError as exc:
+                log(f"couldn't mark a finding's comment as closed: {exc}")
+                continue
+            closed += 1
+            try:
+                gh.resolve_thread(thread["id"])
+            except GitHubError:
+                pass  # the edit already says it's closed
+        elif body != root["body"]:
+            try:
+                gh.edit_review_comment(root["id"], body)
+            except GitHubError as exc:
+                log(f"couldn't update the hint in a finding's comment: {exc}")
     return closed
 
 
