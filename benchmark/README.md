@@ -44,15 +44,19 @@ Marking findings on merged PRs needs a maintainer for every row, so
   then read and marked: whether it describes the bug (`found`), and whether
   each other finding is a real problem, with the reason in its `note`. Start the **Planted-bug benchmark** workflow to run it on
   GitHub's free runners, one job per model and shard.
-- **The checks that need no model.** [risks.yml](planted/risks.yml) is 44
+- **The checks that need no model.** [risks.yml](planted/risks.yml) is 50
   planted risks (secrets, code that runs input, workflow holes, typosquatted
-  and made-up packages, coding-agent files, hidden Unicode), after real
-  incidents where there was one. [clean.json](planted/clean.json) is 184
-  merged PRs as they are, where every finding is a possible false alarm.
+  and made-up packages, versions with known advisories, coding-agent files,
+  hidden Unicode), after real incidents where there was one, and 3 controls
+  a rule must leave alone. [clean.json](planted/clean.json) is 184 merged PRs
+  as they are, where every finding is a possible false alarm. `--policy`
+  takes a policy file, for a rule that is off by default: the six
+  known-advisory cases are missed without
+  [known-vulnerabilities.yml](planted/variants/known-vulnerabilities.yml).
 
 ```sh
 python benchmark/planted.py checks --risks benchmark/planted/risks.yml --prs benchmark/planted/clean.json \
-    --out benchmark/results/<name>
+    --out benchmark/results/<name> [--policy benchmark/planted/variants/known-vulnerabilities.yml]
 python benchmark/planted.py run --bugs benchmark/planted/bugs.json --out benchmark/results/<name>/raw/7b \
     --model qwen2.5-coder:7b@http://localhost:11434/v1
 python benchmark/planted.py score benchmark/results/<name>   # after marking the verdict columns
@@ -110,3 +114,4 @@ finding and every call. The machine each run used is noted in its summary.
 | [2026-11-08-moe-actions-cpu](results/2026-11-08-moe-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | Mixtures of experts: `gpt-oss:20b` finds 12 of 39 with `review.reasoning: low`, `deepseek-coder-v2:16b` 4 |
 | [2026-11-08-gpt-oss-actions-cpu](results/2026-11-08-gpt-oss-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | `gpt-oss:20b` with `reasoning: low` and each `verify`: 16 of 39 found with strict verify, 7 comments on 39 clean PRs |
 | [2026-11-08-cache-fit-actions-cpu](results/2026-11-08-cache-fit-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | Models that fit the Actions cache, on the 19 dev cases: `qwen3:14b` 4, `phi4:14b` 3, `gemma3:12b` 1, against 7 for `qwen2.5-coder:14b` |
+| [2026-11-13-osv](results/2026-11-13-osv/summary.md) | Any (no model) | `dependencies.known_vulnerabilities` on: 6 of 6 pins with known advisories caught, 3 of 3 controls left alone. No pinned version in the 184 merged PRs; in 47 more that change a manifest, 3 of 18 pins flagged, all 3 right |

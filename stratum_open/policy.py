@@ -118,6 +118,7 @@ class TrackRecord:
 class Dependencies:
     registry_lookup: bool = True
     min_package_age_days: int = 30
+    known_vulnerabilities: bool = False  # ask OSV (osv.dev) about each pinned version; needs registry_lookup
 
 
 @dataclass(frozen=True)

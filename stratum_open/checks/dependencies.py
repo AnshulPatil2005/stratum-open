@@ -23,12 +23,24 @@ a dependency:
 - `Cargo.toml`: `name = "1.2"` or `name = { version = ... }`.
 - `go.mod`: a module path and version.
 
-The only thing sent to a registry is a dependency's name.
+With `dependencies.known_vulnerabilities` on, every dependency an added line
+sets to one exact version, new or bumped, is also looked up in the OSV
+database (osv.dev), and gets a finding when that version has published
+advisories. Exact means `name==1.2.3` in a requirements file or
+pyproject.toml, a bare `1.2.3` in a Poetry table or package.json, `=1.2.3`
+in Cargo.toml (a bare version there is a range) and a go.mod requirement. A
+range has no single answer, so it gets no finding. The finding's severity is
+the highest OSV labels any of the advisories with; when it labels none, the
+finding is medium.
+
+The only thing sent to a registry is a dependency's name. OSV is sent the
+name, the ecosystem and the version.
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any
@@ -40,13 +52,19 @@ from stratum_open import __version__
 from stratum_open.checks.common import basename, checked_lines, view
 from stratum_open.checks.popular import BY_ECOSYSTEM
 from stratum_open.diff import FileDiff
-from stratum_open.findings import Finding
+from stratum_open.findings import SEVERITIES, Finding
 from stratum_open.policy import Policy
 
 REGISTRY_NAMES = {"pypi": "PyPI", "npm": "npm", "crates": "crates.io", "go": "the Go module proxy"}
 LOOKUP_ECOSYSTEMS = ("pypi", "npm", "crates")  # Go modules have no first-published date to ask for
 MAX_LOOKUPS = 30  # registry calls per run; a PR adding more gets the rest unchecked
 USER_AGENT = f"stratum-open/{__version__} (dependency check)"
+OSV = "https://api.osv.dev/v1"
+OSV_ECOSYSTEMS = {"pypi": "PyPI", "npm": "npm", "crates": "crates.io", "go": "Go"}
+MAX_PINS = 100  # pinned versions OSV is asked about per run, in one request; the rest go unchecked
+MAX_VULNERABLE = 20  # of those, how many have their advisories read, a request each
+MAX_ADVISORIES_NAMED = 3
+UNRATED = "medium"  # a finding's severity when OSV gives none of the advisories one
 
 
 @dataclass
@@ -82,8 +100,9 @@ def check(
     contents: dict[str, str] | None = None,
     now: datetime | None = None,
 ) -> list[Finding]:
-    """`lookup` is a `PackageLookup` (or anything with its `info` method);
-    None means no registry calls."""
+    """`lookup` is a `PackageLookup` (or anything with its `info` method, and
+    its `advisories` method for the known-vulnerability findings); None
+    means no registry calls."""
     now = now or datetime.now(timezone.utc)
     findings: list[Finding] = []
     asked: set[tuple[str, str]] = set()
@@ -111,6 +130,29 @@ def check(
             days = (now - info.first_published).days
             if days < policy.dependencies.min_package_age_days:
                 findings.append(_young(dep, days))
+    # registry_lookup is the consent for any lookup, so OSV needs both keys.
+    if lookup is not None and policy.dependencies.registry_lookup and policy.dependencies.known_vulnerabilities:
+        findings.extend(_known_vulnerable(files, contents, lookup))
+    return findings
+
+
+def _known_vulnerable(files: list[FileDiff], contents: dict[str, str] | None, lookup: Any) -> list[Finding]:
+    ask = getattr(lookup, "advisories", None)  # a lookup written before this check has no such method
+    pinned = find_pinned(files, contents) if ask is not None else []
+    if not pinned:
+        return []
+    wanted = list(dict.fromkeys((dep.ecosystem, dep.name, version) for dep, version in pinned))[:MAX_PINS]
+    try:
+        answers = ask(wanted)
+    except Exception:  # as for the registries: a lookup problem means "unknown"
+        return []
+    if not isinstance(answers, dict):
+        return []
+    findings = []
+    for dep, version in pinned:
+        listed = answers.get((dep.ecosystem, dep.name, version))
+        if isinstance(listed, Advisories) and listed.ids:
+            findings.append(_vulnerable(dep, version, listed))
     return findings
 
 
@@ -177,6 +219,34 @@ def _young(dep: Dependency, days: int) -> Finding:
         ),
         "Check who publishes it and that it's the package you meant, or wait until it has some history.",
         "high", True, 0.9,
+    )
+
+
+def _vulnerable(dep: Dependency, version: str, listed: Advisories) -> Finding:
+    count = len(listed.ids)
+    one = count == 1
+    named = ", ".join(listed.ids[:MAX_ADVISORIES_NAMED]) + (f" and {count - MAX_ADVISORIES_NAMED} more" if count > MAX_ADVISORIES_NAMED else "")
+    severity = listed.severity if listed.severity in SEVERITIES else None
+    detail = (
+        f"This PR sets `{dep.name}` to {version}, and the OSV database (osv.dev) lists "
+        f"{'a security advisory' if one else f'{count} security advisories'} for that version: {named}. "
+    )
+    if severity:
+        detail += f"{'It is' if one else 'The most severe is'} rated {severity}. "
+    else:
+        detail += f"OSV gives {'it' if one else 'them'} no severity. "
+    if listed.fixed:
+        detail += f"{listed.fixed} is the first version with {'it' if one else 'all of them'} fixed."
+        suggestion = f"Use {listed.fixed}, or a later release that has {'the fix' if one else 'the fixes'}."
+    else:
+        detail += f"OSV names no version with {'it' if one else 'all of them'} fixed."
+        suggestion = (
+            f"Check whether {'it applies' if one else 'they apply'} to how this project uses `{dep.name}`, "
+            "and pick another version or package if so."
+        )
+    return _finding(
+        dep, "deps/vulnerable", f"`{dep.name}` {version} has {'a known vulnerability' if one else 'known vulnerabilities'}",
+        detail, suggestion, severity or UNRATED, False, 0.9,
     )
 
 
@@ -557,6 +627,126 @@ def _loose_names(kind: str, text: str) -> list[str]:
     return names
 
 
+# ── exact versions ───────────────────────────────────────────────────────
+
+
+def find_pinned(files: list[FileDiff], contents: dict[str, str] | None = None) -> list[tuple[Dependency, str]]:
+    """Each registry dependency a checked line sets to one exact version,
+    with that version: new ones and bumps alike."""
+    found: list[tuple[Dependency, str]] = []
+    for file in files:
+        kind = manifest_kind(file.path)
+        if not kind or file.binary:
+            continue
+        ecosystem = _ECOSYSTEM[kind]
+        lines = view(file, contents)
+        text = dict(lines)
+        added = {number for number, _ in checked_lines(file, contents, scope)}
+        seen: set[tuple[str, str]] = set()
+        for number, name, source in _SCANNERS[kind](lines):
+            if number not in added or source != "registry":
+                continue
+            version = _exact_version(kind, text[number], name)
+            if version and (normalise(name, ecosystem), version) not in seen:
+                seen.add((normalise(name, ecosystem), version))
+                found.append((Dependency(name, ecosystem, file.path, number), version))
+    return found
+
+
+# OSV matches a version it can't read loosely (`banana` gets advisories), so
+# only well-formed versions are sent: PEP 440 for PyPI, full semver elsewhere.
+_PEP440 = re.compile(
+    r"^v?(?:(\d+)!)?(\d+(?:\.\d+)*)"
+    r"(?:[-_.]?(a|b|c|rc|alpha|beta|pre|preview)[-_.]?(\d*))?"
+    r"(?:-(\d+)|[-_.]?(?:post|rev|r)[-_.]?(\d*))?"
+    r"(?:[-_.]?dev[-_.]?(\d*))?"
+    r"(?:\+[a-z0-9]+(?:[-_.][a-z0-9]+)*)?$",
+    re.I,
+)
+_SEMVER = re.compile(r"^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$")
+_PRE = {"a": 0, "alpha": 0, "b": 1, "beta": 1, "c": 2, "rc": 2, "pre": 2, "preview": 2}
+_PIN = re.compile(r"^==\s*([\w.!+-]+)(?:\s*;.*|\s*\\|\s+--.*)?$", re.S)
+
+
+def version_key(version: str, ecosystem: str) -> tuple | None:
+    """A key that sorts versions of one ecosystem as the ecosystem does (PEP
+    440, or semver); None for text that isn't a whole version."""
+    if ecosystem == "pypi":
+        match = _PEP440.match(version)
+        if not match:
+            return None
+        epoch, release, pre, pre_number, post_bare, post, dev = match.groups()
+        numbers = [int(part) for part in release.split(".")]
+        while len(numbers) > 1 and numbers[-1] == 0:
+            numbers.pop()  # 2.0 and 2.0.0 are the same version
+        post = post_bare if post_bare is not None else post
+        if pre is not None:
+            before = (1, _PRE[pre.lower()], int(pre_number or 0))
+        else:  # 1.0.dev1 comes before 1.0a1, and both before 1.0
+            before = (0,) if dev is not None and post is None else (2,)
+        return (
+            int(epoch or 0), tuple(numbers), before,
+            (0,) if post is None else (1, int(post or 0)),
+            (1,) if dev is None else (0, int(dev or 0)),
+        )
+    match = _SEMVER.match(version)
+    if not match:
+        return None
+    major, minor, patch, pre = match.groups()
+    if pre is None:
+        return int(major), int(minor), int(patch), (1,)
+    # A pre-release comes before its release; numeric parts sort as numbers, below the rest.
+    return int(major), int(minor), int(patch), (0, tuple((0, int(part), "") if part.isdigit() else (1, 0, part) for part in pre.split(".")))
+
+
+def _exact_version(kind: str, text: str, name: str) -> str | None:
+    """The one version a manifest line sets dependency `name` to, or None
+    when the line gives a range, a tag or nothing."""
+    ecosystem = _ECOSYSTEM[kind]
+    version: str | None = None
+    if kind == "requirements":
+        version = _pinned(text)
+    elif kind == "pyproject":
+        for match in _STRING.finditer(text):
+            requirement = _requirement(_quoted(match))
+            if requirement and requirement[0] == name:
+                version = _pinned(_quoted(match))
+                break
+        else:  # a Poetry entry, where a bare version means exactly that version
+            spec = _toml_version(text)
+            version = re.sub(r"^==?\s*", "", spec) if spec else None
+    elif kind == "npm":
+        key_line = _JSON_KEY.match(text)
+        spec = key_line.group(2).strip().rstrip(",").strip().strip('"') if key_line else ""
+        if spec.startswith("npm:"):  # an alias: the version is after the target's name
+            spec = spec[4:].rpartition("@")[2] if "@" in spec[4:].lstrip("@") else ""
+        version = re.sub(r"^=?\s*v?", "", spec)
+    elif kind == "cargo":
+        spec = _toml_version(text)
+        version = spec[1:].strip() if spec and spec.startswith("=") else None  # a bare "1.2.3" is ^1.2.3
+    elif kind == "go":
+        match = _GO_REQUIRE.match(text) or _GO_ENTRY.match(text)
+        version = match.group("version").removeprefix("v") if match else None
+    return version if version and version_key(version, ecosystem) is not None else None
+
+
+def _pinned(text: str) -> str | None:
+    """The version of a PEP 508 requirement that is `name==version` and nothing else."""
+    match = _NAME.match(re.sub(r"(?:^|\s)#.*$", "", text.lstrip("\ufeff")).strip())
+    pin = _PIN.match(match.group(3).strip()) if match else None
+    return pin.group(1) if pin else None
+
+
+def _toml_version(text: str) -> str | None:
+    """The version text of a `name = "..."` or `name = { version = "..." }` line."""
+    key_line = _TOML_KEY.match(text)
+    if not key_line:
+        return None
+    value = key_line.group("value").lstrip()
+    found = re.search(r"""\bversion\s*=\s*["']([^"']*)["']""", value) if value.startswith("{") else re.match(r"""["']([^"']*)["']""", value)
+    return found.group(1).strip() if found else None
+
+
 # ── look-alike names ─────────────────────────────────────────────────────
 
 _POPULAR = {
@@ -634,11 +824,21 @@ class PackageInfo:
     first_published: datetime | None = None  # None when the registry doesn't say
 
 
+@dataclass(frozen=True)
+class Advisories:
+    """What OSV lists for one version of a package."""
+    ids: tuple[str, ...]  # one per advisory, the most severe first
+    severity: str | None = None  # the highest OSV labels any with: low | medium | high | critical
+    fixed: str | None = None  # the first version with all of them fixed, when OSV's ranges say
+
+
 class PackageLookup:
     """Asks PyPI, npm and crates.io whether a package exists and when it was
     first published. Only the name is sent. Answers are kept for the run, and
     anything that goes wrong (no network, a timeout, a rate limit, a reply it
-    can't read) is "unknown": `info` returns None, never raises."""
+    can't read) is "unknown": `info` returns None, never raises.
+
+    `advisories` asks OSV about pinned versions, and is as forgiving."""
 
     def __init__(self, session: Any = None, timeout: float = 10.0):
         self.session = session or requests.Session()
@@ -675,6 +875,70 @@ class PackageLookup:
             return None
         return PackageInfo(exists=True, first_published=_first_published(ecosystem, data))
 
+    def advisories(self, pins: Iterable[tuple[str, str, str]]) -> dict[tuple[str, str, str], Advisories]:
+        """What OSV lists for each (ecosystem, name, version) that has
+        advisories; one that's missing from the answer is clean, or unknown.
+        Those three things are all that is sent, and a version that isn't
+        well-formed isn't sent at all. One request asks which of the versions
+        have any, and each of the first `MAX_VULNERABLE` that do costs one
+        more for the records. Never raises: a subclass built for `info`
+        alone, or a session that can't post, gets an empty answer."""
+        try:
+            known = [pin for pin in pins if pin[0] in OSV_ECOSYSTEMS and version_key(pin[2], pin[0]) is not None]
+            return self._advisories(list(dict.fromkeys(known)))
+        except Exception:
+            return {}
+
+    def _advisories(self, pins: list[tuple[str, str, str]]) -> dict[tuple[str, str, str], Advisories]:
+        retries, down = 1, False  # one retry for the whole call, so OSV being down costs two timeouts, not two per package
+
+        def ask(path: str, body: dict) -> dict | None:
+            nonlocal retries, down
+            while True:
+                try:
+                    response = self.session.post(
+                        f"{OSV}/{path}", json=body, timeout=self.timeout, headers={"User-Agent": USER_AGENT, "Accept": "application/json"}
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        return data if isinstance(data, dict) else None
+                    if response.status_code != 429 and response.status_code < 500:
+                        return None  # OSV didn't like the question; asking again won't help
+                except ValueError:
+                    return None
+                except requests.RequestException:
+                    pass
+                if not retries:
+                    down = True
+                    return None
+                retries -= 1
+
+        if not pins:
+            return {}
+        queries = [
+            {
+                "package": {"name": normalise(name, ecosystem) if ecosystem == "pypi" else name, "ecosystem": OSV_ECOSYSTEMS[ecosystem]},
+                "version": version,
+            }
+            for ecosystem, name, version in pins
+        ]
+        results = (ask("querybatch", {"queries": queries}) or {}).get("results")
+        if not isinstance(results, list) or len(results) != len(pins):
+            return {}
+        listed = [
+            (pin, query) for pin, query, result in zip(pins, queries, results, strict=True)
+            if isinstance(result, dict) and (result.get("vulns") or result.get("next_page_token"))
+        ]
+        found: dict[tuple[str, str, str], Advisories] = {}
+        for pin, query in listed[:MAX_VULNERABLE]:
+            data = None if down else ask("query", query)
+            # A second page would make the count from this one wrong: unknown rather than understated.
+            if data and not data.get("next_page_token") and isinstance(data.get("vulns"), list):
+                summary = _summary(*pin, data["vulns"])
+                if summary:
+                    found[pin] = summary
+        return found
+
 
 def _first_published(ecosystem: str, data: dict) -> datetime | None:
     if ecosystem == "pypi":
@@ -702,3 +966,126 @@ def _time(value: Any) -> datetime | None:
     except ValueError:
         return None
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+# ── advisories ───────────────────────────────────────────────────────────
+
+_OSV_SEVERITY = {"LOW": "low", "MODERATE": "medium", "MEDIUM": "medium", "HIGH": "high", "CRITICAL": "critical"}
+# (from, to, fixed): versions from `from` up to `to` are affected. `to` is the
+# fixed version itself when `fixed`, the last affected one otherwise; None is
+# no upper end. () sorts below every version key, for "from the first release".
+_Span = tuple[tuple, tuple | None, str | None]
+
+
+def _summary(ecosystem: str, name: str, version: str, records: list) -> Advisories | None:
+    """OSV's records for one version as one answer. Records that name each
+    other as aliases (a GHSA and a PYSEC entry for one CVE) are one advisory.
+    The severity is the label the advisory database gave (GitHub's does); a
+    CVSS vector on its own isn't turned into one."""
+    records = [r for r in records if isinstance(r, dict) and isinstance(r.get("id"), str) and not r.get("withdrawn")]
+    parent: dict[str, str] = {}
+
+    def root(key: str) -> str:
+        while parent.setdefault(key, key) != key:
+            key = parent[key]
+        return key
+
+    for record in records:
+        for alias in _aliases(record):
+            parent[root(alias)] = root(record["id"])
+    groups: dict[str, list[dict]] = {}
+    for record in records:
+        groups.setdefault(root(record["id"]), []).append(record)
+    if not groups:
+        return None
+
+    at = version_key(version, ecosystem)
+    advisories: list[tuple[int, str]] = []
+    spans: list[_Span] | None = []
+    for members in groups.values():
+        own = sorted(r["id"] for r in members)
+        known = sorted(alias for r in members for alias in _aliases(r) if alias.startswith("CVE-"))
+        shown = next((i for i in own if i.startswith("GHSA-")), None) or (known[0] if known else own[0])
+        advisories.append((max(_severity_rank(r) for r in members), shown))
+        mine = [span for r in members for span in _spans(r, ecosystem, name) or ()]
+        # An advisory with no range around this version that ends in a fix: no version is known to fix them all.
+        if spans is not None and at is not None and any(_covers(span, at) and span[2] for span in mine):
+            spans.extend(mine)
+        else:
+            spans = None
+    advisories.sort(key=lambda item: (-item[0], item[1]))
+    top = advisories[0][0]
+    return Advisories(
+        ids=tuple(shown for _, shown in advisories),
+        severity=SEVERITIES[top] if top >= 0 else None,
+        fixed=_first_fixed(at, spans) if spans and at is not None else None,
+    )
+
+
+def _aliases(record: dict) -> list[str]:
+    aliases = record.get("aliases")
+    return [alias for alias in aliases if isinstance(alias, str)] if isinstance(aliases, list) else []
+
+
+def _severity_rank(record: dict) -> int:
+    """Where the record's severity label sits in SEVERITIES; -1 without one."""
+    specific = record.get("database_specific")
+    label = _OSV_SEVERITY.get(str(specific.get("severity")).upper()) if isinstance(specific, dict) else None
+    return SEVERITIES.index(label) if label else -1
+
+
+def _spans(record: dict, ecosystem: str, name: str) -> list[_Span] | None:
+    """The affected version ranges a record gives for this package; None when
+    one of them has a version that can't be compared."""
+    spans: list[_Span] = []
+    affected = record.get("affected")
+    for entry in affected if isinstance(affected, list) else []:
+        package = entry.get("package") if isinstance(entry, dict) else None
+        if not isinstance(package, dict) or package.get("ecosystem") != OSV_ECOSYSTEMS[ecosystem]:
+            continue
+        if normalise(str(package.get("name", "")), ecosystem) != normalise(name, ecosystem):
+            continue
+        ranges = entry.get("ranges")
+        for ranged in ranges if isinstance(ranges, list) else []:
+            if not isinstance(ranged, dict) or ranged.get("type") not in ("ECOSYSTEM", "SEMVER") or not isinstance(ranged.get("events"), list):
+                continue
+            events = []
+            for event in ranged["events"]:
+                kind = next((k for k in ("introduced", "fixed", "last_affected") if isinstance(event, dict) and k in event), None)
+                if kind is None:
+                    continue
+                text = str(event[kind])
+                key = () if (kind, text) == ("introduced", "0") else version_key(text, ecosystem)
+                if key is None:
+                    return None
+                events.append((key, kind != "introduced", kind, text))
+            start: tuple | None = None
+            for key, _, kind, text in sorted(events):  # in version order, as OSV's own matching reads them
+                if kind == "introduced":
+                    start = key if start is None else start
+                elif start is not None:
+                    spans.append((start, key, text if kind == "fixed" else None))
+                    start = None
+            if start is not None:
+                spans.append((start, None, None))
+    return spans
+
+
+def _covers(span: _Span, at: tuple) -> bool:
+    start, end, fixed = span
+    return start <= at and (end is None or at < end or (not fixed and at == end))
+
+
+def _first_fixed(at: tuple, spans: list[_Span]) -> str | None:
+    """The lowest version at or above `at` that no span covers: each fix is
+    checked against the other advisories' ranges, since a release that fixes
+    one can still be inside another's."""
+    fixed: str | None = None
+    for _ in range(len(spans) + 1):
+        covering = [span for span in spans if _covers(span, at)]
+        if not covering:
+            return fixed
+        if not all(span[2] for span in covering):
+            return None
+        _, at, fixed = max(covering, key=lambda span: span[1])
+    return None

@@ -1,7 +1,8 @@
 # Risks planted for the checks that need no model. Each case is a set of new
 # files a PR adds, and `rule` is what should catch it (any one of a list).
 # Shaped after real incidents where there was one (`seen`). Nothing here is
-# changed to make a case pass: a miss stays in as a miss.
+# changed to make a case pass: a miss stays in as a miss. A case marked
+# `control: true` is files its rule must leave alone.
 #
 # Secrets aren't stored here: `<<fake:kind>>` is replaced by a random value of
 # that shape when the benchmark runs, so this file never holds anything a
@@ -413,6 +414,111 @@
           "react-form-hooks-validator-utils": "^2.1.0"
         }
       }
+
+# ── dependencies pinned to a version with advisories ─────────────────────
+# The rule is off by default: run with
+# --policy benchmark/planted/variants/known-vulnerabilities.yml.
+# The answers come from the OSV database and change as advisories are
+# published. The controls were clean on 2026-11-13: one that is flagged
+# later may be a version that has got an advisory since.
+
+- id: dep-vulnerable-requests
+  rule: deps/vulnerable
+  seen: CVE-2018-18074, requests before 2.20.0 kept the Authorization header on a redirect from https to http
+  files:
+    requirements.txt: |
+      requests==2.19.1
+
+- id: dep-vulnerable-pyyaml
+  rule: deps/vulnerable
+  seen: CVE-2020-1747, PyYAML before 5.3.1 could run code from a YAML file read with full_load
+  files:
+    pyproject.toml: |
+      [project]
+      name = "shop"
+      dependencies = [
+          "PyYAML==5.3",
+      ]
+
+- id: dep-vulnerable-lodash
+  rule: deps/vulnerable
+  seen: CVE-2020-8203, prototype pollution in lodash's zipObjectDeep
+  files:
+    package.json: |
+      {
+        "name": "web",
+        "dependencies": {
+          "lodash": "4.17.15"
+        }
+      }
+
+- id: dep-vulnerable-event-stream
+  rule: deps/vulnerable
+  seen: event-stream 3.3.6, November 2018 (a new maintainer added flatmap-stream, which stole wallet keys)
+  files:
+    package.json: |
+      {
+        "name": "tools",
+        "devDependencies": {
+          "event-stream": "3.3.6"
+        }
+      }
+
+- id: dep-vulnerable-smallvec
+  rule: deps/vulnerable
+  seen: CVE-2021-25900 (RUSTSEC-2021-0003), a buffer overflow in SmallVec::insert_many
+  files:
+    Cargo.toml: |
+      [package]
+      name = "parser"
+      version = "0.1.0"
+
+      [dependencies]
+      smallvec = "=1.6.0"
+
+- id: dep-vulnerable-jwt-go
+  rule: deps/vulnerable
+  seen: CVE-2020-26160, an audience check in jwt-go that could be bypassed; this module never got a fixed release
+  files:
+    go.mod: |
+      module example.com/api
+
+      go 1.22
+
+      require github.com/dgrijalva/jwt-go v3.2.0+incompatible
+
+- id: dep-current-and-range-pypi
+  rule: deps/vulnerable
+  control: true
+  files:
+    requirements.txt: |
+      requests>=2.19.1
+      urllib3==2.8.0
+
+- id: dep-current-and-range-npm
+  rule: deps/vulnerable
+  control: true
+  files:
+    package.json: |
+      {
+        "name": "web",
+        "dependencies": {
+          "lodash": "^4.17.15",
+          "minimist": "1.2.8"
+        }
+      }
+
+- id: dep-range-cargo
+  rule: deps/vulnerable
+  control: true
+  files:
+    Cargo.toml: |
+      [package]
+      name = "parser"
+      version = "0.1.0"
+
+      [dependencies]
+      smallvec = "1.6.0"
 
 # ── text aimed at AI tools ───────────────────────────────────────────────
 

@@ -1,0 +1,467 @@
+[
+ {
+  "id": "secret-github-token",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-aws-key",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-stripe-live",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-slack-bot",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-google-api",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-openai",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-private-key",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-db-password",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-yaml-config",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "eval-request",
+  "rule": "code/eval",
+  "caught": true,
+  "found": [
+   "bandit/B307",
+   "code/eval"
+  ]
+ },
+ {
+  "id": "exec-download",
+  "rule": "code/eval",
+  "caught": true,
+  "found": [
+   "bandit/B102",
+   "code/eval"
+  ]
+ },
+ {
+  "id": "js-new-function",
+  "rule": "code/eval",
+  "caught": true,
+  "found": [
+   "code/eval"
+  ]
+ },
+ {
+  "id": "shell-true",
+  "rule": "code/shell",
+  "caught": true,
+  "found": [
+   "bandit/B602",
+   "code/shell"
+  ]
+ },
+ {
+  "id": "os-system",
+  "rule": "code/shell",
+  "caught": true,
+  "found": [
+   "bandit/B605",
+   "code/shell"
+  ]
+ },
+ {
+  "id": "js-child-process",
+  "rule": "code/shell",
+  "caught": true,
+  "found": [
+   "code/shell"
+  ]
+ },
+ {
+  "id": "sql-fstring",
+  "rule": "code/sql",
+  "caught": true,
+  "found": [
+   "bandit/B608",
+   "code/sql"
+  ]
+ },
+ {
+  "id": "sql-percent",
+  "rule": "code/sql",
+  "caught": true,
+  "found": [
+   "bandit/B608",
+   "code/sql"
+  ]
+ },
+ {
+  "id": "sql-concat-js",
+  "rule": "code/sql",
+  "caught": true,
+  "found": [
+   "code/sql"
+  ]
+ },
+ {
+  "id": "cors-credentials",
+  "rule": "code/cors-any",
+  "caught": true,
+  "found": [
+   "code/cors-any"
+  ]
+ },
+ {
+  "id": "cors-header",
+  "rule": "code/cors-any",
+  "caught": true,
+  "found": [
+   "code/cors-any"
+  ]
+ },
+ {
+  "id": "bandit-pickle",
+  "rule": "bandit/B301",
+  "caught": true,
+  "found": [
+   "bandit/B301"
+  ]
+ },
+ {
+  "id": "bandit-yaml-load",
+  "rule": "bandit/B506",
+  "caught": true,
+  "found": [
+   "bandit/B506"
+  ]
+ },
+ {
+  "id": "bandit-verify-false",
+  "rule": "bandit/B501",
+  "caught": true,
+  "found": [
+   "bandit/B501"
+  ]
+ },
+ {
+  "id": "wf-pwn-request",
+  "rule": "workflow/pwn-request",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/pwn-request",
+   "workflow/unpinned-action"
+  ]
+ },
+ {
+  "id": "wf-branch-name-injection",
+  "rule": "workflow/script-injection or workflow/pwn-request",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/pwn-request",
+   "workflow/script-injection"
+  ]
+ },
+ {
+  "id": "wf-issue-title-injection",
+  "rule": "workflow/script-injection",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/script-injection"
+  ]
+ },
+ {
+  "id": "wf-write-all",
+  "rule": "workflow/write-all",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/unpinned-action",
+   "workflow/write-all"
+  ]
+ },
+ {
+  "id": "wf-unpinned-third-party",
+  "rule": "workflow/unpinned-action",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/unpinned-action"
+  ]
+ },
+ {
+  "id": "wf-self-hosted-pr",
+  "rule": "workflow/self-hosted-pr",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/self-hosted-pr",
+   "workflow/unpinned-action"
+  ]
+ },
+ {
+  "id": "wf-write-on-target",
+  "rule": "workflow/write-permission or workflow/pull-request-target",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/pull-request-target",
+   "workflow/unpinned-action",
+   "workflow/write-permission"
+  ]
+ },
+ {
+  "id": "dep-typo-requests",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/missing",
+   "deps/new",
+   "deps/vulnerable"
+  ]
+ },
+ {
+  "id": "dep-colourama",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-python3-dateutil",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-jellyfish",
+  "rule": "deps/lookalike",
+  "caught": false,
+  "found": [
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-crossenv",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-electorn",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-made-up-pypi",
+  "rule": "deps/missing",
+  "caught": true,
+  "found": [
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-made-up-npm",
+  "rule": "deps/missing",
+  "caught": true,
+  "found": [
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-vulnerable-requests",
+  "rule": "deps/vulnerable",
+  "caught": true,
+  "found": [
+   "deps/new",
+   "deps/vulnerable"
+  ]
+ },
+ {
+  "id": "dep-vulnerable-pyyaml",
+  "rule": "deps/vulnerable",
+  "caught": true,
+  "found": [
+   "deps/new",
+   "deps/vulnerable"
+  ]
+ },
+ {
+  "id": "dep-vulnerable-lodash",
+  "rule": "deps/vulnerable",
+  "caught": true,
+  "found": [
+   "deps/new",
+   "deps/vulnerable"
+  ]
+ },
+ {
+  "id": "dep-vulnerable-event-stream",
+  "rule": "deps/vulnerable",
+  "caught": true,
+  "found": [
+   "deps/new",
+   "deps/vulnerable"
+  ]
+ },
+ {
+  "id": "dep-vulnerable-smallvec",
+  "rule": "deps/vulnerable",
+  "caught": true,
+  "found": [
+   "deps/new",
+   "deps/vulnerable"
+  ]
+ },
+ {
+  "id": "dep-vulnerable-jwt-go",
+  "rule": "deps/vulnerable",
+  "caught": true,
+  "found": [
+   "deps/new",
+   "deps/vulnerable"
+  ]
+ },
+ {
+  "id": "dep-current-and-range-pypi",
+  "rule": "deps/vulnerable",
+  "caught": false,
+  "found": [
+   "deps/new"
+  ],
+  "control": true
+ },
+ {
+  "id": "dep-current-and-range-npm",
+  "rule": "deps/vulnerable",
+  "caught": false,
+  "found": [
+   "deps/new"
+  ],
+  "control": true
+ },
+ {
+  "id": "dep-range-cargo",
+  "rule": "deps/vulnerable",
+  "caught": false,
+  "found": [
+   "deps/new"
+  ],
+  "control": true
+ },
+ {
+  "id": "agents-md",
+  "rule": "agents/instructions",
+  "caught": true,
+  "found": [
+   "agents/instructions"
+  ]
+ },
+ {
+  "id": "cursorrules",
+  "rule": "agents/instructions",
+  "caught": true,
+  "found": [
+   "agents/instructions"
+  ]
+ },
+ {
+  "id": "copilot-instructions",
+  "rule": "agents/instructions",
+  "caught": true,
+  "found": [
+   "agents/instructions"
+  ]
+ },
+ {
+  "id": "trojan-source",
+  "rule": "unicode/hidden",
+  "caught": true,
+  "found": [
+   "bandit/B613",
+   "unicode/hidden"
+  ]
+ },
+ {
+  "id": "zero-width-name",
+  "rule": "unicode/hidden",
+  "caught": true,
+  "found": [
+   "unicode/hidden"
+  ]
+ },
+ {
+  "id": "unicode-tags",
+  "rule": "unicode/hidden",
+  "caught": true,
+  "found": [
+   "unicode/hidden"
+  ]
+ }
+]

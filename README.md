@@ -14,7 +14,7 @@ repo. Nothing is sent to Stratum: no account, no telemetry, no license check.
 - **Checks that need no model** catch what's risky whoever wrote it:
   - secrets in code, `eval`, shell commands and SQL built from strings, and CORS opened to everyone;
   - workflow changes that hand out a write token: `pull_request_target`, write permissions, unpinned third-party actions, and `${{ github.event... }}` inside `run:`;
-  - new dependencies, packages published days ago, packages that don't exist (a typo, or a name an AI invented that someone could register), and look-alike names such as `reqeusts`;
+  - new dependencies, packages published days ago, packages that don't exist (a typo, or a name an AI invented that someone could register), look-alike names such as `reqeusts`, and, when your policy turns it on, a dependency pinned to a version with published security advisories in the [OSV](https://osv.dev) database;
   - edits to files that steer coding agents (`AGENTS.md`, `.cursorrules`, `.github/copilot-instructions.md`…), and hidden Unicode in any added line;
   - imports that break your module rules;
   - in Python, a coroutine called without `await` inside an `async def`, when the same call is awaited elsewhere in the file, and `await` on a method of a plain file from `open()`;

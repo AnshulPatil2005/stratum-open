@@ -1,0 +1,190 @@
+[
+ {
+  "repo": "encode/httpx",
+  "pr": 3665
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3658
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3654
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3651
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3592
+ },
+ {
+  "repo": "encode/httpx",
+  "pr": 3460
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5616
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5632
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5296
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5384
+ },
+ {
+  "repo": "psf/black",
+  "pr": 5247
+ },
+ {
+  "repo": "psf/black",
+  "pr": 2931
+ },
+ {
+  "repo": "pallets/click",
+  "pr": 3909
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14250
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14247
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14215
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14136
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14156
+ },
+ {
+  "repo": "pydantic/pydantic",
+  "pr": 14139
+ },
+ {
+  "repo": "psf/requests",
+  "pr": 7422
+ },
+ {
+  "repo": "psf/requests",
+  "pr": 7419
+ },
+ {
+  "repo": "psf/requests",
+  "pr": 7272
+ },
+ {
+  "repo": "psf/requests",
+  "pr": 7364
+ },
+ {
+  "repo": "psf/requests",
+  "pr": 5956
+ },
+ {
+  "repo": "python-attrs/attrs",
+  "pr": 1649
+ },
+ {
+  "repo": "python-attrs/attrs",
+  "pr": 1608
+ },
+ {
+  "repo": "fastapi/fastapi",
+  "pr": 16526
+ },
+ {
+  "repo": "fastapi/fastapi",
+  "pr": 16730
+ },
+ {
+  "repo": "fastapi/fastapi",
+  "pr": 16727
+ },
+ {
+  "repo": "fastapi/fastapi",
+  "pr": 16722
+ },
+ {
+  "repo": "fastapi/fastapi",
+  "pr": 16707
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 7591
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8469
+ },
+ {
+  "repo": "scrapy/scrapy",
+  "pr": 8393
+ },
+ {
+  "repo": "marshmallow-code/marshmallow",
+  "pr": 3102
+ },
+ {
+  "repo": "marshmallow-code/marshmallow",
+  "pr": 3040
+ },
+ {
+  "repo": "marshmallow-code/marshmallow",
+  "pr": 2778
+ },
+ {
+  "repo": "fastapi/typer",
+  "pr": 2013
+ },
+ {
+  "repo": "fastapi/typer",
+  "pr": 2010
+ },
+ {
+  "repo": "fastapi/typer",
+  "pr": 2009
+ },
+ {
+  "repo": "fastapi/typer",
+  "pr": 2005
+ },
+ {
+  "repo": "fastapi/typer",
+  "pr": 1831
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11204
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 10877
+ },
+ {
+  "repo": "python-poetry/poetry",
+  "pr": 11168
+ },
+ {
+  "repo": "pypa/pip",
+  "pr": 14401
+ },
+ {
+  "repo": "pypa/pip",
+  "pr": 13997
+ }
+]
