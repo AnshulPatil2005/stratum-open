@@ -1,0 +1,5 @@
+# The logic pass, with less thinking and the strict verify pass.
+review:
+  reasoning: low
+  verify: strict
+  logic_pass: true
