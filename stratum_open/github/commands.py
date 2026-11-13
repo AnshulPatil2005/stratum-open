@@ -261,8 +261,9 @@ def _explain(ctx: Context, number: int, thread_root: int) -> str:
     )
     if not reply.ok or not reply.text.strip():
         return f"The model couldn't answer just now ({reply.error or 'empty reply'}). Try again later."
-    # The model's words are posted as a comment: an @name in them must not page anyone.
-    return f"{demention(reply.text.strip())[:20000]}\n\n<sub>Explained by `{ctx.model.name}`, the model this project runs.</sub>"
+    # The model's words are posted as a comment: an @name in them must not page anyone, and
+    # in a review thread a suggestion block in them would offer a commit (see _safe).
+    return f"{_safe(reply.text.strip()[:20000])}\n\n<sub>Explained by `{ctx.model.name}`, the model this project runs.</sub>"
 
 
 # `/stratum ask`: one answer, from the PR. The question is the commenter's
