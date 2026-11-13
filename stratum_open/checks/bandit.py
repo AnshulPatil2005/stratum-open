@@ -133,9 +133,14 @@ def run_bandit(sources: dict[str, str], *, timeout: float = TIMEOUT_SECONDS) -> 
                 handle.write(text)
             paths[name] = path
         try:
+            # `python -m` looks for the module in the working folder first, and the
+            # review's working folder can be a checkout of the code under review:
+            # a bandit.py there would run in Bandit's place. -P keeps the working
+            # folder off the path, and the run starts in the temporary folder, which
+            # holds only the numbered files.
             result = subprocess.run(
-                [sys.executable, "-m", "bandit", "-f", "json", "-q", "--ignore-nosec", *[os.path.join(folder, name) for name in paths]],
-                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout,
+                [sys.executable, "-P", "-m", "bandit", "-f", "json", "-q", "--ignore-nosec", *[os.path.join(folder, name) for name in paths]],
+                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout, cwd=folder,
             )
         except subprocess.TimeoutExpired:
             raise BanditTimeout(f"Bandit took longer than {timeout:.0f} s, so its findings are missing from this review.") from None
