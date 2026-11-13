@@ -22,6 +22,10 @@ review:
   walkthrough: false           # profile: one more call for a summary, priorities and a walkthrough (large: true)
   parallel_calls: 1            # profile: model calls at once in the per-file passes (large: 4)
   max_inline_comments: 12
+  quiet: false                 # true posts less of what the model says, and keeps it apart from what the checks found:
+                               #   a claim it repeats on three or more files is one finding; comments that name no defect are left out
+                               #   (missing docs, style, praise, a "Potential ..." guess unless it's about security); at most 5 of its findings are in view, the rest folded;
+                               #   the summary counts the checks' findings and the model's apart, and shows 3 of the history notes
   min_severity: medium         # the model's findings below this aren't shown (low | medium | high | critical); the checks' always are
   verify: none                 # none | strict | lenient: one more short call per model finding, asking the model whether it's a real defect.
                                #   strict: for models up to about 8B, which can't tell (cuts their wrong comments by ~60%);

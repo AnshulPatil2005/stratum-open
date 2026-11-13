@@ -16,9 +16,10 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 from stratum_open.engine import default_conclusion
-from stratum_open.findings import Finding, counts
+from stratum_open.findings import Finding, counts, severity_rank
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.policy import Policy
+from stratum_open.review import MIN_REPEATED_FILES
 from stratum_open.triage import COLORS, DESCRIPTIONS, KEYS, Triage, label_for
 
 CHECK_NAME = "Stratum"
@@ -28,6 +29,8 @@ _STATE = re.compile(r"<!-- stratum:state ([A-Za-z0-9+/=]+) -->")
 _FINDING = re.compile(r"<!-- stratum:finding ([0-9a-f]{12}) (\S+) -->")
 MAX_STATE_FINDINGS = 80
 MAX_LISTED = 15
+QUIET_SHOWN = 5  # `review.quiet`: the model's findings in view at most, on the lines or in the summary; the rest are folded
+QUIET_NOTES = 3  # ... and the history notes shown; the rest go under "What was reviewed"
 COMMENT_LIMIT = 65000
 LABEL = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low"}
 
@@ -257,27 +260,37 @@ def render_summary(summary: Summary, state: State) -> str:
             lines.append("- In its favour: " + " ".join(summary.triage.evidence))
         lines.append("")
 
-    tally = counts(summary.findings)
-    found = ", ".join(f"{n} {LABEL[s].lower()}" for s, n in tally.items() if n)
-    shown = sum(1 for f in summary.findings if f.fingerprint in summary.inline)
-    if summary.findings:
-        lines.append(f"**Findings:** {found}." + (f" {shown} on the changed lines below." if shown else ""))
+    quiet = summary.policy.review.quiet
+    folded: list[Finding] = []  # `review.quiet`: the model's findings past QUIET_SHOWN, for a block of their own further down
+    if quiet:
+        folded = _two_lists(summary, lines)
     else:
-        lines.append("**Findings:** none.")
-    listed = [f for f in summary.findings if f.fingerprint not in summary.inline][:MAX_LISTED]
-    if listed:
-        lines += ["", "Not on a changed line:"] if shown else [""]
-        for f in listed:
-            where = f"`{f.path}`" + (f" line {f.line_start}" if f.line_start else "") if f.path else "the PR"
-            lines.append(f"- **{LABEL[f.severity]} · {f.category}** in {where}: {f.title}. {_short(f.detail, 220)}")
+        tally = counts(summary.findings)
+        found = ", ".join(f"{n} {LABEL[s].lower()}" for s, n in tally.items() if n)
+        shown = sum(1 for f in summary.findings if f.fingerprint in summary.inline)
+        if summary.findings:
+            lines.append(f"**Findings:** {found}." + (f" {shown} on the changed lines below." if shown else ""))
+        else:
+            lines.append("**Findings:** none.")
+        listed = [f for f in summary.findings if f.fingerprint not in summary.inline][:MAX_LISTED]
+        if listed:
+            lines += ["", "Not on a changed line:"] if shown else [""]
+            lines += [_listed(f) for f in listed]
     lines.append("")
 
-    if summary.notes:
-        lines += ["**From the project's history:**"] + [f"- {note}" for note in summary.notes] + [""]
+    notes, more_notes = _lead_notes(summary.notes) if quiet else (summary.notes, [])
+    if notes:
+        lines += ["**From the project's history:**"] + [f"- {note}" for note in notes]
+        if more_notes:
+            lines.append(f'- {len(more_notes)} more under "What was reviewed".')
+        lines.append("")
     if summary.walkthrough:
         lines += ["<details><summary>Walkthrough</summary>", "", summary.walkthrough, "", "</details>", ""]
     if summary.problems:
         lines += ["**Couldn't do everything:**"] + [f"- {p}" for p in summary.problems] + [""]
+    if folded:
+        # Below the problems, so the check run's summary (the text before the first folded block) doesn't lose them to this one.
+        lines += [f"<details><summary>{len(folded)} more from the model</summary>", ""] + _capped(folded) + ["", "</details>", ""]
 
     details = list(summary.coverage)
     details.append(f"Model: `{summary.model_name}`, chosen by this project's maintainers." if summary.model_name else "Model: none configured; checks only.")
@@ -288,6 +301,11 @@ def render_summary(summary: Summary, state: State) -> str:
         details.append("Muted by maintainers' 👎: " + ", ".join(f"`{r}`" for r in summary.muted))
     if state.ignored or state.ignored_rules:
         details.append(f"Ignored on this PR: {len(state.ignored)} finding(s)" + (", rules " + ", ".join(f"`{r}`" for r in state.ignored_rules) if state.ignored_rules else "") + ".")
+    if quiet:  # what was left out is never listed, so the reader is at least told that something may have been
+        details.append(f"Quiet review: comments from the model that name no defect are left out, and one it repeats on {MIN_REPEATED_FILES} "
+                       "or more files is kept once.")
+    if more_notes:
+        details.append("More from the project's history:" + "".join(f"\n  - {note}" for note in more_notes))
     lines += ["<details><summary>What was reviewed</summary>", ""] + [f"- {d}" for d in details] + ["", "</details>", ""]
     lines.append("<sub>Stratum Open: review and triage on a model the maintainers run. Comment `@stratum help` for commands.</sub>")
     body = "\n".join(lines)
@@ -296,6 +314,99 @@ def render_summary(summary: Summary, state: State) -> str:
         state.findings = state.findings[: len(state.findings) // 2]
         encoded = state.encode()
     return body[: COMMENT_LIMIT - len(encoded) - 1] + "\n" + encoded
+
+
+def _two_lists(summary: Summary, lines: list[str]) -> list[Finding]:
+    """`review.quiet`: the checks' findings and the model's as two lists, each
+    with its own count, so a rule that matched is never added up with a
+    model's reading. Of the model's, QUIET_SHOWN at most are in view: the
+    ones on the lines, then the ones it's surest of. Returns the rest, which
+    go in a folded block."""
+    checks = [f for f in summary.findings if f.source != "model"]
+    model = [f for f in summary.findings if f.source == "model"]
+    on_lines = sum(1 for f in checks if f.fingerprint in summary.inline)
+    if checks:
+        lines.append(f"**Found by the checks:** {_tally(checks)}." + (f" {on_lines} on the changed lines below." if on_lines else "")
+                     + " These need no model: each is a rule that matched the diff.")
+    else:
+        lines.append("**Found by the checks:** nothing.")
+    listed = [f for f in checks if f.fingerprint not in summary.inline]
+    if listed:
+        lines += ["", "Listed here instead:"] if on_lines else [""]
+        lines += _capped(listed)
+    if not model:
+        if summary.model_name is not None:  # with no model there is nobody to have suggested nothing
+            lines += ["", "**Suggested by the model:** nothing."]
+        return []
+
+    on_lines = sum(1 for f in model if f.fingerprint in summary.inline)
+    rest = surest([f for f in model if f.fingerprint not in summary.inline])
+    room = max(0, QUIET_SHOWN - on_lines)
+    listed, folded = rest[:room], rest[room:]
+    lines.append("")
+    where = ([f"{on_lines} on the changed lines below"] if on_lines else []) + ([f"{len(folded)} folded at the end of this comment"] if folded else [])
+    lines.append(f"**Suggested by the model:** {_tally(model)}." + (f" {', '.join(where)}." if where else "")
+                 + " The model can be wrong, so check each one before acting on it.")
+    if listed:
+        lines += ["", "Listed here instead:"] if on_lines else [""]
+        lines += [_listed(f) for f in listed]
+    return folded
+
+
+def _lead_notes(notes: list[str]) -> tuple[list[str], list[str]]:
+    """`review.quiet`: the QUIET_NOTES history notes to show, and the rest,
+    which go under "What was reviewed". The first note of each kind is shown
+    before a second of any (the file most of the code imports, who owns the
+    files, one hotspot): ten lines of one kind say less than one of each.
+    Notes are of a kind when they read the same but for their names and
+    numbers."""
+    def kind(note: str) -> str:
+        return " ".join(re.sub(r"`[^`]*`|\d+", "", note).split()[:3])
+
+    first: dict[str, int] = {}
+    for index, note in enumerate(notes):
+        first.setdefault(kind(note), index)
+    lead = sorted(first.values())[:QUIET_NOTES]
+    lead = sorted(lead + [i for i in range(len(notes)) if i not in lead][:QUIET_NOTES - len(lead)])
+    return [notes[i] for i in lead], [note for i, note in enumerate(notes) if i not in lead]
+
+
+def surest(findings: list[Finding]) -> list[Finding]:
+    """The findings the model is surest of first: one that two of its answers
+    agreed on (the review and `review.logic_pass`) before one it said
+    once, whatever severity each was given. `review.quiet` fills its places
+    in this order."""
+    return sorted(findings, key=lambda f: (-f.confidence, -severity_rank(f.severity), f.path, f.line_start or 0))
+
+
+def quiet_inline(findings: list[Finding], threads: list[dict], *, bot: str) -> list[Finding]:
+    """`review.quiet`: the findings to post inline. All of the checks', and of
+    the model's as many as bring its open threads to QUIET_SHOWN, the ones
+    it's surest of first. An open thread keeps its place, so a push never
+    swaps one comment for another; one a person resolved isn't offered again
+    (`publish_inline` wouldn't post it), so it doesn't hold a place either."""
+    started = {thread_fingerprint(thread, bot): thread for thread in threads}
+    open_now = {fp for fp, thread in started.items() if fp and is_open(thread, bot)}
+    model = [f for f in findings if f.source == "model"]
+    room = max(0, QUIET_SHOWN - sum(1 for f in model if f.fingerprint in open_now))
+    fresh = [f for f in model if f.fingerprint not in started or resolved_by_stratum(started[f.fingerprint], bot)]
+    chosen = {id(f) for f in surest(fresh)[:room]}
+    return [f for f in findings if f.source != "model" or id(f) in chosen]
+
+
+def _tally(findings: list[Finding]) -> str:
+    return ", ".join(f"{n} {LABEL[s].lower()}" for s, n in counts(findings).items() if n)
+
+
+def _listed(finding: Finding) -> str:
+    where = f"`{finding.path}`" + (f" line {finding.line_start}" if finding.line_start else "") if finding.path else "the PR"
+    return f"- **{LABEL[finding.severity]} · {finding.category}** in {where}: {finding.title}. {_short(finding.detail, 220)}"
+
+
+def _capped(findings: list[Finding]) -> list[str]:
+    """At most MAX_LISTED findings as lines, and a line saying how many were left out."""
+    more = len(findings) - MAX_LISTED
+    return [_listed(f) for f in findings[:MAX_LISTED]] + ([f"- and {more} more."] if more > 0 else [])
 
 
 def upsert_summary(gh: GitHub, number: int, existing: dict | None, body: str) -> None:
@@ -320,9 +431,18 @@ conclusion = default_conclusion
 
 
 def publish_check(gh: GitHub, head_sha: str, findings: list[Finding], summary_text: str, *, conclusion: str,
-                  name: str = CHECK_NAME) -> None:
+                  name: str = CHECK_NAME, quiet_inline: set[str] | None = None) -> None:
+    """`quiet_inline`: with `review.quiet`, the fingerprints that have an
+    inline comment. The title then counts the checks' findings and the
+    model's apart, as the summary does, and of the model's findings only
+    those are annotated: GitHub shows an annotation on its line too, so one
+    for each folded finding would unfold them all."""
     tally = counts(findings)
     title = ", ".join(f"{n} {s}" for s, n in tally.items() if n) or "No findings"
+    if quiet_inline is not None and findings:
+        by_model = [f for f in findings if f.source == "model"]
+        title = f"Checks: {_tally([f for f in findings if f.source != 'model']) or 'nothing'}. Model: {_tally(by_model) or 'nothing'}."
+        findings = [f for f in findings if f.source != "model" or f.fingerprint in quiet_inline]
     annotations = [
         {
             "path": f.path, "start_line": f.line_start, "end_line": f.line_end,

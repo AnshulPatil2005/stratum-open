@@ -149,4 +149,8 @@ Real merged PRs with nothing planted, so each finding needs a maintainer to mark
 
 ## Not included
 
-Nothing: every folder under results/ is in a table above.
+These folders under results/ are in none of the tables above:
+
+| Folder | Why |
+| --- | --- |
+| [2026-11-13-quiet](results/2026-11-13-quiet/) | it has no results that a scorer counts |
