@@ -1,6 +1,6 @@
 """D. The no-model checks: a true positive, a near miss and an obfuscated
-variant for each, odd manifests, Bandit's failure modes, and the generated
-lines that once took the pattern check minutes."""
+variant for each, odd manifests, Bandit's and Ruff's failure modes, and the
+generated lines that once took the pattern check minutes."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import time
 import pytest
 import requests
 
-from stratum_open.checks import bandit, dependencies, patterns, run_checks
+from stratum_open.checks import bandit, dependencies, patterns, ruff, run_checks
 from stratum_open.checks.dependencies import Advisories, PackageInfo, PackageLookup
 from stratum_open.diff import parse_diff
 from stratum_open.policy import parse_policy
@@ -263,3 +263,30 @@ def test_bandit_true_positive_and_test_file_near_miss():
     contents = {"app/run.py": "import subprocess\nsubprocess.call(cmd, shell=True)\n", "tests/test_run.py": "import subprocess\nsubprocess.call(cmd, shell=True)\n"}
     found = rules(diff, contents=contents)
     assert {f.path for f in found.get("bandit/B602", [])} == {"app/run.py"}
+
+
+RUFF_ON = parse_policy("checks:\n  ruff: true\n")
+
+
+def test_ruff_off_by_default_not_installed_and_crashing(monkeypatch):
+    diff = diffs.added("app/total.py", ["def total(items):", "    return totl"])
+    contents = {"app/total.py": "def total(items):\n    return totl\n"}
+    asked = []
+    monkeypatch.setattr(ruff, "available", lambda: True)
+    monkeypatch.setattr(ruff, "run_ruff", lambda sources: asked.append(sorted(sources)) or [])
+    assert rules(diff, contents=contents) == {} and asked == []  # nothing runs until the policy says so
+    monkeypatch.setattr(ruff, "available", lambda: False)
+    assert rules(diff, policy=RUFF_ON, contents=contents) == {}  # silently skipped, as Bandit is
+    monkeypatch.setattr(ruff, "available", lambda: True)
+    monkeypatch.setattr(ruff, "run_ruff", lambda sources: (_ for _ in ()).throw(RuntimeError("ruff exploded")))
+    found = rules(diff, policy=RUFF_ON, contents=contents)
+    assert any("Ruff check didn't run" in f.title for f in found.get("checks/error", []))
+
+
+@pytest.mark.skipif(not ruff.available(), reason="Ruff isn't installed")
+def test_ruff_true_positive_and_test_file_near_miss():
+    lines = ["def total(items):", "    return totl"]
+    diff = diffs.added("app/total.py", lines) + diffs.added("tests/test_total.py", lines)
+    contents = {"app/total.py": "\n".join(lines) + "\n", "tests/test_total.py": "\n".join(lines) + "\n"}
+    found = rules(diff, policy=RUFF_ON, contents=contents)
+    assert {(f.path, f.line_start) for f in found.get("ruff/F821", [])} == {("app/total.py", 2)}

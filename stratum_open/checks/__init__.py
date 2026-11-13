@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from stratum_open.checks import agents, awaits, bandit, common, dependencies, heuristics, paths, patterns, workflows
+from stratum_open.checks import agents, awaits, bandit, common, dependencies, heuristics, paths, patterns, ruff, workflows
 from stratum_open.checks.dependencies import PackageInfo, PackageLookup
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
@@ -22,7 +22,7 @@ __all__ = ["PackageInfo", "PackageLookup", "moved_in", "run_checks"]
 # Unicode looks at every path, and protected paths and coding-agent files at
 # both sides of a rename. Module boundaries (repo/boundaries.py) also depend on
 # the path and don't read moved files yet: #65.
-_SCOPES = (patterns.scope, workflows.scope, dependencies.scope, bandit.scope)
+_SCOPES = (patterns.scope, workflows.scope, dependencies.scope, bandit.scope, ruff.scope)
 _MAX_LISTED = 10
 
 
@@ -63,6 +63,8 @@ def run_checks(
         ("dependency", lambda: dependencies.check(files, policy, lookup=registry, contents=contents)),
         ("Bandit", lambda: bandit.check(files, contents, keep_low=policy.checks.bandit_low)),
     ]
+    if policy.checks.ruff:
+        checks.append(("Ruff", lambda: ruff.check(files, contents)))
     if policy.checks.heuristics:
         checks.append(("heuristics", lambda: heuristics.check(files, pr_text)))
     findings: list[Finding] = []
