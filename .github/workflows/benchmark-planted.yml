@@ -38,6 +38,9 @@ on:
       policy:
         description: A policy file in the repo merged over the Action's settings, e.g. benchmark/planted/variants/verify.yml (empty for none)
         default: ""
+      other-tool:
+        description: Another reviewer to run on the same cases, models and shards (pr-agent; empty for none), see benchmark/others/README.md
+        default: ""
 
 permissions:
   contents: read
@@ -167,8 +170,73 @@ jobs:
           path: raw/hosted/
           if-no-files-found: ignore
 
+  other:
+    # PR-Agent on the same cases, model and kind of runner, for a head-to-head (benchmark/others/README.md).
+    # It runs next to `review`, with the same shards, and its results are scored with stratum-open's.
+    needs: [plan, fetch]
+    if: inputs.other-tool == 'pr-agent' && inputs.models != 'none'
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    env:
+      NAME: pr-agent-${{ matrix.safe }}-${{ matrix.version }}-${{ matrix.shard }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --quiet .
+      - name: Install PR-Agent in an environment of its own
+        # The release benchmark/others/pr_agent.py is written for (it refuses another), and what pip resolved with it.
+        run: |
+          python -m venv "$RUNNER_TEMP/pr-agent"
+          "$RUNNER_TEMP/pr-agent/bin/python" -m pip install --quiet pr-agent==0.50.0
+          mkdir -p "trace/$NAME"
+          "$RUNNER_TEMP/pr-agent/bin/python" -m pip freeze > "trace/$NAME/packages.txt"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: planted-cache
+          path: benchmark/.cache/
+      - name: Start Ollama and pull the model
+        env:
+          MODEL: ${{ matrix.model }}
+          STRATUM_OLLAMA_ROOT: ${{ runner.temp }}/ollama
+          # PR-Agent's requests name no context window, so the server is started with stratum-open's,
+          # as PR-Agent's documentation says to. The runner stops if the model isn't loaded with it.
+          OLLAMA_CONTEXT_LENGTH: "8192"
+        run: bash scripts/start-ollama.sh "$MODEL"
+      - name: Review this shard's cases with PR-Agent
+        env:
+          MODEL: ${{ matrix.model }}
+          SHARD: ${{ matrix.shard }}/${{ matrix.of }}
+          VERSION: ${{ matrix.version }}
+          SET: ${{ inputs.set }}
+          POLICY: ${{ inputs.policy }}
+        run: |
+          args=(--bugs benchmark/planted/bugs.json --model "$MODEL@http://localhost:11434" --pr-agent "$RUNNER_TEMP/pr-agent/bin/python"
+                --context-tokens 8192 --shard "$SHARD" --set "$SET" --out "raw/$NAME" --trace "trace/$NAME")
+          if [ "$VERSION" = clean ]; then args+=(--clean); fi
+          if [ -n "$POLICY" ]; then args+=(--policy "$POLICY"); fi
+          python benchmark/others/pr_agent.py "${args[@]}"
+      - if: always()
+        run: tail -n 50 "$RUNNER_TEMP/ollama.log" || true
+      - if: always()  # a stopped shard's partial results are still worth keeping
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: result-${{ env.NAME }}
+          path: raw/${{ env.NAME }}/
+          if-no-files-found: ignore
+      - if: always()  # every prompt PR-Agent sent, the replies and its logs: kept apart, so the results stay small
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: trace-${{ env.NAME }}
+          path: trace/${{ env.NAME }}/
+          if-no-files-found: ignore
+
   collect:
-    needs: [review, hosted]
+    needs: [review, hosted, other]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     steps:
