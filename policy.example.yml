@@ -74,7 +74,7 @@ commands:                      # who may run each /stratum command: anyone | aut
   review: write                # "author" is the PR's author or anyone with write access
   ignore: write
   mute: write
-  explain: author              # each explanation is a model call
+  explain: author              # each explanation is a model call; /stratum ask follows this too
   triage: anyone
   record: anyone
 

@@ -737,8 +737,16 @@ def parse(body: str) -> tuple[str, str] | None:
     not giving it. A fence that's never closed runs to the end of the comment,
     as GitHub shows it. A quoted line ("> ...") is never a command, so a fence
     in a quote needs no tracking: the quote ends it."""
+    found = parse_with_rest(body)
+    return found[:2] if found else None
+
+
+def parse_with_rest(body: str) -> tuple[str, str, str] | None:
+    """parse(), plus the comment's text after the command's line: the rest of
+    a question asked with `/stratum ask`."""
     fence = ""
-    for line in (body or "").split("\n"):
+    lines = (body or "").split("\n")
+    for index, line in enumerate(lines):
         mark = _FENCE.match(line)
         if fence:
             # Closed by a run of the same character, at least as long, with nothing after it.
@@ -747,7 +755,7 @@ def parse(body: str) -> tuple[str, str] | None:
         elif mark:
             fence = mark.group(1)
         elif match := COMMAND.match(line):
-            return match.group(1).lower(), match.group(2).strip()
+            return match.group(1).lower(), match.group(2).strip(), "\n".join(lines[index + 1:]).strip()
     return None
 
 
