@@ -19,6 +19,7 @@ from __future__ import annotations
 import os
 import sys
 import traceback
+from dataclasses import replace
 from typing import Mapping
 
 import requests
@@ -28,6 +29,7 @@ from stratum_open.checks.dependencies import PackageLookup
 from stratum_open.github.api import GitHubError
 from stratum_open.gitlab.api import GitLab
 from stratum_open.model import model_from_policy
+from stratum_open.policy import Policy
 from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull, skip_reason
 from stratum_open.util import redact
 
@@ -79,7 +81,7 @@ def main(env: Mapping[str, str] = os.environ, *, post: bool = True) -> int:
 
 def _run(env: Mapping[str, str], gl: GitLab, iid: int, *, post: bool) -> int:
     default_branch = gl.repository().get("default_branch") or env.get("CI_DEFAULT_BRANCH") or "main"
-    policy = context_from_env(load_context_policy(gl, default_branch), env)
+    policy = gitlab_policy(context_from_env(load_context_policy(gl, default_branch), env))
     for error in policy.errors:
         print(f"warning: .stratum/policy.yml: {error} Using the defaults.")
     for warning in policy.warnings:
@@ -101,3 +103,13 @@ def _run(env: Mapping[str, str], gl: GitLab, iid: int, *, post: bool) -> int:
     if outcome.status == "dry-run":
         print(outcome.summary)
     return 0
+
+
+def gitlab_policy(policy: Policy) -> Policy:
+    """The policy as GitLab can follow it. `review.learn_from_history` reads
+    GitHub's reactions and comment history, which the GitLab client doesn't,
+    so it's off here, and the summary's policy warnings say so."""
+    if not policy.review.learn_from_history:
+        return policy
+    return replace(policy, review=replace(policy.review, learn_from_history=False),
+                   warnings=policy.warnings + ("review.learn_from_history isn't read on GitLab yet, so it's off for this review.",))

@@ -163,6 +163,15 @@ def test_the_policy_comes_from_the_default_branch(gl, fake_model):
     assert all(r["query"].get("ref") != ["feature"] for r in gl.requests_to("GET", r"policy\.yml$"))
 
 
+def test_learning_from_history_is_off_on_gitlab_and_says_so(gl, fake_model):
+    gl.add_mr(7, diff=DIFF)
+    gl.set_policy("review:\n  learn_from_history: true\n")
+    fake_model.queue(Response.ok(json_reply([sql_finding()])))
+    assert ci.main(env_for(gl, fake_model)) == 0
+    assert "review.learn_from_history isn't read on GitLab yet" in gl.summary_notes(7)[0]["body"]
+    assert "👍" not in gl.threads(7)[0]["notes"][0]["body"]
+
+
 def test_a_draft_is_skipped_per_the_policy(gl, fake_model, capsys):
     gl.add_mr(7, diff=DIFF, draft=True)
     assert ci.main(env_for(gl, fake_model)) == 0
