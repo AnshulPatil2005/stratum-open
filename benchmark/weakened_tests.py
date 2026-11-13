@@ -21,6 +21,10 @@ marks when it's repeated:
   `no` when the finding is the only notice a maintainer gets.
 - markers.csv: `kind` is what the line is (`conditional`, `not a marker`, ...).
 
+It also writes planted.json, the planted cases and whether each was caught,
+and lists.json, what each list gave the rules to read: its PRs that change a
+test file, the assertion lines they remove, their lines with a tolerance.
+
 `score` writes summary.md: the planted cases, a table per rule and per list,
 every marked row, then the folder's notes.md. A dropped.csv in the folder
 holds the marked findings of a rule that was measured and then taken out of
@@ -130,7 +134,7 @@ def _run(args) -> int:
     _write(out / "checks.csv", COLUMNS, rows)
     _write(out / "markers.csv", MARKER_COLUMNS, markers)
     (out / "planted.json").write_text(json.dumps(cases, indent=1) + "\n", encoding="utf-8")
-    (out / "prs.json").write_text(json.dumps(lists, indent=1) + "\n", encoding="utf-8")
+    (out / "lists.json").write_text(json.dumps(lists, indent=1) + "\n", encoding="utf-8")
     return _score(out)
 
 
@@ -173,7 +177,7 @@ def _score(out: Path) -> int:
     rows = planted._read(out / "checks.csv")
     markers = planted._read(out / "markers.csv")
     cases = json.loads((out / "planted.json").read_text(encoding="utf-8"))
-    lists = json.loads((out / "prs.json").read_text(encoding="utf-8"))
+    lists = json.loads((out / "lists.json").read_text(encoding="utf-8"))
     dropped = planted._read(out / "dropped.csv") if (out / "dropped.csv").exists() else []
     merged = [row for row in rows if row["set"] == "merged"]
     risks, controls = [c for c in cases if not c.get("control")], [c for c in cases if c.get("control")]
