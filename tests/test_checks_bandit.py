@@ -87,6 +87,18 @@ def test_real_bandit_finds_issues_on_added_lines_only():
     assert [(f.rule, f.severity, f.line_start) for f in findings] == [("bandit/B602", "high", 6)]
 
 
+def test_a_bandit_py_in_the_working_folder_is_never_run(tmp_path, monkeypatch):
+    pytest.importorskip("bandit")
+    # `stratum-open review --local` runs in a checkout of the code under review.
+    (tmp_path / "bandit.py").write_text("import pathlib\npathlib.Path('ran.txt').write_text('ran')\n", encoding="utf-8")
+    (tmp_path / "bandit").mkdir()
+    (tmp_path / "bandit" / "__main__.py").write_text("import pathlib\npathlib.Path('ran.txt').write_text('ran')\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+    issues = bandit.run_bandit({"tools/run.py": "import subprocess\nsubprocess.call('ls', shell=True)\n"})
+    assert not (tmp_path / "ran.txt").exists()
+    assert "B602" in {issue["test_id"] for issue in issues}  # and the real Bandit still ran
+
+
 def test_a_finding_on_a_line_the_pr_marks_nosec_says_so(monkeypatch):
     monkeypatch.setattr(bandit, "available", lambda: True)
     monkeypatch.setattr(bandit, "run_bandit", lambda sources: [issue(1), issue(2), issue(3)])
