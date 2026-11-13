@@ -31,7 +31,9 @@ from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding, severity_rank, slug
 from stratum_open.model import Reply, parse_json, salvage
 from stratum_open.policy import Policy
-from stratum_open.review import GUIDANCE_CHARS, LEGEND, MAX_DESCRIPTION_CHARS, OUTPUT_RESERVE_TOKENS, _NARRATION, _text, _to_finding, demention, shown
+from stratum_open.review import (
+    GUIDANCE_CHARS, LEGEND, MAX_DESCRIPTION_CHARS, OUTPUT_RESERVE_TOKENS, _NARRATION, _one_per_claim, _text, _to_finding, demention, shown,
+)
 
 REVIEW_MODES = {
     "general": "General code review with balanced focus on correctness, quality, and maintainability.",
@@ -267,6 +269,8 @@ def review_files(
         review.change_summary = demention(_text(primary.get("change_summary"), 300)) or "Changed in this PR."
         review.why_it_matters = _text(primary.get("why_it_matters"), 300) or review.why_it_matters
         result.findings += _file_findings(file, datas, policy, result)
+    if policy.review.quiet:  # each call saw one file, so only here can a claim be seen to repeat
+        result.findings = _one_per_claim(result.findings)
     return result
 
 

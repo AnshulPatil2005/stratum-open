@@ -63,6 +63,7 @@ class Review:
     skip_authors: tuple[str, ...] = ()  # logins whose PRs aren't reviewed
     skip_labels: tuple[str, ...] = ()  # PRs with any of these labels aren't reviewed
     skip_branches: tuple[str, ...] = ()  # globs; PRs from a matching branch aren't reviewed
+    quiet: bool = False  # fewer of the model's comments, and a summary that keeps them apart from the checks' findings
 
 
 @dataclass(frozen=True)

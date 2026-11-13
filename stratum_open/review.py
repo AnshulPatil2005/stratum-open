@@ -173,6 +173,26 @@ LEFT_OUT_CHARS = 300
 # Titles that narrate the change instead of naming a defect.
 _NARRATION = re.compile(r"^(new|added?|adds|updated?|updates|changed?|changes|modified|refactor(?:ed|s)?|renamed?|removed?|moved|improved?|introduc\w*)\b", re.IGNORECASE)
 
+# `review.quiet`: titles of comments that aren't defects, by kind. The prompt
+# asks for none of them, and a small model writes them anyway. Each pattern was
+# tried on the findings people marked right or wrong (benchmark/quiet_filter.py,
+# with the counts in benchmark/results/2026-11-13-quiet): a pattern is here only
+# if it removed none of the 220 marked right. Together they removed 41 of the
+# 215 marked wrong, 35 of them the guesses. Titles only, because a right finding
+# often quotes a docstring or a comment in its detail, as its evidence.
+NOT_DEFECTS = {
+    "asks for docs": r"\b(missing|lacks?|lacking|needs?|add|adding|no|without) (\w+ )?(docstrings?|documentation|docs)\b",
+    "style, naming or readability": r"\b(naming|misleading (\w+ )?names?|unclear|confusing|readability|large constants?|magic (numbers?|constants?|values?))\b",
+    "praises the change": r"^(improv\w+|optimi[sz]\w+|efficient|better|enhanc\w+)\b",
+    "a guess": r"^(potential(ly)?|possibl[ey])\b",
+}
+# A kind of comment kept in one category although its title matches: a model
+# that can't trace where a value comes from names an injection "Potential SQL
+# injection", and a missed one costs more than a wrong one.
+SPARED = {"a guess": "security"}
+_NOT_A_DEFECT = {kind: re.compile(pattern, re.IGNORECASE) for kind, pattern in NOT_DEFECTS.items()}
+MIN_REPEATED_FILES = 3  # `review.quiet`: one title on this many files is one claim, kept once
+
 _CATEGORY_ALIASES = {
     "bug risk": "bug", "logic": "bug", "correctness": "bug", "error handling": "bug",
     "test": "tests", "testing": "tests", "test coverage": "tests", "test coverage gap": "tests",
@@ -305,6 +325,8 @@ def review(
         batches += [_kept(each.get("findings"), by_path, policy, result) for each in read]
     result.findings = _agreed(batches) if logic_system else [f for batch in batches for f in batch]
     result.findings = _fewer(result.findings)
+    if policy.review.quiet:  # before the verify pass, so one claim costs one call
+        result.findings = _one_per_claim(result.findings)
     if policy.review.verify in VERIFY_PROMPTS and result.findings:
         result.findings = _verified(result, by_path, policy, model, log)
     return result
@@ -479,10 +501,19 @@ def _previous_block(previous: list[dict[str, Any]], paths: set[str]) -> str:
 
 
 def shown(finding: Finding, policy: Policy) -> bool:
-    """A model finding at or above `review.min_severity`."""
+    """A model finding at or above `review.min_severity`. With `review.quiet`,
+    also not one of the comments that aren't defects (NOT_DEFECTS)."""
     from stratum_open.findings import severity_rank
 
+    if policy.review.quiet and not_a_defect(finding.title, finding.category):
+        return False
     return severity_rank(finding.severity) >= severity_rank(policy.review.min_severity)
+
+
+def not_a_defect(title: str, category: str) -> bool:
+    """`review.quiet`: whether a model finding's title is one of NOT_DEFECTS,
+    in a category that kind isn't SPARED in."""
+    return any(pattern.search(title) for kind, pattern in _NOT_A_DEFECT.items() if SPARED.get(kind) != category)
 
 
 def _fewer(findings: list[Finding]) -> list[Finding]:
@@ -506,6 +537,31 @@ def _fewer(findings: list[Finding]) -> list[Finding]:
     for finding in sorted(merged, key=lambda f: -severity_rank(f.severity)):
         by_file.setdefault(finding.path, []).append(finding)
     return [f for kept in by_file.values() for f in kept[:MAX_FINDINGS_PER_FILE]]
+
+
+def _one_per_claim(findings: list[Finding]) -> list[Finding]:
+    """`review.quiet`: a model that misreads one construct says so on every
+    file that has it. A title it gives on MIN_REPEATED_FILES files or more is
+    one claim: the most severe copy is kept, of those the one it's surest of,
+    and its detail says how many other files it was said of. The checks'
+    findings are left alone: a check that fires on five files found five
+    things."""
+    from stratum_open.findings import severity_rank, slug
+
+    groups: dict[str, list[Finding]] = {}
+    for finding in findings:
+        if finding.source == "model":
+            groups.setdefault(slug(finding.title), []).append(finding)
+    repeated: set[int] = set()
+    for group in groups.values():
+        files = {f.path for f in group}
+        if len(files) < MIN_REPEATED_FILES:
+            continue
+        # Path and line break a tie, so the next review keeps the same copy and its thread.
+        best = min(group, key=lambda f: (-severity_rank(f.severity), -f.confidence, f.path, f.line_start or 0))
+        best.detail += f" The model said the same of {len(files) - 1} other files."
+        repeated |= {id(f) for f in group if f is not best}
+    return [f for f in findings if id(f) not in repeated]
 
 
 def _worse(answer: str, current: str) -> bool:

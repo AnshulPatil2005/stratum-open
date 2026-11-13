@@ -280,7 +280,10 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
                 gone.setdefault(marker[0], "Fixed: the check no longer finds this.")
         publish.resolve_threads(gh, number, threads, gone, bot=ctx.bot, log=ctx.log)
         # A check's finding on a moved file can be on a line the diff doesn't show: it's listed in the summary.
-        posted = publish.publish_inline(gh, number, head, placeable(findings, files), threads, bot=ctx.bot,
+        inline = placeable(findings, files)
+        if policy.review.quiet:  # the model's findings past its few places go in the summary; max_inline_comments still caps the total
+            inline = publish.quiet_inline(inline, threads, bot=ctx.bot)
+        posted = publish.publish_inline(gh, number, head, inline, threads, bot=ctx.bot,
                                         limit=policy.review.max_inline_comments, feedback=ctx.feedback)
     except GitHubError as exc:
         ctx.log(f"couldn't post inline comments: {exc}")
@@ -293,7 +296,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     except GitHubError as exc:
         ctx.log(f"couldn't post the summary comment: {exc}")
     try:
-        publish.publish_check(gh, head, findings, body.split("<details>")[0], conclusion=conclusion, name=policy.review.check_name)
+        publish.publish_check(gh, head, findings, body.split("<details>")[0], conclusion=conclusion, name=policy.review.check_name,
+                              quiet_inline=summary.inline if policy.review.quiet else None)
     except GitHubError as exc:
         ctx.log(f"couldn't publish the check run: {exc}")
 

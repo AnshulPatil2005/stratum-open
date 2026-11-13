@@ -5,12 +5,14 @@ from __future__ import annotations
 
 import pytest
 
+from stratum_open.github import publish
 from stratum_open.policy import POLICY_PATH, Policy, parse_policy
 from stratum_open.runner import review_pull
 
 import diffs
 from conftest import DIFF, head_of
-from contract import assert_contract
+from contract import assert_contract, assert_idempotent
+from fake_model import Response, finding, json_reply
 
 HEAD = head_of(7)
 
@@ -110,3 +112,22 @@ def test_triage_enabled_posts_exactly_one_label_or_none(fake_github, make_contex
     if enabled:
         assert labels == ["triage: needs work"]  # the stale "ready" label went
     assert_contract(fake_github, number=7, head=HEAD, logs=logs)
+
+
+def test_quiet_keeps_the_checks_and_the_model_apart_and_a_second_run_posts_nothing_new(fake_github, make_context, fake_model, logs):
+    fake_github.add_pull(7, diff=DIFF)
+    fake_model.queue(Response.ok(json_reply([
+        finding("app/users.py", "return cur.fetchone()", line=6),
+        finding("app/users.py", 'print("unreachable")', line=7, title="Potential dead code", detail="This line may never run.", severity="medium"),
+    ])))
+    ctx = make_context(policy_text="review:\n  quiet: true\n")
+    outcome = review_pull(ctx, 7)
+    body = fake_github.summary_comments(7)[0]["body"]
+    assert [f.title for f in outcome.findings if f.source == "model"] == ["Unknown id"]  # a guess isn't a finding
+    assert any(f.source == "check" for f in outcome.findings)  # the SQL built from a string
+    assert "**Found by the checks:** " in body and "**Found by the checks:** nothing." not in body
+    assert "**Suggested by the model:** 1 high. 1 on the changed lines below." in body
+    assert "**Findings:**" not in body and "Potential dead code" not in fake_github.posted_text()
+    assert publish.State.decode(body).head == HEAD  # the next run finds this one's state where it always was
+    assert_contract(fake_github, number=7, head=HEAD, logs=logs)
+    assert_idempotent(fake_github, 7, lambda: review_pull(ctx, 7))

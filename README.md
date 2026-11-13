@@ -56,6 +56,7 @@ Every key, with its default, is in [policy.example.yml](policy.example.yml).
   - `triage.enabled: true` turns the labels on;
   - `review.rules` holds your project's own review rules, in plain words;
   - `review.min_severity` sets how serious a model finding must be to be shown (default `medium`; the checks' findings always show);
+  - `review.quiet: true` posts less of what the model says, and keeps it apart from what the checks found;
   - `always_human.paths` lists paths that always need a maintainer;
   - `boundaries` holds module rules such as `api -> db`;
   - `track_record.affects_triage` lets an author's record move their PR's label.

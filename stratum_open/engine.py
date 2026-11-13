@@ -25,7 +25,7 @@ from typing import Any, Callable, Sequence
 
 from stratum_open import __version__
 from stratum_open.diff import FileDiff, sendable
-from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank, risk_score
+from stratum_open.findings import Finding, anchor_to_diff, assign_fingerprints, dedupe, rank, risk_score, severity_rank
 from stratum_open.model import is_model_failure
 from stratum_open.policy import Policy
 from stratum_open.review import VERIFY_PROMPTS, ReviewResult, _locate, review, shown, verify_findings
@@ -152,7 +152,10 @@ def analyze(
     carried, gone = carry(previous or [], files, {f.fingerprint for f in found}, reviewed_now)
     for finding in [f for f in carried if not shown(f, policy)]:  # the policy's bar may have risen since
         carried.remove(finding)
-        gone[finding.fingerprint] = f"Hidden: this project shows the model's findings from {policy.review.min_severity} severity up."
+        if severity_rank(finding.severity) < severity_rank(policy.review.min_severity):
+            gone[finding.fingerprint] = f"Hidden: this project shows the model's findings from {policy.review.min_severity} severity up."
+        else:  # `review.quiet` was turned on since
+            gone[finding.fingerprint] = "Hidden: this project's reviews leave out comments like this one, which don't name a defect."
     found = dedupe(found + carried)
 
     excluded = [f for f in found if f.fingerprint in exclude_fingerprints or f.rule in exclude_rules]
