@@ -1,0 +1,1136 @@
+[
+ {
+  "pr": "fastify/fastify#7183",
+  "path": "test/schema-validation.test.js",
+  "line": 2018,
+  "code": "const invalid = await fastify.inject({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "fastify/fastify#7183",
+  "path": "test/schema-validation.test.js",
+  "line": 2011,
+  "code": "const valid = await fastify.inject({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "fastify/fastify#7183",
+  "path": "test/schema-validation.test.js",
+  "line": 2006,
+  "code": "await fastify.ready()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7183",
+  "path": "test/schema-validation.test.js",
+  "line": 1974,
+  "code": "const missingKey = await fastify.inject({ method: 'GET', url: '/' })",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "fastify/fastify#7183",
+  "path": "test/schema-validation.test.js",
+  "line": 1966,
+  "code": "const wrongToken = await fastify.inject({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "fastify/fastify#7183",
+  "path": "test/schema-validation.test.js",
+  "line": 1958,
+  "code": "const missingToken = await fastify.inject({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "fastify/fastify#7183",
+  "path": "test/schema-validation.test.js",
+  "line": 1950,
+  "code": "const valid = await fastify.inject({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "fastify/fastify#7183",
+  "path": "test/schema-validation.test.js",
+  "line": 1947,
+  "code": "await fastify.ready()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7155",
+  "path": "test/route.8.test.js",
+  "line": 146,
+  "code": "await fastify.ready()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7155",
+  "path": "test/route.8.test.js",
+  "line": 143,
+  "code": "await fastify.register(async function routes (fastify) {",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 135,
+  "code": "await app.close()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 134,
+  "code": "await app.ready()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 110,
+  "code": "await t.assert.rejects(app.close(), {",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 108,
+  "code": "await app.ready()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 94,
+  "code": "await t.assert.doesNotReject(app.close())",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 92,
+  "code": "await app.ready()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 77,
+  "code": "await t.assert.rejects(app.close(), {",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 75,
+  "code": "await app.ready()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 58,
+  "code": "await app.close()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 57,
+  "code": "await app.ready()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 38,
+  "code": "await app.close()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 35,
+  "code": "await app.ready()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 20,
+  "code": "await app.close()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7121",
+  "path": "test/close-disposable.test.js",
+  "line": 17,
+  "code": "await app.ready()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7118",
+  "path": "test/content-parser.test.js",
+  "line": 856,
+  "code": "await t.test('a thrown error with a statusCode is preserved', async t => {",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7118",
+  "path": "test/content-parser.test.js",
+  "line": 865,
+  "code": "const res = await fastify.inject({ method: 'POST', url: '/', headers: { 'content-type': 'application/json' }, payload: '{}' })",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "fastify/fastify#7118",
+  "path": "test/content-parser.test.js",
+  "line": 844,
+  "code": "await t.test('parseAs string parser', async t => {",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7118",
+  "path": "test/content-parser.test.js",
+  "line": 851,
+  "code": "const res = await fastify.inject({ method: 'POST', url: '/', headers: { 'content-type': 'application/json' }, payload: '{}' })",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "fastify/fastify#7118",
+  "path": "test/content-parser.test.js",
+  "line": 832,
+  "code": "await t.test('stream-mode parser', async t => {",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "fastify/fastify#7118",
+  "path": "test/content-parser.test.js",
+  "line": 839,
+  "code": "const res = await fastify.inject({ method: 'POST', url: '/', headers: { 'content-type': 'application/json' }, payload: '{}' })",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "fastify/fastify#7089",
+  "path": "test/diagnostics-channel/error-status.test.js",
+  "line": 150,
+  "code": "const res = await fastify.inject('/')",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24079",
+  "path": "playground/cli-module/__tests__/serve.ts",
+  "line": 97,
+  "code": "await startedOnPort(serverProcess.process, port, 5173)",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "vitejs/vite#24079",
+  "path": "playground/cli/__tests__/serve.ts",
+  "line": 100,
+  "code": "await startedOnPort(serverProcess.process, port, 5173)",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "vitejs/vite#24074",
+  "path": "packages/vite/src/node/__tests__/html.spec.ts",
+  "line": 26,
+  "code": "const result = await plugin.transform.handler.call({ environment }, html, id)",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24074",
+  "path": "packages/vite/src/node/__tests__/html.spec.ts",
+  "line": 12,
+  "code": "const config = await resolveConfig(",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24074",
+  "path": "packages/vite/src/node/__tests__/html.spec.ts",
+  "line": 10,
+  "code": "await init()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24074",
+  "path": "packages/vite/src/node/__tests__/plugins/import.spec.ts",
+  "line": 42,
+  "code": "await init()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24059",
+  "path": "packages/vite/src/node/__tests__/build.spec.ts",
+  "line": 515,
+  "code": "const { output } = await buildProject(css, true, 'empty.css')",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24059",
+  "path": "packages/vite/src/node/__tests__/build.spec.ts",
+  "line": 506,
+  "code": "const { output } = await buildProject(css, cssCodeSplit)",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24059",
+  "path": "packages/vite/src/node/__tests__/build.spec.ts",
+  "line": 475,
+  "code": "return (await build({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "packages/vite/src/node/__tests__/plugins/define.spec.ts",
+  "line": 87,
+  "code": "expect(await transform('export const version = \"1.0\";')).toBeUndefined()",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "packages/vite/src/node/__tests__/scan.spec.ts",
+  "line": 413,
+  "code": "await expect(result).resolves.toStrictEqual({ deps: {}, missing: {} })",
+  "shape": "statement, other",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "packages/vite/src/node/__tests__/scan.spec.ts",
+  "line": 388,
+  "code": "await expect(result).resolves.toStrictEqual({ deps: {}, missing: {} })",
+  "shape": "statement, other",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "packages/vite/src/node/__tests__/utils.spec.ts",
+  "line": 279,
+  "code": "expect(await resolveHostname('::')).toStrictEqual({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "packages/vite/src/node/__tests__/utils.spec.ts",
+  "line": 272,
+  "code": "expect(await resolveHostname('0.0.0.0')).toStrictEqual({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "packages/vite/src/node/__tests__/utils.spec.ts",
+  "line": 265,
+  "code": "expect(await resolveHostname('localhost')).toStrictEqual({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "packages/vite/src/node/__tests__/utils.spec.ts",
+  "line": 256,
+  "code": "expect(await resolveHostname(undefined)).toStrictEqual({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "playground/css-dynamic-import/__tests__/css-dynamic-import.spec.ts",
+  "line": 83,
+  "code": "expect(await getLinks()).toStrictEqual([",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "playground/html/__tests__/html.spec.ts",
+  "line": 380,
+  "code": "expect(await page.textContent('.env-bar')).not.toBe('')",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "playground/html/__tests__/html.spec.ts",
+  "line": 172,
+  "code": "await page.$('head script[type=module]:not([async])'),",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "playground/html/__tests__/html.spec.ts",
+  "line": 159,
+  "code": "expect(await page.$('head script[type=module][async]')).not.toBeNull()",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "playground/html/__tests__/html.spec.ts",
+  "line": 108,
+  "code": "expect(await page.getAttribute('.external-path', 'vite-ignore')).toBeNull()",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "vitejs/vite#24053",
+  "path": "playground/html/__tests__/html.spec.ts",
+  "line": 25,
+  "code": "expect(await page.$('head meta[name=viewport]')).not.toBeNull()",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "sveltejs/svelte#19246",
+  "path": "packages/svelte/tests/helpers.js",
+  "line": 270,
+  "code": "await compile_directory(cwd, generate, compileOptions);",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "sveltejs/svelte#19246",
+  "path": "packages/svelte/tests/runtime-browser/test-ssr.ts",
+  "line": 20,
+  "code": "await compile_directory_cached(test_dir, 'server', config.compileOptions);",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "sveltejs/svelte#19246",
+  "path": "packages/svelte/tests/runtime-legacy/shared.ts",
+  "line": 266,
+  "code": "await compile_directory_cached(cwd, 'server', compileOptions);",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "sveltejs/svelte#19246",
+  "path": "packages/svelte/tests/runtime-legacy/shared.ts",
+  "line": 265,
+  "code": "await compile_directory_cached(cwd, 'client', compileOptions);",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "sveltejs/svelte#19246",
+  "path": "packages/svelte/tests/server-side-rendering/test.ts",
+  "line": 66,
+  "code": "await compile_directory_cached(test_dir, 'server', compile_options);",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "sveltejs/svelte#19177",
+  "path": "packages/svelte/src/internal/server/renderer.test.ts",
+  "line": 547,
+  "code": "await Renderer.render(component as unknown as Component);",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "sveltejs/svelte#19176",
+  "path": "packages/svelte/src/internal/server/renderer.js",
+  "line": 812,
+  "code": "this.global.title = (await item.#collect_content_async()).head;",
+  "shape": "value used",
+  "test": false,
+  "caught": false
+ },
+ {
+  "pr": "sveltejs/svelte#19176",
+  "path": "packages/svelte/src/internal/server/renderer.test.ts",
+  "line": 415,
+  "code": "const { head } = await Renderer.render(component as unknown as Component);",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "sveltejs/svelte#19176",
+  "path": "packages/svelte/src/internal/server/renderer.test.ts",
+  "line": 408,
+  "code": "await Promise.resolve();",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "sveltejs/svelte#19176",
+  "path": "packages/svelte/src/internal/server/renderer.test.ts",
+  "line": 402,
+  "code": "await new Promise((resolve) => setTimeout(resolve, 10));",
+  "shape": "statement, other",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "sveltejs/svelte#19176",
+  "path": "packages/svelte/src/internal/server/renderer.test.ts",
+  "line": 389,
+  "code": "const { head, body } = await Renderer.render(",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "sveltejs/svelte#19176",
+  "path": "packages/svelte/src/internal/server/renderer.test.ts",
+  "line": 383,
+  "code": "await Promise.resolve();",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "eslint/eslint#21505",
+  "path": "tools/fetch-docs-links.js",
+  "line": 67,
+  "code": "const html = await response.text();",
+  "shape": "value used",
+  "test": false,
+  "caught": false
+ },
+ {
+  "pr": "eslint/eslint#21505",
+  "path": "tools/fetch-docs-links.js",
+  "line": 61,
+  "code": "const response = await fetch(url);",
+  "shape": "value used",
+  "test": false,
+  "caught": false
+ },
+ {
+  "pr": "eslint/eslint#21505",
+  "path": "tools/update-readme.js",
+  "line": 55,
+  "code": "const response = await fetch(TEAM_URL);",
+  "shape": "value used",
+  "test": false,
+  "caught": false
+ },
+ {
+  "pr": "eslint/eslint#21505",
+  "path": "tools/update-readme.js",
+  "line": 41,
+  "code": "const response = await fetch(SPONSORS_URL);",
+  "shape": "value used",
+  "test": false,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12985",
+  "path": "packages/typeorm/test/functional/relations/lazy-relations/primary-join-column/primary-join-column.test.ts",
+  "line": 28,
+  "code": "await Promise.all(",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12985",
+  "path": "packages/typeorm/test/functional/relations/lazy-relations/primary-join-column/primary-join-column.test.ts",
+  "line": 38,
+  "code": "await repository.save(account2)",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12985",
+  "path": "packages/typeorm/test/functional/relations/lazy-relations/primary-join-column/primary-join-column.test.ts",
+  "line": 34,
+  "code": "const result = await repository.insert(account1)",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12985",
+  "path": "packages/typeorm/test/functional/relations/lazy-relations/primary-join-column/primary-join-column.test.ts",
+  "line": 16,
+  "code": "dataSources = await createTestingConnections({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12949",
+  "path": "packages/typeorm/test/functional/columns/date-utc/date-utc.test.ts",
+  "line": 94,
+  "code": "const result = await repository.findOneByOrFail({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12949",
+  "path": "packages/typeorm/test/functional/columns/date-utc/date-utc.test.ts",
+  "line": 92,
+  "code": "await repository.save(loaded)",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12949",
+  "path": "packages/typeorm/test/functional/columns/date-utc/date-utc.test.ts",
+  "line": 89,
+  "code": "const loaded = await repository.findOneByOrFail({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12949",
+  "path": "packages/typeorm/test/functional/columns/date-utc/date-utc.test.ts",
+  "line": 87,
+  "code": "await repository.save(event)",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12949",
+  "path": "packages/typeorm/test/functional/columns/date-utc/date-utc.test.ts",
+  "line": 70,
+  "code": "const result = await repository.findOneByOrFail({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12949",
+  "path": "packages/typeorm/test/functional/columns/date-utc/date-utc.test.ts",
+  "line": 68,
+  "code": "await repository.save(loaded)",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12949",
+  "path": "packages/typeorm/test/functional/columns/date-utc/date-utc.test.ts",
+  "line": 61,
+  "code": "const loaded = await repository.findOneByOrFail({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12949",
+  "path": "packages/typeorm/test/functional/columns/date-utc/date-utc.test.ts",
+  "line": 59,
+  "code": "await repository.save(event)",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12939",
+  "path": "packages/typeorm/src/driver/sqlserver/SqlServerQueryRunner.ts",
+  "line": 356,
+  "code": "await broadcasterResult.wait()",
+  "shape": "statement, call by name",
+  "test": false,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12939",
+  "path": "packages/typeorm/src/driver/sqlserver/SqlServerQueryRunner.ts",
+  "line": 230,
+  "code": "await this.broadcaster.broadcast(\"BeforeQuery\", query, parameters)",
+  "shape": "statement, call by name",
+  "test": false,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12939",
+  "path": "packages/typeorm/test/unit/driver/sqlserver-query-lock.test.ts",
+  "line": 86,
+  "code": "expect(await queryRunner.query(\"SELECT 1 AS value\")).to.deep.equal([",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12939",
+  "path": "packages/typeorm/test/unit/driver/sqlserver-query-lock.test.ts",
+  "line": 83,
+  "code": "await expect(queryRunner.query(\"SELECT 1 AS value\")).to.be.rejectedWith(",
+  "shape": "statement, other",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12939",
+  "path": "packages/typeorm/test/unit/driver/sqlserver-query-lock.test.ts",
+  "line": 73,
+  "code": "expect(await Promise.all([first, second])).to.deep.equal([",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12939",
+  "path": "packages/typeorm/test/unit/driver/sqlserver-query-lock.test.ts",
+  "line": 65,
+  "code": "await new Promise((resolve) => setImmediate(resolve))",
+  "shape": "statement, other",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12939",
+  "path": "packages/typeorm/test/unit/driver/sqlserver-query-lock.test.ts",
+  "line": 50,
+  "code": "await queryRunner.query(\"SELECT 1 AS value\"),",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12939",
+  "path": "packages/typeorm/test/unit/driver/sqlserver-query-lock.test.ts",
+  "line": 41,
+  "code": "await expect(",
+  "shape": "statement, other",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/src/cache/DbQueryResultCache.ts",
+  "line": 361,
+  "code": "await _queryRunner.release()",
+  "shape": "statement, call by name",
+  "test": false,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/src/cache/DbQueryResultCache.ts",
+  "line": 358,
+  "code": "await Promise.allSettled(removals)",
+  "shape": "statement, call by name",
+  "test": false,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/src/cache/DbQueryResultCache.ts",
+  "line": 355,
+  "code": "await Promise.all(removals)",
+  "shape": "statement, call by name",
+  "test": false,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/test/functional/cache/db-cache-remove.test.ts",
+  "line": 78,
+  "code": "await queryRunner.release()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/test/functional/cache/db-cache-remove.test.ts",
+  "line": 73,
+  "code": ": await dataSource.query(\"SELECT 1 AS value\")",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/test/functional/cache/db-cache-remove.test.ts",
+  "line": 72,
+  "code": "? await queryRunner!.query(\"SELECT 1 AS value\")",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/test/functional/cache/db-cache-remove.test.ts",
+  "line": 61,
+  "code": "await expect(",
+  "shape": "statement, other",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/test/functional/cache/db-cache-remove.test.ts",
+  "line": 51,
+  "code": "await dataSource.query(`DROP TABLE ${tablePath}`)",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/test/functional/cache/db-cache-remove.test.ts",
+  "line": 32,
+  "code": "for (const dataSource of dataSources) await dataSource.initialize()",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/test/unit/cache/db-query-result-cache.test.ts",
+  "line": 104,
+  "code": "const error = await new DbQueryResultCache(dataSource)",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/test/unit/cache/db-query-result-cache.test.ts",
+  "line": 85,
+  "code": "expect(await removal).to.equal(firstError)",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/test/unit/cache/db-query-result-cache.test.ts",
+  "line": 77,
+  "code": "await new Promise((resolve) => setImmediate(resolve))",
+  "shape": "statement, other",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/test/unit/cache/db-query-result-cache.test.ts",
+  "line": 45,
+  "code": "await expect(",
+  "shape": "statement, other",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12938",
+  "path": "packages/typeorm/test/unit/cache/db-query-result-cache.test.ts",
+  "line": 23,
+  "code": "await cache.remove(",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12907",
+  "path": "packages/typeorm/test/functional/tree-tables/closure-table/custom-primary-column/custom-primary-column.test.ts",
+  "line": 62,
+  "code": "const closureCount = await dataSource",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12907",
+  "path": "packages/typeorm/test/functional/tree-tables/closure-table/custom-primary-column/custom-primary-column.test.ts",
+  "line": 60,
+  "code": "expect(await repository.count()).to.equal(4)",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12907",
+  "path": "packages/typeorm/test/functional/tree-tables/closure-table/custom-primary-column/custom-primary-column.test.ts",
+  "line": 48,
+  "code": "const ancestors = await repository.findAncestors(leaf)",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12907",
+  "path": "packages/typeorm/test/functional/tree-tables/closure-table/custom-primary-column/custom-primary-column.test.ts",
+  "line": 46,
+  "code": "await repository.save(branch)",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12907",
+  "path": "packages/typeorm/test/functional/tree-tables/closure-table/custom-primary-column/custom-primary-column.test.ts",
+  "line": 40,
+  "code": "const leaf = await repository.save({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12907",
+  "path": "packages/typeorm/test/functional/tree-tables/closure-table/custom-primary-column/custom-primary-column.test.ts",
+  "line": 34,
+  "code": "const branch = await repository.save(",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12907",
+  "path": "packages/typeorm/test/functional/tree-tables/closure-table/custom-primary-column/custom-primary-column.test.ts",
+  "line": 30,
+  "code": "const newParent = await repository.save({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12907",
+  "path": "packages/typeorm/test/functional/tree-tables/closure-table/custom-primary-column/custom-primary-column.test.ts",
+  "line": 29,
+  "code": "const oldParent = await repository.save({ cat_name: \"old\" })",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-floating-key-hydration.test.ts",
+  "line": 64,
+  "code": "const loadedParent = await repository.findOneOrFail({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-floating-key-hydration.test.ts",
+  "line": 46,
+  "code": "const children = await repository.find({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-floating-key-hydration.test.ts",
+  "line": 39,
+  "code": "await repository.insert({",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-floating-key-hydration.test.ts",
+  "line": 38,
+  "code": "await repository.insert(child)",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-floating-key-hydration.test.ts",
+  "line": 30,
+  "code": "await repository.insert(parent)",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-floating-key-hydration.test.ts",
+  "line": 14,
+  "code": "dataSources = await createTestingConnections({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-key-hydration.test.ts",
+  "line": 72,
+  "code": "const loaded = await repository.findOneOrFail({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-key-hydration.test.ts",
+  "line": 65,
+  "code": "await repository.save([",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-key-hydration.test.ts",
+  "line": 61,
+  "code": "const parent = await repository.save({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-key-hydration.test.ts",
+  "line": 36,
+  "code": "const records = await repository",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-key-hydration.test.ts",
+  "line": 31,
+  "code": "await repository.save([",
+  "shape": "statement, call by name",
+  "test": true,
+  "caught": true
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-key-hydration.test.ts",
+  "line": 27,
+  "code": "const second = await repository.save({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-key-hydration.test.ts",
+  "line": 23,
+  "code": "const first = await repository.save({",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12905",
+  "path": "packages/typeorm/test/functional/query-builder/composite-key-hydration/composite-key-hydration.test.ts",
+  "line": 14,
+  "code": "dataSources = await createTestingConnections({ entities: [Record] })",
+  "shape": "value used",
+  "test": true,
+  "caught": false
+ },
+ {
+  "pr": "typeorm/typeorm#12891",
+  "path": "packages/typeorm/src/driver/cockroachdb/CockroachDriver.ts",
+  "line": 1222,
+  "code": "await this.connectedQueryRunners[0].release()",
+  "shape": "statement, other",
+  "test": false,
+  "caught": false
+ }
+]

@@ -1,0 +1,3 @@
+# The floating-promise check for JavaScript and TypeScript; needs the `js` extra.
+checks:
+  floating_promises: true

@@ -199,6 +199,84 @@
         next();
       };
 
+# ── a promise dropped in JavaScript or TypeScript ────────────────────────
+# The rule is off by default and needs the `js` extra: run with
+# --policy benchmark/planted/variants/floating-promises.yml.
+
+- id: js-promise-awaited-elsewhere
+  rule: code/floating-promise
+  files:
+    server/orders.js: |
+      const db = require("./db");
+
+      async function createOrder(req, res) {
+        const order = await db.orders.insert(req.body);
+        await db.audit.record("order.created", order.id);
+        res.status(201).json(order);
+      }
+
+      async function cancelOrder(req, res) {
+        await db.orders.cancel(req.params.id);
+        db.audit.record("order.cancelled", req.params.id);
+        res.sendStatus(204);
+      }
+
+      module.exports = { createOrder, cancelOrder };
+
+- id: ts-promise-declared-async
+  rule: code/floating-promise
+  files:
+    src/importer.ts: |
+      export class Importer {
+        constructor(private readonly db: Database) {}
+
+        private async saveBatch(rows: Row[]): Promise<void> {
+          await this.db.insert("rows", rows);
+        }
+
+        async run(source: AsyncIterable<Row[]>): Promise<number> {
+          let count = 0;
+          for await (const rows of source) {
+            this.saveBatch(rows);
+            count += rows.length;
+          }
+          return count;
+        }
+      }
+
+- id: js-promise-left-running
+  rule: code/floating-promise
+  control: true
+  files:
+    server/boot.js: |
+      const routes = require("./routes");
+      const health = require("./health");
+      const auth = require("./auth");
+      const metrics = require("./metrics");
+      const cache = require("./cache");
+
+      async function boot(app, port) {
+        app.register(routes);
+        app.register(health);
+        await app.register(auth);
+        app.listen(port, (err) => {
+          if (err) throw err;
+        });
+        void metrics.flush();
+        cache.warm().catch(console.error);
+        setInterval(() => {
+          metrics.flush();
+        }, 60000);
+      }
+
+      async function restart(app, port) {
+        await app.close();
+        await app.listen(port);
+        await metrics.flush();
+      }
+
+      module.exports = { boot, restart };
+
 # ── Bandit (only when the `bandit` extra is installed) ───────────────────
 
 - id: bandit-pickle
