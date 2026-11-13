@@ -48,7 +48,7 @@ def _post(ctx: Context, body: str) -> str:
     gh = ctx.gh
     issue = next((i for i in gh.paginate(f"/repos/{gh.repo}/issues", state="open")
                   if i.get("title") == TITLE and "pull_request" not in i
-                  and ((i.get("user") or {}).get("login") or "").lower() == ctx.bot.lower()), None)
+                  and publish._is_bot(i, ctx.bot)), None)
     if issue:
         gh.edit_issue(issue["number"], body)
     else:
