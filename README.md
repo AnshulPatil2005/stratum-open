@@ -107,7 +107,7 @@ On GitHub's free runner (4 CPUs, 16 GB RAM, no GPU) you can choose between two m
 | `qwen2.5-coder:7b` (the example's) | | 1 of 39 | about 0.4 | about 2.5 min | 4.7 GB, kept in the Actions cache |
 | `gpt-oss:20b` | `review.reasoning: low` and `review.verify: strict` | 16 of 39 (12 to 18 over four runs) | about 0.2 | about 3.5 min | 13.8 GB, downloaded each run |
 
-`gpt-oss:20b` finds far more, at about the same speed and with fewer wrong comments. With the logic pass and ten lines of code around each change it finds more again, for about three times the wait ([how it was measured](benchmark/results/2026-11-13-logic-pass-actions-cpu/notes.md)). Two costs of `gpt-oss:20b` either way:
+`gpt-oss:20b` finds far more, at about the same speed and with fewer wrong comments. With the logic pass and ten lines of code around each change it finds more again, for about three times the wait ([a more thorough review](#a-more-thorough-review)). Two costs of `gpt-oss:20b` either way:
 - **Disk:** it doesn't fit the runner's disk as it comes, so the Action removes preinstalled SDKs it doesn't need to make room.
 - **Cache:** it's bigger than a repository's 10 GB Actions cache, so it's downloaded each run, which adds a couple of minutes. Ollama itself is still cached.
 
@@ -116,6 +116,25 @@ It's a thinking model, so it needs `review.reasoning: low`. Without it, the thin
 `review.verify: strict` costs it no real catches and halves its wrong comments. On the 7B, by contrast, it removes noise only because there were no real catches to lose.
 
 The same review can catch different bugs from one run to the next, so expect the counts to move by a few.
+
+### A more thorough review
+
+If you'd rather wait longer for more catches, turn on the logic pass and show the model ten lines of code around each change. In `.stratum/policy.yml`, with `ollama-model: gpt-oss:20b`:
+
+```yaml
+review:
+  reasoning: low
+  verify: strict
+  logic_pass: true      # one more call per chunk, for logic errors only
+  context_lines: 10     # unchanged lines shown around each change
+```
+
+On the planted-bug benchmark this found 27 of 39 bugs, against 18 for the same model without the two settings, including inverted `return`s and off-by-ones the plain review never caught. What it costs:
+
+- **Time:** a review takes about three times as long, a median of about 11 minutes a PR on the free runner, and a large PR can take most of an hour.
+- **Comments on code with nothing wrong:** about 0.4 a PR, against 0.2.
+
+The two settings only help together: each on its own found one or two more. Neither is on by default, because of the wait. [How it was measured](benchmark/results/2026-11-13-logic-pass-actions-cpu/notes.md).
 
 How much a review asks of the model depends on the model. `review.profile: auto` asks the model's server for its size:
 - **`small`**, for models up to about 20B: a compact diff, 1–3 model calls.
