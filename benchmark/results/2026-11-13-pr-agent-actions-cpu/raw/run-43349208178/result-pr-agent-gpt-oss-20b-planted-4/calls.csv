@@ -1,0 +1,13 @@
+case,version,tool,seconds,ok,prompt_tokens,output_tokens,done,shown,error
+pallets/werkzeug#3337,planted,review,190.7,yes,2876,342,stop,no,
+pallets/werkzeug#3337,planted,review,583.1,yes,6499,807,stop,yes,
+pallets/werkzeug#3337,planted,improve,509.9,yes,5904,1113,stop,yes,
+psf/requests#7496,planted,review,303.2,yes,4183,481,stop,yes,
+psf/requests#7496,planted,improve,223.5,yes,2630,664,stop,yes,
+psf/requests#7496,planted,improve,298.3,yes,4306,561,stop,yes,
+Textualize/textual#6464,planted,review,270.3,yes,4384,361,stop,yes,
+Textualize/textual#6464,planted,improve,268.0,yes,3062,822,stop,yes,
+Textualize/textual#6464,planted,improve,316.0,yes,4883,448,stop,yes,
+pypa/pip#14349,planted,review,346.9,yes,5098,575,stop,yes,
+pypa/pip#14349,planted,improve,386.9,yes,3372,1451,stop,yes,
+pypa/pip#14349,planted,improve,319.5,yes,5301,319,stop,yes,
