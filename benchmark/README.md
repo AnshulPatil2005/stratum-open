@@ -44,11 +44,11 @@ Marking findings on merged PRs needs a maintainer for every row, so
   then read and marked: whether it describes the bug (`found`), and whether
   each other finding is a real problem, with the reason in its `note`. Start the **Planted-bug benchmark** workflow to run it on
   GitHub's free runners, one job per model and shard.
-- **The checks that need no model.** [risks.yml](planted/risks.yml) is 107
-  planted risks (secrets, code that runs input, a dropped promise, workflow holes, typosquatted
+- **The checks that need no model.** [risks.yml](planted/risks.yml) is 114
+  planted risks (secrets, code that runs input, a dropped promise, a weakened test, workflow holes, typosquatted
   and made-up packages, versions with known advisories, coding-agent files,
   hidden Unicode), after real incidents where there was one, an error for
-  each rule of the Ruff check, and 4 controls a rule must leave alone.
+  each rule of the Ruff check, and 10 controls a rule must leave alone.
   [clean.json](planted/clean.json) is 184 merged PRs as they are, where every
   finding is a possible false alarm. `--policy` takes a policy file, for a
   rule that is off by default: the six known-advisory cases are missed
