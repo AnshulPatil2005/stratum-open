@@ -46,11 +46,11 @@ review:
 
 checks:
   bandit_low: false            # profile: keep Bandit's low-severity results too (large: true)
-  weakened_tests: false        # true reports, on the line, a test a PR switches off, assertions it removes from a test, and a tolerance it widens
   heuristics: false            # profile: a finding per file in a risky area (auth, migrations, CI, dependencies) and for weakened tests (large: true)
   ruff: false                  # true reports errors Ruff finds on added Python lines (an undefined name, a format string that raises); needs Ruff installed (the ruff extra)
   floating_promises: false     # true flags, in JavaScript and TypeScript, a call left unawaited in an async function when the file awaits it elsewhere;
                                #   needs the `js` extra, which installs the parser (tree-sitter)
+  weakened_tests: false        # true reports, on the line, a test a PR switches off, assertions it removes from a test, and a tolerance it widens
 
 commands:                      # who may run each @stratum command: anyone | author | write
   review: write                # "author" is the PR's author or anyone with write access

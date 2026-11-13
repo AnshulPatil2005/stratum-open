@@ -67,10 +67,10 @@ def run_checks(
         checks.append(("Ruff", lambda: ruff.check(files, contents)))
     if policy.checks.floating_promises:
         checks.append(("floating promise", lambda: promises.check(files, contents)))
-    if policy.checks.weakened_tests:
-        checks.append(("weakened tests", lambda: tests_weakened.check(files)))
     if policy.checks.heuristics:
         checks.append(("heuristics", lambda: heuristics.check(files, pr_text)))
+    if policy.checks.weakened_tests:
+        checks.append(("weakened tests", lambda: tests_weakened.check(files)))
     findings: list[Finding] = []
     for name, run in checks:
         try:
