@@ -113,9 +113,9 @@ def _score(out: Path) -> int:
     return 0
 
 
-def _summary(calls: list[dict], findings: list[dict], out: Path | None) -> str:
-    """The run's table, followed by its notes.md (the machine, what it shows),
-    so `score` can rebuild the summary without losing them."""
+def scores(calls: list[dict], findings: list[dict]) -> dict:
+    """What a run adds up to, a row per model. Its summary and the results
+    page (results_page.py) both take their numbers from here."""
     # Models are only compared on the PRs every one of them finished, so a
     # run stopped partway can't set one model's full set against another's few.
     reviewed: dict[str, set[tuple[str, str]]] = defaultdict(set)
@@ -130,30 +130,44 @@ def _summary(calls: list[dict], findings: list[dict], out: Path | None) -> str:
     for row in findings:
         if (row["repo"], str(row["pr"])) in shared:
             verdicts[row["model"]][(row.get("verdict") or "").strip().lower() or "unmarked"] += 1
+    rows = []
+    for model, mine in by_model.items():
+        v = verdicts[model]
+        rows.append({
+            "model": model, "prs": len(mine), "seconds": statistics.median(float(r["seconds"]) for r in mine),
+            "findings": sum(int(r["findings"]) for r in mine),
+            "failed_calls": sum(int(r["failed_calls"]) for r in mine), "calls": sum(int(r["calls"]) for r in mine),
+            "right": v["right"], "wrong": v["wrong"], "unmarked": v["unmarked"] + v["unsure"],
+        })
+    return {
+        "shared": len(shared), "finished": {model: len(done) for model, done in reviewed.items()}, "rows": rows,
+        "marked": sum(v["right"] + v["wrong"] for v in verdicts.values()),
+    }
+
+
+def _summary(calls: list[dict], findings: list[dict], out: Path | None) -> str:
+    """The run's table, followed by its notes.md (the machine, what it shows),
+    so `score` can rebuild the summary without losing them."""
+    run = scores(calls, findings)
     lines = [
         "# Small-model benchmark",
         "",
-        f"{len(shared)} merged PR(s), reviewed by every model with the same prompt and settings.",
+        f"{run['shared']} merged PR(s), reviewed by every model with the same prompt and settings.",
         "Only the model's findings are counted; Stratum's checks don't depend on the model.",
     ]
-    if any(len(done) != len(shared) for done in reviewed.values()):
+    if any(done != run["shared"] for done in run["finished"].values()):
         lines.append("**Incomplete run:** only the PRs every model finished are compared. Finished: "
-                     + ", ".join(f"`{model}` {len(done)}" for model, done in reviewed.items()) + ".")
+                     + ", ".join(f"`{model}` {done}" for model, done in run["finished"].items()) + ".")
     lines += [
         "",
         "| Model | Median time per PR | Findings per PR | Failed calls | Marked right | Marked wrong | Not marked |",
         "| --- | --- | --- | --- | --- | --- | --- |",
     ]
-    for model, rows in by_model.items():
-        seconds = statistics.median(float(r["seconds"]) for r in rows)
-        per_pr = sum(int(r["findings"]) for r in rows) / len(rows)
-        failed = sum(int(r["failed_calls"]) for r in rows)
-        total = sum(int(r["calls"]) for r in rows)
-        v = verdicts[model]
-        lines.append(f"| `{model}` | {seconds:.0f}s | {per_pr:.1f} | {failed} of {total} | {v['right']} | {v['wrong']} | {v['unmarked'] + v['unsure']} |")
-    marked = sum(v["right"] + v["wrong"] for v in verdicts.values())
+    for row in run["rows"]:
+        lines.append(f"| `{row['model']}` | {row['seconds']:.0f}s | {row['findings'] / row['prs']:.1f} | {row['failed_calls']} of {row['calls']} "
+                     f"| {row['right']} | {row['wrong']} | {row['unmarked']} |")
     lines += [""]
-    if not marked:
+    if not run["marked"]:
         lines.append("No findings have been marked yet. Precision needs maintainers to mark each row of findings.csv right or wrong, then `bench.py score`.")
     notes = out / "notes.md" if out is not None else None
     if notes is not None and notes.exists():
