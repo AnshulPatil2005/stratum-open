@@ -80,8 +80,8 @@ def analyze(
       `.failure_types`, optionally, for the exception types that mean the model
       or the network failed rather than Stratum. None runs the checks only.
     - `contents`: a path's full new text, where the caller has it: the checks
-      read past the diff with it, and `review.context_lines` shows the code
-      around each hunk from it.
+      read past the diff with it, and `review.context_lines` and
+      `review.context_scope` show the code around each hunk from it.
     - `only_paths`: on an incremental review, the files changed since the last
       one; an empty set means nothing new for the model to read. `first`: the
       paths the chunked review packs before the rest (files read again).

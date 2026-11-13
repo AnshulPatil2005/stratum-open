@@ -40,6 +40,7 @@ class Review:
     diff_format: str = "interleaved"  # interleaved | split (new and old hunks apart)
     large_patch: str = "clip"  # clip | skip a file too big for one call
     context_lines: int = 0  # unchanged lines shown around each hunk, from the file (large: 10)
+    context_scope: str = "lines"  # lines | function: each hunk with the whole function it's in (Python only so far), context_lines elsewhere
     mode: str = "general"  # general | security | performance | maintainability: what the per-file passes put first
     file_reviews: int = 0  # files the model reviews one at a time before the chunked review (large: 15)
     lens_files: int = 0  # of those, how many get a focused pass per lens of the mode (large: 5)
@@ -179,6 +180,7 @@ _CHOICES = {
     ("review", "profile"): ("auto", "small", "large"),
     ("review", "diff_format"): ("interleaved", "split"),
     ("review", "large_patch"): ("clip", "skip"),
+    ("review", "context_scope"): ("lines", "function"),
     ("review", "mode"): ("general", "security", "performance", "maintainability"),
     ("review", "conclusion"): ("severity", "score"),
     ("review", "verify"): ("none", "strict", "lenient"),

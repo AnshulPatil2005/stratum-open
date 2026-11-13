@@ -31,7 +31,7 @@ MAX_BANDIT_FILES = 20
 MAX_CONTEXT_FILES = 20
 MAX_MOVED_FILES = 20  # files moved into a check's scope, which the checks read in full
 MAX_MOVED_BYTES = 1_000_000  # the contents API's own limit for a file's text
-MAX_REVIEW_TEXT_FILES = 20  # files whose text is fetched for review.context_lines
+MAX_REVIEW_TEXT_FILES = 20  # files whose text is fetched for review.context_lines and review.context_scope
 # The JSON size of the unread paths kept in the summary's state (about 60 paths), so they don't crowd the
 # findings out of the comment; past it, the next run reads everything since the old head.
 MAX_UNREAD_BYTES = 4000
@@ -132,8 +132,9 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     notes, hotspots, boundary, file_notes = _history(ctx, files, pull)
     record = _record(ctx, pull)
     muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []
-    # Whether the profile shows code around each hunk, so the files' text is worth fetching.
-    around = ctx.model is not None and effective_policy(ctx.policy, ctx.model)[0].review.context_lines > 0
+    # Whether the review shows code around each hunk, so the files' text is worth fetching.
+    settings = effective_policy(ctx.policy, ctx.model)[0].review if ctx.model is not None else None
+    around = settings is not None and (settings.context_lines > 0 or settings.context_scope == "function")
     contents = _contents(ctx, files, head, around=around)
     engine = analyze(
         title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=ctx.policy, model=ctx.model,

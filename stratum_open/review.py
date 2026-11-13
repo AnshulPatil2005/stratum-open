@@ -228,8 +228,9 @@ def review(
     `previous` is the last review's findings on the files being reviewed
     again; they're listed so the model doesn't report them a second time in
     new words. `contents` (a path's new text) gives `review.context_lines`
-    of unchanged code around each hunk. `first`: paths packed before the
-    rest (files read again), so new changes don't push them out."""
+    of unchanged code around each hunk, or with `review.context_scope:
+    function` the function it's in. `first`: paths packed before the rest
+    (files read again), so new changes don't push them out."""
     result = ReviewResult()
     in_scope = [f for f in files if only_paths is None or f.path in only_paths]
     rules = "".join(f"- {rule}\n" for rule in policy.review.rules)
@@ -262,7 +263,8 @@ def review(
     def widened(file: FileDiff) -> FileDiff:
         """The file with the code around its hunks, if that still fits a call:
         the code around mustn't crowd out the change itself."""
-        wide = diffs.with_context(file, (contents or {}).get(file.path), policy.review.context_lines)
+        around = diffs.with_function if policy.review.context_scope == "function" else diffs.with_context
+        wide = around(file, (contents or {}).get(file.path), policy.review.context_lines)
         return wide if wide is file or diffs.approx_tokens(diffs.render(wide, style=style)) < max(1000, budget) else file
 
     shown_files = [widened(f) for f in in_scope]

@@ -197,7 +197,8 @@ def review_files(
 ) -> LargeReview:
     """The per-file and lens passes over `files` (or only `only_paths`).
     `contents` (a path's new text) gives `review.context_lines` of unchanged
-    code around each hunk."""
+    code around each hunk, or with `review.context_scope: function` the
+    function it's in."""
     result = LargeReview()
     targets = _rank(files, policy, only_paths, hotspots, result)
     lens_paths = {f.path for f, _ in targets[:policy.review.lens_files]}
@@ -222,7 +223,8 @@ def review_files(
                                       guidance=guidance_block, path=file.path, max_findings=MAX_FINDINGS_PER_FILE_CALL) for lens in lenses]
         budget = min(MAX_FILE_TOKENS, policy.review.context_tokens - OUTPUT_RESERVE_TOKENS - 200
                      - diffs.approx_tokens(max(systems, key=len) + FILE_USER.format(**parts, clipped="", diff="")))
-        shown_file = diffs.with_context(file, (contents or {}).get(file.path), policy.review.context_lines)
+        around = diffs.with_function if policy.review.context_scope == "function" else diffs.with_context
+        shown_file = around(file, (contents or {}).get(file.path), policy.review.context_lines)
         rendered = diffs.render(shown_file, style=style)
         if shown_file is not file and diffs.approx_tokens(rendered) > budget:
             shown_file, rendered = file, diffs.render(file, style=style)  # the code around mustn't crowd out the change
