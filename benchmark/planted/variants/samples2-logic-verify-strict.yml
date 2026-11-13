@@ -1,0 +1,6 @@
+# Two samples and the logic pass, merged, with less thinking and the strict verify pass.
+review:
+  reasoning: low
+  verify: strict
+  samples: 2
+  logic_pass: true
