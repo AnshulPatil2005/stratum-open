@@ -19,7 +19,7 @@ from stratum_open.engine import default_conclusion
 from stratum_open.findings import Finding, counts, severity_rank
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.policy import Policy
-from stratum_open.review import MIN_REPEATED_FILES, parse
+from stratum_open.review import MIN_REPEATED_FILES, COMMAND
 from stratum_open.triage import COLORS, DESCRIPTIONS, KEYS, Triage, label_for
 
 CHECK_NAME = "Stratum"
@@ -102,8 +102,9 @@ def comment_body(finding: Finding, *, feedback: bool) -> str:
     if finding.suggestion:
         lines += ["", f"**Fix:** {finding.suggestion}"]
     # Code to commit can't be put in backticks the way demention() does, so a
-    # suggestion that would read as a `/stratum` command is left out.
-    if finding.replacement is not None and parse(finding.replacement) is None:
+    # suggestion with a line that would read as a `/stratum` command is left
+    # out, even one inside a fence of its own: the fences around it can change.
+    if finding.replacement is not None and not COMMAND.search(finding.replacement):
         # The fence has to be longer than any run of backticks inside, or GitHub ends the block early.
         longest = max((len(run) for run in re.findall(r"`+", finding.replacement)), default=0)
         fence = "`" * max(3, longest + 1)

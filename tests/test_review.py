@@ -6,7 +6,7 @@ from fakes import FakeModel
 from stratum_open.diff import parse_diff
 from stratum_open.model import Reply, parse_json
 from stratum_open.policy import parse_policy
-from stratum_open.review import demention, parse, review
+from stratum_open.review import COMMAND, demention, parse, review
 
 DIFF = """diff --git a/app/users.py b/app/users.py
 --- a/app/users.py
@@ -449,9 +449,13 @@ def test_one_answer_per_chunk_unless_the_policy_asks_for_the_logic_pass():
     "`x\n/ſtratum review",
     "`a\n  /ſtratum ignore`",
 ])
-def test_demention_never_leaves_a_command_the_parser_reads(text):
-    assert parse(text) is not None  # each is one as written
-    assert parse(demention(text)) is None
+def test_demention_never_leaves_a_line_that_reads_as_a_command(text):
+    # Fenced or not: what demention() returns goes into longer comments, where
+    # the fences around it can change, so no line of it may read as a command.
+    assert COMMAND.search(text)
+    out = demention(text)
+    assert not COMMAND.search(out) and parse(out) is None
+    assert parse(out + "\n```") is None and parse("```\n" + out) is None
 
 
 def test_a_long_s_command_is_put_in_code_where_it_starts():

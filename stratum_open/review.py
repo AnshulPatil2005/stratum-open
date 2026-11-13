@@ -724,20 +724,39 @@ _TO_CODE = re.compile(r"(?<![A-Za-z0-9`])(?<![A-Za-z0-9]_)@[A-Za-z0-9][A-Za-z0-9
 # Only spaces and tabs may come before it on its line: `\s` there would also
 # match newlines and make a search quadratic in a comment's line count.
 COMMAND = re.compile(r"^[ \t]*/stratum +([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
+# A line that opens or closes a fenced code block: three or more backticks or
+# tildes. After backticks the rest of the line can't hold one, or it's inline
+# code ("```x``` y" isn't a fence). Any indent counts, so a fence in a list
+# item does too.
+_FENCE = re.compile(r"^[ \t]*(`{3,}(?![^`]*`)|~{3,})(.*)$")
 
 
 def parse(body: str) -> tuple[str, str] | None:
-    """The first command in a comment, as (name, argument), or None."""
-    match = COMMAND.search(body or "")
-    return (match.group(1).lower(), match.group(2).strip()) if match else None
+    """The first command in a comment, as (name, argument), or None. A line
+    inside a fenced code block isn't one: that's someone showing a command,
+    not giving it. A fence that's never closed runs to the end of the comment,
+    as GitHub shows it. A quoted line ("> ...") is never a command, so a fence
+    in a quote needs no tracking: the quote ends it."""
+    fence = ""
+    for line in (body or "").split("\n"):
+        mark = _FENCE.match(line)
+        if fence:
+            # Closed by a run of the same character, at least as long, with nothing after it.
+            if mark and mark.group(1)[0] == fence[0] and len(mark.group(1)) >= len(fence) and not mark.group(2).strip():
+                fence = ""
+        elif mark:
+            fence = mark.group(1)
+        elif match := COMMAND.match(line):
+            return match.group(1).lower(), match.group(2).strip()
+    return None
 
 
 def demention(text: str) -> str:
     """The model's words with every @name put in code, so nobody is paged by
     text a model made up, and `/stratum` too, so `/stratum review` in a reply
-    is never a command: `parse()` of the result is always None. The bot's own
-    comments are skipped by the command parser too; this covers people, and
-    a token the bot shares with one."""
+    is never a command: no line of the result matches `COMMAND`, so `parse()`
+    of it is None. The bot's own comments are skipped by the command parser
+    too; this covers people, and a token the bot shares with one."""
     def swap(match: re.Match) -> str:
         # Already inside a code span: GitHub won't link it, and more backticks
         # would break the span. A backtick with none after it opens no span.
@@ -746,9 +765,11 @@ def demention(text: str) -> str:
         return f"`{match.group(0)}`"
 
     text = _TO_CODE.sub(swap, text)
-    # The parser doesn't know about code, so a command inside a code block or
-    # a code span still reads as one. Backticks there show, but a line that
-    # starts with one isn't a command.
+    # Every line that reads as a command, fenced or not: this text goes into
+    # longer comments, where a fence from another part (a title, a suggestion)
+    # can open or close around it, so only a line that's never a command is
+    # safe. Backticks show inside a code block, but a line that starts with
+    # one isn't a command.
     at = 0
     while match := COMMAND.search(text, at):
         # Past the spaces and tabs before "/stratum". Not .lower().index(): the

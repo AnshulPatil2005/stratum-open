@@ -64,7 +64,7 @@ Every key, with its default, is in [policy.example.yml](policy.example.yml).
 
 ## Commands
 
-Comment on a PR, with the command at the start of a line:
+Comment on a PR, with the command at the start of a line. One inside a code block (between ``` lines) is shown, not run.
 
 | Command | Who | What it does |
 | --- | --- | --- |

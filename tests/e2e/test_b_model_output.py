@@ -188,6 +188,9 @@ def test_a_suggestion_that_reads_as_a_command_is_left_out():
 
     body = publish.comment_body(Finding("T", "D", path="x.py", line_start=1, replacement="x = 1\n  /stratum ignore\n"), feedback=False)
     assert "suggestion" not in body and parse(body) is None
+    # Even inside a fence of its own: in the comment, other fences can open or close around it.
+    body = publish.comment_body(Finding("T", "D", path="x.py", line_start=1, replacement="```\n/stratum review\n```\n"), feedback=False)
+    assert "suggestion" not in body and parse(body) is None
     body = publish.comment_body(Finding("T", "D", path="x.py", line_start=1, replacement="x = '/stratum ignore'\n"), feedback=False)
     assert "```suggestion\nx = '/stratum ignore'\n```" in body and parse(body) is None
 

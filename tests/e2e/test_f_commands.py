@@ -224,6 +224,34 @@ def test_only_spaces_and_tabs_may_come_before_a_command(body, expected):
     assert parse(body) == expected
 
 
+@pytest.mark.parametrize("body, expected", [
+    # Someone showing a command in a code block isn't giving it.
+    ("To hide it:\n```\n/stratum mute code/sql\n```", None),
+    ("```sh\n  /stratum review\n```", None),
+    ("~~~\n/stratum review\n~~~", None),
+    ("1. Comment:\n\n    ```\n    /stratum review\n    ```", None),  # in a list item
+    # A fence never closed runs to the end of the comment.
+    ("```\n/stratum review", None),
+    ("```\nx\n```\n```\n/stratum review", None),
+    # Only a run of the same character, as long or longer, with nothing after, closes one.
+    ("````\n```\n/stratum review\n````", None),
+    ("```\n~~~\n/stratum review", None),
+    ("```\n``` not yet\n/stratum review", None),
+    ("~~~\n~~~~\n/stratum review", ("review", "")),
+    # After a closed fence a command counts again, and the first one is read.
+    ("```\n/stratum mute code/sql\n```\n/stratum review", ("review", "")),
+    ("```\nx\n```\r\n/stratum review\r\n", ("review", "")),
+    # Backticks with another on the line are inline code, not a fence.
+    ("```x``` and\n/stratum review", ("review", "")),
+    ("```python `x`\n/stratum review", ("review", "")),
+    # A quoted line is never a command, and the quote ends a fence inside it.
+    ("> ```\n> /stratum review\n> ```", None),
+    ("> ```\n> x\n\n/stratum review", ("review", "")),
+])
+def test_parse_skips_commands_in_code_blocks(body, expected):
+    assert parse(body) == expected
+
+
 @pytest.mark.parametrize("name", ["review", "re-review", "rereview", "ignore", "mute", "unmute", "explain", "triage", "record", "help"])
 def test_every_command_is_read_only_as_slash(name):
     assert parse(f"/stratum {name} x") == (name, "x")
