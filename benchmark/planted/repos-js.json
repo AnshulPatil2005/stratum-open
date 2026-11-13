@@ -1,0 +1,92 @@
+[
+ {
+  "repo": "expressjs/express",
+  "commit": "43fca52d28a422c8be48fd489cbd4f2d6152bab6",
+  "set": "dev"
+ },
+ {
+  "repo": "fastify/fastify",
+  "commit": "0b076ca595d19951c536daf515c778b38cf6ba69",
+  "set": "dev"
+ },
+ {
+  "repo": "vitejs/vite",
+  "commit": "61622b8df68b7a8e657caa6f98d9b70069643abf",
+  "set": "dev"
+ },
+ {
+  "repo": "sveltejs/svelte",
+  "commit": "0156c5fe38b53b72675e2a7f04535de015fdeed1",
+  "set": "dev"
+ },
+ {
+  "repo": "eslint/eslint",
+  "commit": "16eb1d9eff0352fc682f021fc9c9530ecb98c658",
+  "set": "dev"
+ },
+ {
+  "repo": "typeorm/typeorm",
+  "commit": "7a2707cb6a956db1e0c9d43e77ed00a324286f51",
+  "set": "dev"
+ },
+ {
+  "repo": "nestjs/nest",
+  "commit": "afa6e3d3801f58750dc80ad0970c0bc52850ed2a",
+  "set": "dev"
+ },
+ {
+  "repo": "honojs/hono",
+  "commit": "f6fbaf0299c48eea9e656e03e2ffe7ac755e8823",
+  "set": "dev"
+ },
+ {
+  "repo": "nodejs/undici",
+  "commit": "af82906506e374d3450335d1f8a1f9d1ec63334b",
+  "set": "dev"
+ },
+ {
+  "repo": "socketio/socket.io",
+  "commit": "545e9848500d6133c9a1cdb6fee87009d0150f9c",
+  "set": "dev"
+ },
+ {
+  "repo": "discordjs/discord.js",
+  "commit": "5bb74922a1fb36e0d20e2656fa1bfb8944758882",
+  "set": "dev"
+ },
+ {
+  "repo": "directus/directus",
+  "commit": "3ba2201be9a783cffdc9de0b970a075ff199607f",
+  "set": "dev"
+ },
+ {
+  "repo": "puppeteer/puppeteer",
+  "commit": "1eb68c114dcf92947681b51b2d3e669cd060af19",
+  "set": "test"
+ },
+ {
+  "repo": "koajs/koa",
+  "commit": "b7ead6f7a2bb56e2948b1c5e1cca77483e89c885",
+  "set": "test"
+ },
+ {
+  "repo": "strapi/strapi",
+  "commit": "468197a26158120e13c9d0797c313e9cbeb5531e",
+  "set": "test"
+ },
+ {
+  "repo": "trpc/trpc",
+  "commit": "3d04c7e8568e22d77baf609498db138ddb92fe6e",
+  "set": "test"
+ },
+ {
+  "repo": "withastro/astro",
+  "commit": "f9a10629af1945f55aea4bb9a5ef08800dc70c8c",
+  "set": "test"
+ },
+ {
+  "repo": "immich-app/immich",
+  "commit": "e5d6eb7be67834f59d90e4b7a86f5dec7ac9af86",
+  "set": "test"
+ }
+]

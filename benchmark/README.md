@@ -44,11 +44,11 @@ Marking findings on merged PRs needs a maintainer for every row, so
   then read and marked: whether it describes the bug (`found`), and whether
   each other finding is a real problem, with the reason in its `note`. Start the **Planted-bug benchmark** workflow to run it on
   GitHub's free runners, one job per model and shard.
-- **The checks that need no model.** [risks.yml](planted/risks.yml) is 105
-  planted risks (secrets, code that runs input, workflow holes, typosquatted
+- **The checks that need no model.** [risks.yml](planted/risks.yml) is 107
+  planted risks (secrets, code that runs input, a dropped promise, workflow holes, typosquatted
   and made-up packages, versions with known advisories, coding-agent files,
   hidden Unicode), after real incidents where there was one, an error for
-  each rule of the Ruff check, and 3 controls a rule must leave alone.
+  each rule of the Ruff check, and 4 controls a rule must leave alone.
   [clean.json](planted/clean.json) is 184 merged PRs as they are, where every
   finding is a possible false alarm. `--policy` takes a policy file, for a
   rule that is off by default: the six known-advisory cases are missed
@@ -60,6 +60,17 @@ Marking findings on merged PRs needs a maintainer for every row, so
   JavaScript and TypeScript, Go and Rust projects (`clean-js.json`,
   `clean-go.json`, `clean-rust.json`) and from PRs that change workflows or
   dependency manifests (`clean-infra.json`), and sums up a run on them.
+  `--policy` takes a policy file, for a rule that is off by default: the two
+  dropped-promise cases are missed without
+  [floating-promises.yml](planted/variants/floating-promises.yml) and the
+  `js` extra.
+- **The floating-promise check.** [floating_promises.py](floating_promises.py)
+  drops every `await` the PRs in `clean-js.json` add, one at a time, and asks
+  whether the check flags the line. It also runs the check on those PRs as
+  merged, and on merged code as if every line were new: the files the PRs
+  touch, and the 18 repositories pinned in
+  [repos-js.json](planted/repos-js.json), six of them kept back until the
+  rule was settled. Each finding is then read and marked.
 
 ```sh
 python benchmark/planted.py checks --risks benchmark/planted/risks.yml --prs benchmark/planted/clean.json \
@@ -124,3 +135,4 @@ finding and every call. The machine each run used is noted in its summary.
 | [2026-11-13-osv](results/2026-11-13-osv/summary.md) | Any (no model) | `dependencies.known_vulnerabilities` on: 6 of 6 pins with known advisories caught, 3 of 3 controls left alone. No pinned version in the 184 merged PRs; in 47 more that change a manifest, 3 of 18 pins flagged, all 3 right |
 | [2026-11-13-ruff](results/2026-11-13-ruff/summary.md) | Any (no model) | The Ruff check (`checks.ruff`, off by default): 55 of 55 planted errors caught and no finding on the lines 184 merged PRs add; 53 of its 55 rules fire nowhere in those files, so their false alarms aren't measured |
 | [2026-11-13-checks-beyond-python](results/2026-11-13-checks-beyond-python/summary.md) | Any (no model) | The checks on 233 merged PRs from JavaScript and TypeScript, Go and Rust projects: 87 findings, none plainly wrong, 2 unsure. The rules for code had almost nothing to read there |
+| [2026-11-13-floating-promises](results/2026-11-13-floating-promises/summary.md) | Any (no model) | `checks.floating_promises` on JavaScript and TypeScript: 42 of 126 dropped awaits caught, nothing on 60 merged PRs. On 1.56 million lines of six other projects read as new, 28 findings, 6 of them real mistakes and 16 false alarms |
