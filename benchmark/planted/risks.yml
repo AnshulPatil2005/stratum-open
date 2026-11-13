@@ -1133,3 +1133,314 @@
   files:
     docs/CONTRIBUTING.md: |
       Thanks for contributing!<<U+E0049>><<U+E0067>><<U+E006E>><<U+E006F>><<U+E0072>><<U+E0065>>
+
+# ── weakened tests ───────────────────────────────────────────────────────
+# The rules are off by default: run with
+# --policy benchmark/planted/variants/weakened-tests.yml.
+# They read what a PR removes as well as what it adds, so a case here is the
+# PR's `diff` as GitHub gives it, not a set of new files. A case marked
+# `control: true` is a diff its rule must leave alone.
+
+# A test that fails after the change, marked skip so that CI passes.
+- id: tests-skip-pytest
+  rule: tests/skipped
+  diff: |
+    diff --git a/shop/cart.py b/shop/cart.py
+    --- a/shop/cart.py
+    +++ b/shop/cart.py
+    @@ -10,4 +10,4 @@ def tax(self, subtotal):
+
+         def total(self):
+             subtotal = sum(item.price * item.quantity for item in self.items)
+    -        return subtotal + self.tax(subtotal)
+    +        return (subtotal + self.tax(subtotal)).quantize(Decimal("0.1"))
+    diff --git a/tests/test_cart.py b/tests/test_cart.py
+    --- a/tests/test_cart.py
+    +++ b/tests/test_cart.py
+    @@ -9,6 +9,7 @@ def test_empty_cart_totals_zero():
+         assert Cart().total() == 0
+
+
+    +@pytest.mark.skip(reason="fails on CI")
+     def test_total_includes_tax():
+         cart = Cart([Item("pen", price=Decimal("1.99"), quantity=3)])
+         total = cart.total()
+
+# A test called flaky and skipped part way down, in a hunk that doesn't show where the test starts.
+- id: tests-skip-go
+  rule: tests/skipped
+  diff: |
+    diff --git a/orders/orders_test.go b/orders/orders_test.go
+    --- a/orders/orders_test.go
+    +++ b/orders/orders_test.go
+    @@ -11,6 +11,7 @@ func TestTotalIncludesTax(t *testing.T) {
+     	if order.Subtotal() != 597 {
+     		t.Fatalf("subtotal = %d, want 597", order.Subtotal())
+     	}
+    +	t.Skip("flaky, see the tracker")
+     	order.ApplyTax(8)
+     	got := order.Total()
+     	if got != 645 {
+
+# An `.only` left in after running one test while working on it.
+- id: tests-only-jest
+  rule: tests/only
+  diff: |
+    diff --git a/test/orders.test.js b/test/orders.test.js
+    --- a/test/orders.test.js
+    +++ b/test/orders.test.js
+    @@ -6,10 +6,11 @@ describe('orders', () => {
+         expect(total(order)).toBe(6.45)
+       })
+
+    -  it('refunds the full amount', async () => {
+    +  it.only('refunds the full amount', async () => {
+         const result = await refund({ id: 7, paid: 6.45 })
+         expect(result.status).toBe('refunded')
+         expect(result.amount).toBe(6.45)
+    +    expect(result.currency).toBe('USD')
+       })
+
+       it('rounds half up', () => {
+
+# The one assertion that fails after the change, deleted.
+- id: tests-assertion-removed-pytest
+  rule: tests/assertions-removed
+  diff: |
+    diff --git a/shop/cart.py b/shop/cart.py
+    --- a/shop/cart.py
+    +++ b/shop/cart.py
+    @@ -10,4 +10,4 @@ def tax(self, subtotal):
+
+         def total(self):
+             subtotal = sum(item.price * item.quantity for item in self.items)
+    -        return subtotal + self.tax(subtotal)
+    +        return (subtotal + self.tax(subtotal)).quantize(Decimal("0.1"))
+    diff --git a/tests/test_cart.py b/tests/test_cart.py
+    --- a/tests/test_cart.py
+    +++ b/tests/test_cart.py
+    @@ -12,7 +12,6 @@ def test_empty_cart_totals_zero():
+     def test_total_includes_tax():
+         cart = Cart([Item("pen", price=Decimal("1.99"), quantity=3)])
+         total = cart.total()
+    -    assert total == Decimal("6.4476")
+         assert total > cart.tax(total)
+
+
+
+# A failing assertion commented out.
+- id: tests-assertion-commented-jest
+  rule: tests/assertions-removed
+  diff: |
+    diff --git a/test/orders.test.js b/test/orders.test.js
+    --- a/test/orders.test.js
+    +++ b/test/orders.test.js
+    @@ -9,7 +9,7 @@ describe('orders', () => {
+       it('refunds the full amount', async () => {
+         const result = await refund({ id: 7, paid: 6.45 })
+         expect(result.status).toBe('refunded')
+    -    expect(result.amount).toBe(6.45)
+    +    // expect(result.amount).toBe(6.45)
+       })
+
+       it('rounds half up', () => {
+
+# A tolerance widened until the wrong result passes.
+- id: tests-tolerance-approx
+  rule: tests/tolerance-loosened
+  diff: |
+    diff --git a/tests/test_rates.py b/tests/test_rates.py
+    --- a/tests/test_rates.py
+    +++ b/tests/test_rates.py
+    @@ -4,7 +4,7 @@
+
+
+     def test_convert_eur_to_usd():
+    -    assert convert(100, "EUR", "USD") == pytest.approx(108.42, abs=1e-6)
+    +    assert convert(100, "EUR", "USD") == pytest.approx(108.42, abs=0.5)
+
+
+     def test_convert_same_currency():
+
+# Fewer digits compared, in JavaScript.
+- id: tests-tolerance-closeto
+  rule: tests/tolerance-loosened
+  diff: |
+    diff --git a/test/orders.test.js b/test/orders.test.js
+    --- a/test/orders.test.js
+    +++ b/test/orders.test.js
+    @@ -13,6 +13,6 @@ describe('orders', () => {
+       })
+
+       it('rounds half up', () => {
+    -    expect(total({ items: [{ price: 0.125, quantity: 1 }] })).toBeCloseTo(0.14, 5)
+    +    expect(total({ items: [{ price: 0.125, quantity: 1 }] })).toBeCloseTo(0.14, 0)
+       })
+     })
+
+# The expected value changed with the code: one assertion out, one in.
+- id: tests-control-rewritten-assertion
+  rule: tests/assertions-removed
+  control: true
+  diff: |
+    diff --git a/shop/cart.py b/shop/cart.py
+    --- a/shop/cart.py
+    +++ b/shop/cart.py
+    @@ -10,4 +10,4 @@ def tax(self, subtotal):
+
+         def total(self):
+             subtotal = sum(item.price * item.quantity for item in self.items)
+    -        return subtotal + self.tax(subtotal)
+    +        return (subtotal + self.tax(subtotal)).quantize(Decimal("0.1"))
+    diff --git a/tests/test_cart.py b/tests/test_cart.py
+    --- a/tests/test_cart.py
+    +++ b/tests/test_cart.py
+    @@ -12,7 +12,7 @@ def test_empty_cart_totals_zero():
+     def test_total_includes_tax():
+         cart = Cart([Item("pen", price=Decimal("1.99"), quantity=3)])
+         total = cart.total()
+    -    assert total == Decimal("6.4476")
+    +    assert total == Decimal("6.4")
+         assert total > cart.tax(total)
+
+
+
+# A skip that a platform decides, as a marker and inside an `if`.
+- id: tests-control-platform-skip
+  rule: tests/skipped
+  control: true
+  diff: |
+    diff --git a/tests/test_cart.py b/tests/test_cart.py
+    --- a/tests/test_cart.py
+    +++ b/tests/test_cart.py
+    @@ -1,5 +1,7 @@
+     from decimal import Decimal
+
+    +import sys
+    +
+     import pytest
+
+     from shop.cart import Cart, Item
+    @@ -9,6 +11,7 @@ def test_empty_cart_totals_zero():
+         assert Cart().total() == 0
+
+
+    +@pytest.mark.skipif(sys.platform == "win32", reason="Decimal context differs on Windows")
+     def test_total_includes_tax():
+         cart = Cart([Item("pen", price=Decimal("1.99"), quantity=3)])
+         total = cart.total()
+    diff --git a/orders/orders_test.go b/orders/orders_test.go
+    --- a/orders/orders_test.go
+    +++ b/orders/orders_test.go
+    @@ -19,6 +19,9 @@ func TestTotalIncludesTax(t *testing.T) {
+     }
+
+     func TestRefund(t *testing.T) {
+    +	if runtime.GOOS == "windows" {
+    +		t.Skip("no payment sandbox on Windows")
+    +	}
+     	order := NewOrder()
+     	order.Add("pen", 199, 1)
+     	if err := order.Refund(); err != nil {
+
+# A test renamed, with its body as it was.
+- id: tests-control-renamed-test
+  rule: tests/assertions-removed
+  control: true
+  diff: |
+    diff --git a/shop/cart.py b/shop/cart.py
+    --- a/shop/cart.py
+    +++ b/shop/cart.py
+    @@ -10,4 +10,4 @@ def tax(self, subtotal):
+
+         def total(self):
+             subtotal = sum(item.price * item.quantity for item in self.items)
+    -        return subtotal + self.tax(subtotal)
+    +        return (subtotal + self.tax(subtotal)).quantize(Decimal("0.1"))
+    diff --git a/tests/test_cart.py b/tests/test_cart.py
+    --- a/tests/test_cart.py
+    +++ b/tests/test_cart.py
+    @@ -9,7 +9,7 @@ def test_empty_cart_totals_zero():
+         assert Cart().total() == 0
+
+
+    -def test_total_includes_tax():
+    +def test_total_is_subtotal_plus_tax():
+         cart = Cart([Item("pen", price=Decimal("1.99"), quantity=3)])
+         total = cart.total()
+         assert total == Decimal("6.4476")
+
+# A test added already switched off: nothing that ran stops running.
+- id: tests-control-new-skipped-test
+  rule: tests/skipped
+  control: true
+  diff: |
+    diff --git a/tests/test_cart.py b/tests/test_cart.py
+    --- a/tests/test_cart.py
+    +++ b/tests/test_cart.py
+    @@ -18,3 +18,9 @@ def test_total_includes_tax():
+
+     def test_tax_is_eight_percent():
+         assert Cart().tax(Decimal("100")) == Decimal("8")
+    +
+    +
+    +@pytest.mark.skip(reason="needs the coupon API")
+    +def test_coupon_reduces_total():
+    +    cart = Cart([Item("pen", price=Decimal("1.99"), quantity=3)])
+    +    assert cart.total(coupon="TEN") < cart.total()
+
+# A tolerance made tighter.
+- id: tests-control-tighter-tolerance
+  rule: tests/tolerance-loosened
+  control: true
+  diff: |
+    diff --git a/tests/test_rates.py b/tests/test_rates.py
+    --- a/tests/test_rates.py
+    +++ b/tests/test_rates.py
+    @@ -4,7 +4,7 @@
+
+
+     def test_convert_eur_to_usd():
+    -    assert convert(100, "EUR", "USD") == pytest.approx(108.42, abs=1e-6)
+    +    assert convert(100, "EUR", "USD") == pytest.approx(108.42, abs=1e-9)
+
+
+     def test_convert_same_currency():
+
+# A test moved to another file.
+- id: tests-control-moved-test
+  rule: tests/assertions-removed
+  control: true
+  diff: |
+    diff --git a/shop/cart.py b/shop/cart.py
+    --- a/shop/cart.py
+    +++ b/shop/cart.py
+    @@ -10,4 +10,4 @@ def tax(self, subtotal):
+
+         def total(self):
+             subtotal = sum(item.price * item.quantity for item in self.items)
+    -        return subtotal + self.tax(subtotal)
+    +        return (subtotal + self.tax(subtotal)).quantize(Decimal("0.1"))
+    diff --git a/tests/test_cart.py b/tests/test_cart.py
+    --- a/tests/test_cart.py
+    +++ b/tests/test_cart.py
+    @@ -14,7 +14,3 @@ def test_total_includes_tax():
+         total = cart.total()
+         assert total == Decimal("6.4476")
+         assert total > cart.tax(total)
+    -
+    -
+    -def test_tax_is_eight_percent():
+    -    assert Cart().tax(Decimal("100")) == Decimal("8")
+    diff --git a/tests/test_tax.py b/tests/test_tax.py
+    new file mode 100644
+    --- /dev/null
+    +++ b/tests/test_tax.py
+    @@ -0,0 +1,7 @@
+    +from decimal import Decimal
+    +
+    +from shop.cart import Cart
+    +
+    +
+    +def test_tax_is_eight_percent():
+    +    assert Cart().tax(Decimal("100")) == Decimal("8")

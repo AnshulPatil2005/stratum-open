@@ -70,6 +70,7 @@ class Checks:
     heuristics: bool = False  # a finding per file in a risky area (auth, migrations, CI...), and for weakened tests
     ruff: bool = False  # errors Ruff finds on added Python lines (an undefined name, a format string that raises), when it's installed
     floating_promises: bool = False  # JavaScript and TypeScript: a call whose promise is dropped; needs the `js` extra
+    weakened_tests: bool = False  # a finding on the line where a PR switches a test off, removes its assertions or widens a tolerance
 
 
 @dataclass(frozen=True)

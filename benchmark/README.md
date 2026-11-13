@@ -44,11 +44,11 @@ Marking findings on merged PRs needs a maintainer for every row, so
   then read and marked: whether it describes the bug (`found`), and whether
   each other finding is a real problem, with the reason in its `note`. Start the **Planted-bug benchmark** workflow to run it on
   GitHub's free runners, one job per model and shard.
-- **The checks that need no model.** [risks.yml](planted/risks.yml) is 107
-  planted risks (secrets, code that runs input, a dropped promise, workflow holes, typosquatted
+- **The checks that need no model.** [risks.yml](planted/risks.yml) is 114
+  planted risks (secrets, code that runs input, a dropped promise, a weakened test, workflow holes, typosquatted
   and made-up packages, versions with known advisories, coding-agent files,
   hidden Unicode), after real incidents where there was one, an error for
-  each rule of the Ruff check, and 4 controls a rule must leave alone.
+  each rule of the Ruff check, and 10 controls a rule must leave alone.
   [clean.json](planted/clean.json) is 184 merged PRs as they are, where every
   finding is a possible false alarm. `--policy` takes a policy file, for a
   rule that is off by default: the six known-advisory cases are missed
@@ -78,6 +78,17 @@ python benchmark/planted.py checks --risks benchmark/planted/risks.yml --prs ben
 python benchmark/planted.py run --bugs benchmark/planted/bugs.json --out benchmark/results/<name>/raw/7b \
     --model qwen2.5-coder:7b@http://localhost:11434/v1
 python benchmark/planted.py score benchmark/results/<name>   # after marking the verdict columns
+```
+
+**Weakened tests.** The check for tests a PR weakens is off unless `checks.weakened_tests` is on, and
+[weakened_tests.py](weakened_tests.py) measures it alone:
+- **Planted.** risks.yml also holds its cases and its controls (a rewritten assertion, a skip a platform decides, a renamed test), which the check must leave alone. Each is the PR's diff, not a set of new files, because the rules read what a PR removes. `planted.py checks` counts them as missed without `--policy benchmark/planted/variants/weakened-tests.yml`.
+- **Merged PRs.** Every list above, and two more that [corpus.py](corpus.py) picks from the same JavaScript, Go and Rust projects: `clean-tests.json`, PRs that remove a line from a test file, and `clean-flaky.json`, PRs whose title is about a flaky test or about skipping one.
+- **Marking.** Each finding is right or wrong, and a right one is either plainly fine (the PR says it, or it follows from what the PR says it does) or worth pointing out.
+
+```sh
+python benchmark/weakened_tests.py run --out benchmark/results/<name>
+python benchmark/weakened_tests.py score benchmark/results/<name>   # after marking checks.csv and markers.csv
 ```
 
 **Trying a change.** Each case is in the `dev` or the `test` set (in bugs.json, stratified by kind):

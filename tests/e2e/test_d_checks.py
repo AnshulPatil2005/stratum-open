@@ -234,6 +234,25 @@ def test_agent_files_and_hidden_unicode():
     assert [f.line_start for f in hidden["unicode/hidden"]] == [1, 2, 4]
 
 
+def test_weakened_tests_only_when_the_policy_asks_with_a_near_miss_and_odd_files():
+    on = parse_policy("checks:\n  weakened_tests: true\n")
+    skipped = diffs.modified("tests/test_orders.py", ["def test_total():"], ["@pytest.mark.skip(reason='fails on CI')", "def test_total():"])
+    assert rules(skipped) == {}, "off by default"
+    (finding,) = rules(skipped, policy=on)["tests/skipped"]
+    assert (finding.line_start, finding.severity, finding.category) == (1, "medium", "tests")
+    near_miss = diffs.modified("tests/test_orders.py", ["def test_total():"],
+                               ["@pytest.mark.skipif(sys.platform == 'win32', reason='no fork')", "def test_total():"])
+    assert rules(near_miss, policy=on) == {}
+    removed = diffs.modified("tests/test_orders.py", ["    assert total() == 42"], [], header="def test_total():")
+    assert [f.line_start for f in rules(removed, policy=on)["tests/assertions-removed"]] == [None]  # the hunk shows nothing of the new file
+    odd = (diffs.binary("tests/data.bin") + diffs.deleted("tests/test_old.py", ["def test_a():", "    assert a"]) + diffs.mode_only("tests/test_run.py")
+           + diffs.renamed("pkg/a_test.go", "pkg/b_test.go") + diffs.submodule("tests/vendor") + diffs.symlink("tests/test_link.py", "../x.py"))
+    assert not [rule for rule in rules(odd, policy=on) if rule.startswith("tests/") or rule == "checks/error"]
+    many = "".join(diffs.modified(f"test/case{i}.test.js", [f"  it('case {i}', () => {{"], [f"  it.skip('case {i}', () => {{"]) for i in range(300))
+    found, seconds = bounded(lambda: rules(many, policy=on), 10)
+    assert len(found["tests/skipped"]) == 300 and seconds < 5
+
+
 def test_boundaries_from_the_diff_alone():
     policy = parse_policy("boundaries:\n  modules: {api: ['server/api/**'], db: ['server/db/**'], nothing: ['nomatch/**']}\n  forbid: ['api -> db', 'db -> api']\n")
     diff = diffs.added("server/api/views.py", ["from server.db import models", "import os"]) + diffs.added("server/db/models.py", ["x = 1"])
