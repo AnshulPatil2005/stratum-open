@@ -1,0 +1,8 @@
+# logic-context10-verify-strict.yml with up to three calls of each changed Python function, from elsewhere in the
+# repository. It reads each case's project, which planted.py clones into --repos.
+review:
+  reasoning: low
+  verify: strict
+  logic_pass: true
+  context_lines: 10
+  context_callers: 3

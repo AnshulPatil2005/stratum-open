@@ -947,3 +947,21 @@ def test_a_name_the_pr_removes_and_another_file_still_imports_is_reported_when_t
     # Off by default, and nothing to read without a checkout.
     assert found(parse_policy(""), checkout=str(tmp_path))[1] == []
     assert found(on)[1] == []
+
+
+def test_the_model_reads_where_a_changed_function_is_called_when_the_policy_asks(tmp_path):
+    files = {"app/__init__.py": "", "app/users.py": "import sqlite3\n\ndef get_user(conn, user_id):\n    cur = conn.execute(\"SELECT * FROM users WHERE id = ?\", (user_id,))\n",
+             "app/views.py": "from app.users import get_user\n\n\ndef show(conn, request):\n    return get_user(conn, request.args['id'])['name']\n"}
+    for path, text in files.items():
+        (tmp_path / path).parent.mkdir(exist_ok=True)
+        (tmp_path / path).write_text(text)
+
+    def prompt(policy, **kwargs):
+        model = FakeModel(model_answer())
+        review_pull(context(FakeGitHub(diff=DIFF), model, policy, **kwargs), 7)
+        return model.prompts[0][1]
+
+    on = parse_policy("review:\n  context_callers: 3\n")
+    assert "app/views.py:5, in `show`:\n     3    \n     4    def show(conn, request):\n     5        return get_user(" in prompt(on, checkout=str(tmp_path))
+    assert "Where the functions" not in prompt(parse_policy(""), checkout=str(tmp_path))
+    assert "Where the functions" not in prompt(on)

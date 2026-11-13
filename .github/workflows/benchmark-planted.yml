@@ -120,7 +120,8 @@ jobs:
           POLICY: ${{ inputs.policy }}
           OUT: raw/${{ matrix.safe }}-${{ matrix.version }}-${{ matrix.shard }}
         run: |
-          args=(--bugs "$BUGS" --model "$MODEL@http://localhost:11434/v1" --shard "$SHARD" --set "$SET" --out "$OUT")
+          # --repos is read only by a policy that sets review.context_callers, which clones each case's project there.
+          args=(--bugs "$BUGS" --model "$MODEL@http://localhost:11434/v1" --shard "$SHARD" --set "$SET" --out "$OUT" --repos "$RUNNER_TEMP/repos")
           if [ "$VERSION" = clean ]; then args+=(--clean); fi
           if [ -n "$POLICY" ]; then args+=(--policy "$POLICY" --variant "$(basename "$POLICY" .yml)"); fi
           python benchmark/planted.py run "${args[@]}"
@@ -159,7 +160,7 @@ jobs:
           POLICY: ${{ inputs.policy }}
         run: |
           if [ -z "$STRATUM_MODEL_API_KEY" ]; then echo "::error::Add the STRATUM_EVAL_API_KEY secret first."; exit 1; fi
-          args=(--bugs "$BUGS" --model "$MODEL@$ENDPOINT" --set "$SET")
+          args=(--bugs "$BUGS" --model "$MODEL@$ENDPOINT" --set "$SET" --repos "$RUNNER_TEMP/repos")
           if [ -n "$POLICY" ]; then args+=(--policy "$POLICY" --variant "$(basename "$POLICY" .yml)"); fi
           python benchmark/planted.py run "${args[@]}" --out raw/hosted/planted
           if [ "$CLEAN" = true ]; then python benchmark/planted.py run "${args[@]}" --clean --out raw/hosted/clean; fi

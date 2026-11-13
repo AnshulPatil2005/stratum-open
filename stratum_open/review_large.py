@@ -183,6 +183,13 @@ class _Task:
     user: str
 
 
+def _called(callers: list, path: str, policy: Policy) -> str:
+    from stratum_open.repo.callers import block
+    from stratum_open.review import CALLER_SHARE, CALLER_TOKENS
+
+    return block(callers, {path}, min(CALLER_TOKENS, policy.review.context_tokens // CALLER_SHARE))
+
+
 def review_files(
     *,
     title: str,
@@ -197,10 +204,12 @@ def review_files(
     file_notes: dict[str, str] | None = None,
     contents: dict[str, str] | None = None,
     log: Callable[[str, str], None] | None = None,
+    callers: Sequence[Any] = (),
 ) -> LargeReview:
     """The per-file and lens passes over `files` (or only `only_paths`).
     `contents` (a path's new text) gives `review.context_lines` of unchanged
-    code around each hunk."""
+    code around each hunk. `callers` (`review.context_callers`): where the
+    file's changed functions are called, shown with its notes."""
     result = LargeReview()
     targets = _rank(files, policy, only_paths, hotspots, result)
     lens_paths = {f.path for f, _ in targets[:policy.review.lens_files]}
@@ -219,8 +228,9 @@ def review_files(
     for file, review in targets:
         lenses = MODE_LENSES[mode] if file.path in lens_paths else (None,)
         review.lenses = tuple(lens for lens in lenses if lens)
+        called = _called(list(callers), file.path, policy) if callers else ""
         parts = dict(title=title, description=description, all_files=all_files, path=file.path, why=review.why_it_matters,
-                     notes=_file_notes(file.path, notes, hotspots, (file_notes or {}).get(file.path, "")), legend=LEGEND[style])
+                     notes=_file_notes(file.path, notes, hotspots, (file_notes or {}).get(file.path, "")) + called, legend=LEGEND[style])
         systems = [FILE_SYSTEM.format(mode=mode, focus=LENSES[lens] if lens else REVIEW_MODES[mode], project_rules=project_rules,
                                       guidance=guidance_block, path=file.path, max_findings=MAX_FINDINGS_PER_FILE_CALL) for lens in lenses]
         budget = min(MAX_FILE_TOKENS, policy.review.context_tokens - OUTPUT_RESERVE_TOKENS - 200

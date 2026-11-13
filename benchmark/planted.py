@@ -15,8 +15,12 @@ answer is known before the model reads it.
     python benchmark/planted.py validate --bugs benchmark/planted/bugs.json --bugs benchmark/planted/bugs-2.json
 
 `run` reviews each case the way the Action does (the `small` profile, an
-8,192-token window) and writes reviews.csv and findings.csv. A finding counts
-as near the bug when it's on the planted file within LINES_NEAR lines of it.
+8,192-token window) and writes reviews.csv and findings.csv. With a policy
+that sets `review.context_callers`, it reads where the changed functions are
+called from a clone of each case's project in `--repos` (cloned there when
+it's missing), checked out as it was just before the PR merged, and writes
+the calls each review was shown to callers.json. A finding counts as near
+the bug when it's on the planted file within LINES_NEAR lines of it.
 A case whose `replace` is null drops its line instead of changing it (a
 statement the PR should have written): the diff is numbered as if the line
 were never there, and a finding is near within LINES_NEAR lines of the gap.
@@ -84,6 +88,7 @@ from stratum_open.github.api import GitHub, GitHubError  # noqa: E402
 from stratum_open.runner import MAX_BANDIT_FILES, MAX_CONTEXT_FILES  # noqa: E402
 from stratum_open.model import Model  # noqa: E402
 from stratum_open.policy import parse_policy  # noqa: E402
+from stratum_open.repo.callers import find_callers  # noqa: E402
 from stratum_open.repo.removed_names import RULE as REMOVED_NAME, removed_name_findings  # noqa: E402
 from stratum_open.repo.unknown_names import RULE as UNKNOWN_NAME, unknown_name_findings  # noqa: E402
 
@@ -110,6 +115,7 @@ def main() -> int:
     run.add_argument("--clean", action="store_true", help="review the PRs as merged, without the bug: the control")
     run.add_argument("--policy", help="a YAML file merged over the Action's settings, for trying a change")
     run.add_argument("--variant", default="", help="a name for what --policy changes, kept with the results")
+    run.add_argument("--repos", help="a folder for a clone of each case's project, for review.context_callers")
     fetch = sub.add_parser("fetch", help="fill the cache, so parallel jobs needn't each call GitHub")
     fetch.add_argument("--bugs", required=True)
     validate = sub.add_parser("validate", help="check every case against its PR, before a model reads any of them")
@@ -128,6 +134,7 @@ def main() -> int:
         for bug in json.loads(Path(args.bugs).read_text(encoding="utf-8")):
             _, text = _fetch(bug["repo"], int(bug["pr"]))
             _head_contents(bug["repo"], int(bug["pr"]), parse_diff(text))
+            unknown_names.bases(bug["repo"], int(bug["pr"]))  # where it merged, for a run that reads the project
         return 0
     return {"run": _run, "score": lambda a: _score(Path(a.out)), "checks": _checks, "validate": _validate}[args.command](args)
 
@@ -243,6 +250,7 @@ def _run(args) -> int:
     policy = policy_for(args.context_tokens, Path(args.policy).read_text(encoding="utf-8") if args.policy else None)
     version = "clean" if args.clean else "planted"
     reviews, findings = [], []
+    shown_callers: dict[str, dict] = {}
     for bug in bugs:
         case = f"{bug['repo']}#{bug['pr']}"
         pull, text = _fetch(bug["repo"], int(bug["pr"]))
@@ -251,8 +259,13 @@ def _run(args) -> int:
         dropped = bug["replace"] is None and not args.clean
         contents = with_line(_head_contents(bug["repo"], int(bug["pr"]), files), bug, None if dropped else planted.text)
         started = time.monotonic()
+        callers = case_callers(Path(args.repos) if getattr(args, "repos", None) else None, bug, files, policy, contents)
+        if policy.review.context_callers:
+            shown_callers[case] = {"functions": len(callers), "calls": sum(len(c.sites) for c in callers),
+                                   "named": [f"{c.path}:{c.line} {c.name} ({len(c.sites)} of {len(c.sites) + c.more})" for c in callers]}
+            (out / "callers.json").write_text(json.dumps(shown_callers, indent=1) + "\n", encoding="utf-8")
         result = analyze(title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=policy, model=model,
-                         contents=contents)
+                         contents=contents, callers=callers)
         seconds = time.monotonic() - started
         calls = result.review.calls if result.review else []
         chunks = result.review.packed.chunks if result.review and result.review.packed else []
@@ -276,6 +289,24 @@ def _run(args) -> int:
         _write(out / "reviews.csv", REVIEW_COLUMNS, reviews)
         _write(out / "findings.csv", FINDING_COLUMNS, findings)
     return 0
+
+
+def case_callers(repos: Path | None, bug: dict, files: list[FileDiff], policy, contents: dict[str, str]) -> list:
+    """`review.context_callers` for one case: the project checked out at the
+    default branch just before the PR merged, as the Action's checkout would
+    have been, with the PR's files (and the planted line) on top."""
+    if not policy.review.context_callers:
+        return []
+    if repos is None:
+        raise SystemExit("review.context_callers reads each case's project: pass --repos <folder>")
+    where = unknown_names.folder(repos, bug["repo"])
+    if not (where / ".git").exists():
+        unknown_names._clone(repos, [bug["repo"]])
+    base = unknown_names.bases(bug["repo"], int(bug["pr"]))["base"]
+    if not base or not unknown_names.checkout(where, base):
+        print(f"{bug['repo']}#{bug['pr']}: no checkout of its base ({base or 'not merged'}), so no callers", flush=True)
+        return []
+    return find_callers(files, policy, str(where), contents=contents)
 
 
 def case_format(bug: object) -> list[str]:

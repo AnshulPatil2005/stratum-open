@@ -64,6 +64,7 @@ class Review:
     skip_labels: tuple[str, ...] = ()  # PRs with any of these labels aren't reviewed
     skip_branches: tuple[str, ...] = ()  # globs; PRs from a matching branch aren't reviewed
     quiet: bool = False  # fewer of the model's comments, and a summary that keeps them apart from the checks' findings
+    context_callers: int = 0  # Python: up to this many calls of each changed function, from elsewhere in the repository; needs a checkout
 
 
 @dataclass(frozen=True)
@@ -199,6 +200,7 @@ _MINIMUMS = {
     ("review", "max_chunks"): 1,
     ("review", "file_reviews"): 0,
     ("review", "context_lines"): 0,
+    ("review", "context_callers"): 0,
     ("review", "lens_files"): 0,
     ("review", "parallel_calls"): 1,
     ("review", "fail_at"): 0,

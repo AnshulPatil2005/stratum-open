@@ -133,14 +133,16 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     notes, hotspots, boundary, file_notes = _history(ctx, files, pull)
     record = _record(ctx, pull)
     muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []
-    # Whether the profile shows code around each hunk, so the files' text is worth fetching.
-    around = ctx.model is not None and effective_policy(ctx.policy, ctx.model)[0].review.context_lines > 0
+    # Whether the review shows code around each hunk, or where its functions are called, so the files' text is worth fetching.
+    settings = effective_policy(ctx.policy, ctx.model)[0].review if ctx.model is not None else None
+    around = settings is not None and (settings.context_lines > 0 or (settings.context_callers > 0 and bool(ctx.checkout)))
     contents = _contents(ctx, files, head, around=around)
+    callers = _callers(ctx, files, contents) if settings is not None and settings.context_callers > 0 else []
     engine = analyze(
         title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=ctx.policy, model=ctx.model,
         contents=contents, lookup=ctx.lookup, only_paths=changed if retry else set(), first=retried,
         previous=state.findings,
-        notes=notes, hotspots=hotspots, file_notes=file_notes, extra_findings=boundary,
+        notes=notes, hotspots=hotspots, file_notes=file_notes, extra_findings=boundary, callers=callers,
         exclude_fingerprints=set(state.ignored), exclude_rules=set(state.ignored_rules) | set(muted),
         log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
     )
@@ -365,6 +367,19 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
         elif text is not None:
             contents[file.path] = text
     return contents or None
+
+
+def _callers(ctx: Context, files: list[FileDiff], contents: dict[str, str] | None) -> list:
+    """`review.context_callers`: where the changed Python functions are
+    called, read from the default branch's checkout with the PR's files on
+    top. Nothing without a checkout."""
+    from stratum_open.repo.callers import find_callers
+
+    try:
+        return find_callers(files, ctx.policy, ctx.checkout, contents=contents)
+    except Exception as exc:  # extra context; a review never fails on it
+        ctx.log(f"callers: {type(exc).__name__}: {exc}")
+        return []
 
 
 def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str], set[str], list[Finding], dict[str, str]]:

@@ -72,6 +72,7 @@ def analyze(
     score: Callable[[list[Finding], int], int] | None = None,
     conclusion: Callable[[list[Finding], int, bool], str] | None = None,
     log: Callable[[str, str], None] | None = None,
+    callers: Sequence[Any] = (),
 ) -> EngineResult:
     """Review a diff.
 
@@ -91,6 +92,9 @@ def analyze(
       own docs and examples). `file_notes`: notes for one file's own call in
       the per-file passes, by path.
     - `extra_findings`: the caller's own findings, merged before de-duplication.
+    - `callers`: where the Python functions the PR changes are called, from
+      `repo.callers.find_callers` (`review.context_callers`), for the model to
+      read beside the diff.
     - `weigh(findings) -> (findings, risk_bonus)`, `score(findings, risk_bonus)`,
       `conclusion(findings, score, complete)`: replace the defaults.
     """
@@ -108,11 +112,12 @@ def analyze(
                 large = review_files(
                     title=title, description=description, files=files, policy=policy, model=model, only_paths=only_paths,
                     notes=notes, hotspots=hotspots, guidance=guidance, file_notes=file_notes, contents=contents, log=log,
+                    callers=callers,
                 )
             result = review(
                 title=title, description=description, files=files, policy=policy, model=model, only_paths=only_paths,
                 context=list(notes), hotspots=set(hotspots), first=first, guidance=guidance, contents=contents, log=log,
-                previous=still_there(previous or [], files) if only_paths is not None else None,
+                callers=list(callers), previous=still_there(previous or [], files) if only_paths is not None else None,
             )
         except Exception as exc:  # the model step is the one part of a review that may never stop the rest
             # Reported like any other failed call, so the review still says what happened; the traceback
@@ -131,7 +136,7 @@ def analyze(
 
     # The chunked review verifies its own findings; the per-file passes' go through the same check here.
     if large is not None and large.findings and policy.review.verify in VERIFY_PROMPTS:
-        large.findings, dropped = verify_findings(large.findings, files, policy, model, large.calls, log)
+        large.findings, dropped = verify_findings(large.findings, files, policy, model, large.calls, log, callers=list(callers))
         large.dropped += dropped
 
     found = anchor_to_diff(checks + list(extra_findings) + (large.findings if large else []) + (result.findings if result else []), files)

@@ -172,6 +172,7 @@ def _review_local(args, base: str) -> int:
     from stratum_open.checks.dependencies import PackageLookup
     from stratum_open.engine import analyze
     from stratum_open.repo.boundaries import boundary_findings
+    from stratum_open.repo.callers import find_callers
     from stratum_open.repo.removed_names import removed_name_findings
     from stratum_open.repo.unknown_names import unknown_name_findings
 
@@ -209,6 +210,7 @@ def _review_local(args, base: str) -> int:
         # ... while a name is looked for in the modules as they'll be, and the working tree is that already.
         + unknown_name_findings(files, policy, top, contents=contents, applied=True)
         + removed_name_findings(files, policy, top, contents=contents, applied=True),
+        callers=find_callers(files, policy, top, contents=contents, applied=True) if model is not None else [],
     )
     if model is not None:
         print(f"Profile: {result.profile} ({result.profile_why}).", file=sys.stderr)

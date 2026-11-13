@@ -1,0 +1,6 @@
+# Up to three calls of each changed Python function, from elsewhere in the repository, with less thinking and the strict
+# verify pass: reasoning-low-verify-strict.yml with callers. It reads each case's project, which planted.py clones into --repos.
+review:
+  reasoning: low
+  verify: strict
+  context_callers: 3

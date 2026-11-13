@@ -13,13 +13,16 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from stratum_open import diff as diffs
 from stratum_open.diff import FileDiff, Packed
 from stratum_open.findings import CATEGORIES, SEVERITIES, Finding
 from stratum_open.model import Model, parse_json, salvage
 from stratum_open.policy import Policy
+
+if TYPE_CHECKING:
+    from stratum_open.repo.callers import Callers
 
 OUTPUT_RESERVE_TOKENS = 2048
 MAX_FINDINGS_PER_CALL = 8
@@ -71,7 +74,7 @@ Report at most {max_findings} findings. An empty findings list is the right answ
 USER = """Pull request: {title}
 {description}
 Files changed in this PR: {all_files}
-{left_out}{previous}{note}
+{left_out}{previous}{callers}{note}
 {legend}
 
 {diff}"""
@@ -111,6 +114,11 @@ Answer with one JSON object and nothing else: {"what_happens": "one or two sente
 VERIFY_PROMPTS = {"strict": (VERIFY_SYSTEM, 200), "lenient": (VERIFY_LENIENT, 300)}
 VERIFY_LINES = 30  # the hunks within this many lines of a finding are shown with it
 VERIFY_CHARS = 6000
+# `review.context_callers`: the most of a call's window the calls of the changed
+# functions may take, out of what the diff would have, and in a verify call.
+CALLER_TOKENS = 1500
+CALLER_SHARE = 6  # ... and at most a sixth of the window
+VERIFY_CALLER_TOKENS = 600
 
 # `review.logic_pass`: the same diff again, for one kind of defect only. The
 # general prompt asks about eight kinds of problem at once, and a model that
@@ -242,13 +250,16 @@ def review(
     guidance: str = "",
     contents: dict[str, str] | None = None,
     log: Callable[[str, str], None] | None = None,
+    callers: list[Callers] | None = None,
 ) -> ReviewResult:
     """Review `files` (or only `only_paths` of them, on an incremental run).
     `previous` is the last review's findings on the files being reviewed
     again; they're listed so the model doesn't report them a second time in
     new words. `contents` (a path's new text) gives `review.context_lines`
     of unchanged code around each hunk. `first`: paths packed before the
-    rest (files read again), so new changes don't push them out."""
+    rest (files read again), so new changes don't push them out. `callers`
+    (`review.context_callers`, from repo/callers.py) are where the changed
+    functions are called: each chunk shows those of its own files."""
     result = ReviewResult()
     in_scope = [f for f in files if only_paths is None or f.path in only_paths]
     rules = "".join(f"- {rule}\n" for rule in policy.review.rules)
@@ -271,12 +282,24 @@ def review(
     style = policy.review.diff_format
     legend = LEGEND[style]
     skeleton = USER.format(title=title, description=f"Description:\n{description}\n", all_files=all_files,
-                           left_out="", previous=previous_block, note="", legend=legend, diff="")
+                           left_out="", previous=previous_block, callers="", note="", legend=legend, diff="")
     logic_system = LOGIC_SYSTEM.format(max_decisions=MAX_DECISIONS, max_findings=MAX_FINDINGS_PER_CALL) if policy.review.logic_pass else ""
     # Every pass reads the same chunks, so they're cut to fit the longer prompt.
     # 250 more for the line naming files left out, known only after packing.
     longest = max(system, logic_system, key=diffs.approx_tokens)
     budget = policy.review.context_tokens - diffs.approx_tokens(longest + skeleton) - OUTPUT_RESERVE_TOKENS - 450
+    callers = [c for c in callers or [] if c.path in {f.path for f in in_scope}]
+    caller_tokens = 0
+    if callers:
+        from stratum_open.repo.callers import TAIL_TOKENS
+        from stratum_open.repo.callers import block as callers_block
+
+        # Taken from the diff's share, so the calls can never crowd it out of a call. Each
+        # chunk's own calls are cut to what all of them took, which cuts the same calls.
+        most = min(CALLER_TOKENS, policy.review.context_tokens // CALLER_SHARE)
+        everything = callers_block(callers, None, most)
+        caller_tokens = min(most, diffs.approx_tokens(everything) + TAIL_TOKENS) if everything else 0
+        budget -= caller_tokens
     def widened(file: FileDiff) -> FileDiff:
         """The file with the code around its hunks, if that still fits a call:
         the code around mustn't crowd out the change itself."""
@@ -299,8 +322,9 @@ def review(
         note = ""
         if len(packed.chunks) > 1:
             note = f"This is part {index + 1} of {len(packed.chunks)} of the diff; judge the description against what you can see.\n"
+        called = callers_block(callers, set(packed.chunk_paths[index]), caller_tokens) if callers else ""
         user = USER.format(title=title, description=f"Description:\n{description}\n", all_files=all_files,
-                           left_out=left_out, previous=previous_block, note=note, legend=legend, diff=chunk)
+                           left_out=left_out, previous=previous_block, callers=called, note=note, legend=legend, diff=chunk)
         # An answer cut off mid-way still gives up every finding before the
         # break, but the chunk doesn't count as read.
         data, whole = _ask(model, system, user, policy, log, result.calls, "")
@@ -328,7 +352,7 @@ def review(
     if policy.review.quiet:  # before the verify pass, so one claim costs one call
         result.findings = _one_per_claim(result.findings)
     if policy.review.verify in VERIFY_PROMPTS and result.findings:
-        result.findings = _verified(result, by_path, policy, model, log)
+        result.findings = _verified(result, by_path, policy, model, log, callers)
     return result
 
 
@@ -398,19 +422,22 @@ def _same_place(a: Finding, b: Finding) -> bool:
 
 
 def _verified(result: ReviewResult, by_path: dict[str, FileDiff], policy: Policy, model: Model,
-              log: Callable[[str, str], None] | None) -> list[Finding]:
-    kept, dropped = verify_findings(result.findings, list(by_path.values()), policy, model, result.calls, log)
+              log: Callable[[str, str], None] | None, callers: list[Callers] | None = None) -> list[Finding]:
+    kept, dropped = verify_findings(result.findings, list(by_path.values()), policy, model, result.calls, log, callers=callers)
     result.dropped += dropped
     return kept
 
 
 def verify_findings(findings: list[Finding], files: list[FileDiff], policy: Policy, model: Model,
-                    calls: list[dict[str, Any]], log: Callable[[str, str], None] | None = None) -> tuple[list[Finding], int]:
+                    calls: list[dict[str, Any]], log: Callable[[str, str], None] | None = None, *,
+                    callers: list[Callers] | None = None) -> tuple[list[Finding], int]:
     """`review.verify`: one short call per finding, asking the model whether
     it's a real defect, with the code around it. `strict` expects most
     findings to be wrong; `lenient` has the model work the case through
     first. A failed or unclear answer keeps the finding. Each call is added
-    to `calls`; returns the findings kept and how many were dropped."""
+    to `calls`; returns the findings kept and how many were dropped.
+    `callers`: where the changed functions are called, shown with a
+    finding on their file, so one about a caller isn't judged unseen."""
     system, max_tokens = VERIFY_PROMPTS[policy.review.verify]
     by_path = {f.path: f for f in files}
     kept, dropped = [], 0
@@ -420,7 +447,12 @@ def verify_findings(findings: list[Finding], files: list[FileDiff], policy: Poli
             kept.append(finding)
             continue
         code = _excerpt(file, finding.line_start, policy.review.diff_format)
-        user = f"The changed code:\n{code}\n\nThe finding, on line {finding.line_start}:\n{finding.title}: {finding.detail}"
+        called = ""
+        if callers:
+            from stratum_open.repo.callers import block as callers_block
+
+            called = callers_block(callers, {finding.path}, VERIFY_CALLER_TOKENS)
+        user = f"The changed code:\n{code}\n{called}\nThe finding, on line {finding.line_start}:\n{finding.title}: {finding.detail}"
         reply = model.complete(system, user, max_tokens=max_tokens)
         call = reply.as_dict()
         call["pass"] = "verify"

@@ -16,6 +16,8 @@ review:
   diff_format: interleaved     # profile: interleaved | split (large: split)
   large_patch: clip            # clip | skip a file too big for one model call
   context_lines: 0             # profile: unchanged lines shown around each hunk, read from the file (large: 10)
+  context_callers: 0           # Python: up to this many calls of each function the PR changes, from elsewhere in the repository,
+                               #   shown under the diff; only calls certain to be that function (imports followed, no guessing); needs a checkout
   mode: general                # general | security | performance | maintainability: what the per-file passes put first
   file_reviews: 0              # profile: files reviewed one at a time before the chunked review (large: 15)
   lens_files: 0                # profile: of those, how many get a focused pass per lens of the mode (large: 5)
