@@ -868,3 +868,26 @@ def test_a_name_its_module_doesnt_define_is_reported_when_the_policy_asks(tmp_pa
     # Off by default, and nothing to read without a checkout.
     assert found(parse_policy(""), checkout=str(tmp_path))[1] == []
     assert found(on)[1] == []
+
+
+def test_a_name_the_pr_removes_and_another_file_still_imports_is_reported_when_the_policy_asks(tmp_path):
+    for path, text in {"app/__init__.py": "", "app/db.py": "import sqlite3\n\n\ndef connect():\n    pass\n", "app/users.py": "from app.db import connect\n"}.items():
+        (tmp_path / path).parent.mkdir(exist_ok=True)
+        (tmp_path / path).write_text(text)
+    diff = ("diff --git a/app/db.py b/app/db.py\n--- a/app/db.py\n+++ b/app/db.py\n@@ -1,5 +1,5 @@\n import sqlite3\n \n \n"
+            "-def connect():\n+def open_connection():\n     pass\n")
+    on = parse_policy("checks:\n  removed_names: true\n")
+
+    def found(policy, **kwargs):
+        gh = FakeGitHub(diff=diff)
+        return gh, [f for f in review_pull(context(gh, None, policy, **kwargs), 7).findings if f.rule == "code/removed-name"]
+
+    gh, [finding] = found(on, checkout=str(tmp_path))
+    assert (finding.path, finding.line_start, finding.severity) == ("app/db.py", 4, "high")
+    assert finding.title == "`app/db.py` no longer has `connect`, which is still used"
+    # The comment goes on the changed module, where the diff has a line for it, and names the file that breaks.
+    [comment] = [c for review in gh.reviews for c in review["comments"]]
+    assert (comment["path"], comment["line"]) == ("app/db.py", 4) and "`app/users.py:1` still imports it" in comment["body"]
+    # Off by default, and nothing to read without a checkout.
+    assert found(parse_policy(""), checkout=str(tmp_path))[1] == []
+    assert found(on)[1] == []

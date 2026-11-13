@@ -137,17 +137,23 @@ def unknown_name_findings(files: list[FileDiff], policy: Policy, repo_dir: str |
     try:
         return _check(files, repo_dir, contents or {}, applied)[0]
     except Exception as exc:  # the review goes on without this check
-        message = f"{type(exc).__name__}: {exc}"[:200]
-        return [Finding(
-            title="The unknown names check didn't run",
-            detail=f"The unknown names check failed with an error ({message}), so this review is missing its findings. The other checks ran.",
-            severity="low",
-            category="workflow",
-            suggestion="Re-run the review. If it fails again, please report it with this message.",
-            source="check",
-            rule="checks/error",
-            confidence=1.0,
-        )]
+        return [_failed("unknown names", exc)]
+
+
+def _failed(name: str, exc: Exception) -> Finding:
+    """What a check that reads the repository says in place of its findings
+    when it raised: the low finding `run_checks` gives for one of its own."""
+    message = f"{type(exc).__name__}: {exc}"[:200]
+    return Finding(
+        title=f"The {name} check didn't run",
+        detail=f"The {name} check failed with an error ({message}), so this review is missing its findings. The other checks ran.",
+        severity="low",
+        category="workflow",
+        suggestion="Re-run the review. If it fails again, please report it with this message.",
+        source="check",
+        rule="checks/error",
+        confidence=1.0,
+    )
 
 
 def _check(files: list[FileDiff], repo_dir: str, contents: dict[str, str], applied: bool) -> tuple[list[Finding], Counter[str]]:
@@ -682,13 +688,22 @@ class _Missing:
 def _file_missing(repo: _Repo, file: FileDiff) -> list[_Missing]:
     """The names one changed file imports or uses on its added lines that
     are certain not to be there."""
-    text = repo.text(file.path)
+    return _missing_on(repo, file.path, {number for number, _ in file.added()})
+
+
+def _missing_on(repo: _Repo, path: str, added: set[int], only: set[str] | None = None) -> list[_Missing]:
+    """The same for any file of the repository and any set of its lines.
+    With `only`, just those names are looked up: removed_names.py reads
+    whole files this way, for the few names a PR removed."""
+    text = repo.text(path)
     tree = _parse(text) if text is not None else None
     repo.tally["file: " + ("read" if tree is not None else "doesn't parse" if text is not None else "no text")] += 1
     if tree is None:
         return []
-    added = {number for number, _ in file.added()}
     imports, chains = _uses(tree, added)
+    if only is not None:
+        imports = [use for use in imports if use[1].name in only]
+        chains = [use for use in chains if any(attr in only for attr, _ in use[1])]
     if not imports and not chains:
         return []
     found: list[_Missing] = []
@@ -700,14 +715,14 @@ def _file_missing(repo: _Repo, file: FileDiff) -> list[_Missing]:
         if not node.level and module.partition(".")[0] in sys.stdlib_module_names:
             where = ("stdlib", module) if repo.stdlib_usable(module.partition(".")[0]) else None
         else:
-            target = repo.resolve(file.path, node.level, module)
-            where = ("repo", target) if target and target != file.path else None
+            target = repo.resolve(path, node.level, module)
+            where = ("repo", target) if target and target != path else None
         answer, _, (kind, target), names = _lookup(repo, where, [(alias.name, alias.lineno)]) if where else ("outside", 0, ("", ""), set())
         if answer == "missing" and kind == "stdlib" and (versioned or versioned_file):
             answer = "unknown"
         repo.tally[_outcome("import", kind, answer)] += 1
         if answer == "missing":
-            found.append(_Missing(file.path, alias.lineno, "import", lazy, target, kind == "stdlib", alias.name, "." * node.level + module, names))
+            found.append(_Missing(path, alias.lineno, "import", lazy, target, kind == "stdlib", alias.name, "." * node.level + module, names))
     if chains:
         bound, other, star = _bindings(tree)
         _, read, _ = _top_level(tree)
@@ -719,9 +734,9 @@ def _file_missing(repo: _Repo, file: FileDiff) -> list[_Missing]:
             if root in other or len(bound.get(root, ())) != 1:
                 continue  # not a module, as far as the file says
             if root not in roots:
-                roots[root] = _module_of(repo, file.path, next(iter(bound[root])))
+                roots[root] = _module_of(repo, path, next(iter(bound[root])))
             where = roots[root]
-            if where is None or where[1] == file.path or own_dynamic:
+            if where is None or where[1] == path or own_dynamic:
                 repo.tally[_outcome("attribute", where[0] if where else "", "unknown" if where else "outside")] += 1
                 continue
             answer, index, (kind, target), names = _lookup(repo, where, attrs)
@@ -733,7 +748,7 @@ def _file_missing(repo: _Repo, file: FileDiff) -> list[_Missing]:
             repo.tally[_outcome("attribute", kind, answer)] += 1
             if answer == "missing":
                 written = ".".join([root] + [attr for attr, _ in attrs[:index]])
-                found.append(_Missing(file.path, line, "attribute", lazy, target, kind == "stdlib", name, written, names))
+                found.append(_Missing(path, line, "attribute", lazy, target, kind == "stdlib", name, written, names))
     return found
 
 

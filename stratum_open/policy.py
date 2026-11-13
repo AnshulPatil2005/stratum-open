@@ -72,6 +72,7 @@ class Checks:
     floating_promises: bool = False  # JavaScript and TypeScript: a call whose promise is dropped; needs the `js` extra
     weakened_tests: bool = False  # a finding on the line where a PR switches a test off, removes its assertions or widens a tolerance
     unknown_names: bool = False  # in Python, an import or a call of a name its module doesn't define; needs a checkout
+    removed_names: bool = False  # in Python, a name a PR removes from a module while another file still imports or uses it; needs a checkout
 
 
 @dataclass(frozen=True)
