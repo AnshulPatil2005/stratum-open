@@ -117,6 +117,11 @@ time.
 - **Package registries** (PyPI, npm, crates.io): only the names of
   dependencies a PR adds, to check how new they are.
   `dependencies.registry_lookup: false` turns this off.
+- **The OSV database** (api.osv.dev), only when the policy sets
+  `dependencies.known_vulnerabilities: true`: the name, ecosystem and version
+  of each dependency a PR pins to an exact version, to ask for that version's
+  published advisories. `dependencies.registry_lookup: false` turns this off
+  too.
 - **Ollama's downloads**, only when the Action's `ollama-model` is set: Ollama
   itself from GitHub, and the model's weights from Ollama's registry, which
   learns the model's name and nothing about the project.

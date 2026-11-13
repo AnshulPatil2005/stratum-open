@@ -12,7 +12,7 @@ import pytest
 import requests
 
 from stratum_open.checks import bandit, dependencies, patterns, run_checks
-from stratum_open.checks.dependencies import PackageInfo, PackageLookup
+from stratum_open.checks.dependencies import Advisories, PackageInfo, PackageLookup
 from stratum_open.diff import parse_diff
 from stratum_open.policy import parse_policy
 from stratum_open.repo.boundaries import boundary_findings
@@ -168,6 +168,38 @@ def test_registry_unreachable_or_slow_means_unknown_not_a_crash():
     lookup = PackageLookup(session=Unreachable(), timeout=1)
     assert lookup.info("pypi", "anything") is None
     assert lookup.info("npm", "@scope/thing") is None
+
+
+def test_a_pin_with_known_advisories_is_flagged_only_when_the_policy_asks():
+    class Osv(Registry):  # the registries' stand-in, answering for pinned versions too
+        def advisories(self, pins):
+            self.asked.append(list(pins))
+            if self.raise_with:
+                raise self.raise_with
+            return {("pypi", "requests", "2.19.1"): Advisories(("GHSA-x84v-xcm2-53pg", "GHSA-j8r2-6x86-q33q"), "high", "2.31.0")}
+
+    on = parse_policy("dependencies:\n  known_vulnerabilities: true\n")
+    bump = diffs.modified("requirements.txt", ["requests==2.18.0", "flask>=2"], ["requests==2.19.1", "flask>=3"])
+    assert rules(bump, lookup=Osv()) == {}, "off by default, and a bump is not a new dependency"
+    (finding,) = rules(bump, policy=on, lookup=Osv())["deps/vulnerable"]
+    assert finding.severity == "high" and finding.line_start == 1 and "GHSA-x84v-xcm2-53pg, GHSA-j8r2-6x86-q33q" in finding.detail
+    assert "2.31.0" in finding.suggestion
+
+    assert rules(bump, policy=on, lookup=Registry()) == {}, "a lookup that only knows `info` is left as it was"
+    assert rules(bump, policy=on, lookup=None) == {}
+    assert rules(bump, policy=parse_policy("dependencies:\n  known_vulnerabilities: true\n  registry_lookup: false\n"), lookup=Osv()) == {}
+    for failure in (requests.ConnectionError("no route"), requests.Timeout("slow"), ValueError("not json"), RuntimeError("boom")):
+        assert rules(bump, policy=on, lookup=Osv(raise_with=failure)) == {}
+
+    class Unreachable:  # the real PackageLookup on a session whose every request fails to connect
+        posts = 0
+
+        def post(self, url, **kwargs):
+            Unreachable.posts += 1
+            raise requests.ConnectionError(f"no route to {url}")
+
+    assert rules(bump, policy=on, lookup=PackageLookup(session=Unreachable(), timeout=1)) == {}
+    assert Unreachable.posts == 2, "one retry, then OSV is left alone"
 
 
 def test_lockfile_only_and_monorepo_manifests():

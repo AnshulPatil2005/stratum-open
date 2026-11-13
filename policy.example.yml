@@ -81,6 +81,7 @@ track_record:
 dependencies:
   registry_lookup: true        # check how new an added package is
   min_package_age_days: 30     # younger packages are flagged
+  known_vulnerabilities: false # true flags a dependency pinned to a version with published advisories; asks osv.dev, and needs registry_lookup
 
 boundaries:                    # module rules; a PR that breaks one gets a finding
   modules: {}                  # e.g. {api: ["server/api/**"], db: ["server/db/**"]}

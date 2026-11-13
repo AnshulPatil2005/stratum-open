@@ -41,7 +41,9 @@ def run_checks(
     pr_text: str = "",
 ) -> list[Finding]:
     """Every check over the PR's files. `lookup` asks package registries
-    about new dependencies (only when `dependencies.registry_lookup` is on);
+    about new dependencies, and OSV about pinned versions when
+    `dependencies.known_vulnerabilities` is on (both only when
+    `dependencies.registry_lookup` is on);
     `contents` maps a path to its full new text, when the caller has it, and
     lets the checks see past the diff's context. `pr_text` is the PR's title
     and description, for the heuristics.
