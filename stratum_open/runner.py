@@ -451,8 +451,8 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
     installed, the JavaScript and TypeScript files that add a line starting
     with a call. With `checks.shellcheck` on and ShellCheck on PATH, the
     shell scripts, and the files with no extension that may be one (their
-    first line says). Files moved to where a check does more than where they were,
-    since the diff shows none of their lines as added (at most
+    first line says). Files moved to where a check does more than where they
+    were, since the diff shows none of their lines as added (at most
     MAX_MOVED_BYTES each; a bigger one is named as unread). With `around`
     (the profile shows code around each hunk), the biggest changes the model
     will read too."""

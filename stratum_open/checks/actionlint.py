@@ -2,24 +2,28 @@
 `checks.actionlint` is on and `actionlint` is on PATH (GitHub's runners don't
 have it: the README says how to add it).
 
-It finds what makes a workflow fail or do something else than it says: YAML
+It finds what makes a workflow fail or do something other than it says: YAML
 GitHub can't load, a key it doesn't know, a `needs:` naming no job, an
-expression of the wrong type, an input a well-known action doesn't take.
-Only issues on lines the PR adds are kept, from the workflow's full text in
-`contents`.
+expression naming a matrix key or a property that isn't there, an input a
+well-known action doesn't take. Only issues on lines the PR adds are kept,
+from the workflow's full text in `contents`.
 
 Some of what it reports is left out:
 - a runner label it doesn't know: a self-hosted runner's labels are listed in
-  the project's own actionlint config, which isn't read;
+  the project's own actionlint config, which isn't read, and GitHub adds new
+  hosted labels (`ubuntu-26.04`) faster than actionlint learns them;
 - issue or PR text in a script (`${{ github.event.pull_request.title }}` in
   `run:`), which the workflow check (workflows.py) already reports;
-- anything in DROPPED, which benchmark/results/2026-11-14-shell-checks says
-  why.
+- `uses: $/...`, an action of the same repository, which GitHub added after
+  actionlint 1.7.12 and which it calls malformed;
+- a YAML anchor defined and not used, which is tidiness, not a bug.
 
-With `shellcheck` on PATH, actionlint also runs it on each `run:` script, and
-of that only what the ShellCheck check keeps (shellcheck.kept) is reported,
-on the line of the script it's about (not on Windows, where that hangs on a
-long script). Its Python check (pyflakes) is off.
+actionlint can run ShellCheck on each `run:` script, and here it doesn't. On
+the merged workflows of the benchmark that found nothing right, and dozens of
+false alarms: PowerShell steps of a job whose shell it couldn't tell, and
+`${{ }}` it replaces with a placeholder, which then looks like a constant
+(benchmark/results/2026-11-14-shell-checks). Its Python check (pyflakes) is
+off too.
 
 No code from the PR runs, and the PR can't steer actionlint. It reads the
 YAML and never runs a step. The files go in a temporary folder outside any
@@ -28,6 +32,10 @@ the project's `actionlint.yaml` isn't read either: like the workflow check,
 it judges the workflow as the PR's author wrote it. Local actions and
 reusable workflows the PR names aren't there, and actionlint skips what it
 would check about them. It runs as its own process with a time limit.
+
+What actionlint knows of GitHub is what GitHub had when it was released, so a
+key, a permission or a property GitHub adds later is reported as unknown
+until actionlint catches up.
 """
 
 from __future__ import annotations
@@ -51,13 +59,19 @@ _WORKFLOW = re.compile(r"^\.github/workflows/[^/]+\.ya?ml$")  # GitHub runs only
 # actionlint's kinds of issue that are left out, and why.
 DROPPED: dict[str, str] = {
     "runner-label": "a self-hosted runner's labels are in the project's config, which isn't read",
-    "pyflakes": "the Python in a `run:` script isn't checked",
+    "shellcheck": "ShellCheck isn't run on the scripts",
+    "pyflakes": "pyflakes isn't run on the scripts",
 }
-# Kinds of issue that stop the workflow, or the job, from running at all.
-_FAILS = {"syntax-check", "job-needs", "workflow-call", "matrix", "id", "events"}
-_UNTRUSTED = re.compile(r"is potentially untrusted")
-_SHELLCHECK = re.compile(r"^shellcheck reported issue in this script: SC(\d+):(\w+):(\d+):\d+: (.*)$", re.DOTALL)
-_RUN = re.compile(r"^\s*(?:-\s+)?run\s*:\s*(?P<rest>.*)$")
+# Messages that are left out, whatever their kind.
+_LEFT_OUT = re.compile(
+    r"is potentially untrusted"  # the workflow check reports these
+    r'|"\$/'  # `uses: $/path`, which GitHub added after actionlint 1.7.12
+    r"|^anchor \S+ is defined but not used"
+)
+# What stops the workflow, or the job, from running at all: YAML that doesn't load, a `needs:` with no such job.
+_FAILS = re.compile(r"^could not parse as YAML|^job \S+ needs job")
+# What actionlint calls unknown may be something GitHub added after its release.
+_UNKNOWN = re.compile(r"\bunknown\b|unexpected key|is not defined in object type")
 
 
 class ActionlintError(RuntimeError):
@@ -99,80 +113,34 @@ def check(files: list[FileDiff], contents: dict[str, str] | None = None) -> list
         return []
     # A file moved here from elsewhere counts every line as added.
     added = {file.path: {number for number, _ in checked_lines(file, contents, scope)} for file in files if file.path in targets}
-    findings = []
-    for issue in run_actionlint({path: contents[path] for path in targets}):
-        finding = _finding(issue, contents[issue["path"]], added.get(issue["path"], set()))
-        if finding is not None:
-            findings.append(finding)
-    return findings
+    return [finding for issue in run_actionlint({path: contents[path] for path in targets})
+            if (finding := to_finding(issue, added.get(issue["path"], set()))) is not None]
 
 
-def _finding(issue: dict[str, Any], text: str, added: set[int]) -> Finding | None:
+def to_finding(issue: dict[str, Any], added: set[int]) -> Finding | None:
+    """The finding for one of actionlint's issues, or None when it's left out
+    or not on a line in `added`."""
     kind, message = issue["kind"], issue["message"]
-    if kind in DROPPED or _UNTRUSTED.search(message):
+    if kind in DROPPED or _LEFT_OUT.search(message) or issue["line"] not in added:
         return None
-    if kind == "shellcheck":
-        return _script_finding(issue, text, added)
-    if issue["line"] not in added:
-        return None
+    fails = bool(_FAILS.search(message))
+    detail = f"actionlint reports {shellcheck.quote(message)}. "
+    detail += "GitHub won't run the workflow, or this job, as written." if fails else "The workflow doesn't do what this line says."
+    if _UNKNOWN.search(message):
+        detail += " actionlint knows GitHub as it was when it was released, so if GitHub added this lately, the line is fine."
     return Finding(
         title=f"actionlint ({kind}): {_title(message)}",
-        detail=f"actionlint reports {shellcheck.quote(message)}. "
-               + ("GitHub won't run the workflow, or this job, as written." if kind in _FAILS else "The workflow doesn't do what this line says."),
-        severity="high" if kind in _FAILS else "medium",
+        detail=detail,
+        severity="high" if fails else "medium",
         category="bug",
         path=issue["path"],
         line_start=issue["line"],
         line_end=issue["line"],
-        suggestion=f"actionlint's documentation of its `{kind}` check explains the rule: https://github.com/rhysd/actionlint/blob/main/docs/checks.md",
+        suggestion=f"actionlint's list of checks explains the `{kind}` one: https://github.com/rhysd/actionlint/blob/main/docs/checks.md",
         source="check",
         rule=f"actionlint/{kind}",
         confidence=0.9,
     )
-
-
-def _script_finding(issue: dict[str, Any], text: str, added: set[int]) -> Finding | None:
-    """What ShellCheck found in a `run:` script, on the line it's about. actionlint
-    puts it on the `run:` line, and says which line of the script it means."""
-    found = _SHELLCHECK.match(issue["message"])
-    if found is None:
-        return None
-    code, level, offset, message = int(found.group(1)), found.group(2), int(found.group(3)), found.group(4)
-    why = shellcheck.kept(code, level)
-    line = script_line(text, issue["line"], offset)
-    if why is None or line is None or line not in added:
-        return None
-    return Finding(
-        title=f"ShellCheck SC{code} in a `run:` script: {_title(message)}",
-        detail=f"actionlint ran ShellCheck on this step's script, which reports SC{code}: {shellcheck.quote(message)}. {why}",
-        severity="high" if level == "error" else "medium",
-        category="bug",
-        path=issue["path"],
-        line_start=line,
-        line_end=line,
-        suggestion=f"See https://www.shellcheck.net/wiki/SC{code} for what it means and how to fix it.",
-        source="check",
-        rule=f"shellcheck/SC{code}",
-        confidence=0.9,
-    )
-
-
-def script_line(text: str, run_line: int, offset: int) -> int | None:
-    """The workflow's line for line `offset` of the script at `run_line`: the
-    same line for `run: echo`, the lines below it for `run: |`. A folded
-    `run: >` joins its lines, so only its first is known."""
-    lines = text.split("\n")
-    if not 0 < run_line <= len(lines):
-        return None
-    found = _RUN.match(lines[run_line - 1])
-    if found is None:
-        return None
-    rest = re.sub(r"\s+#.*$", "", found.group("rest")).strip()
-    if rest.startswith("|"):
-        return run_line + offset
-    if rest.startswith(">"):
-        return run_line + 1 if offset == 1 else None
-    return run_line if offset == 1 else None
 
 
 def _title(message: str) -> str:
@@ -180,17 +148,16 @@ def _title(message: str) -> str:
     return "`" + (first[:77] + "..." if len(first) > 80 else first) + "`"
 
 
-def run_actionlint(sources: dict[str, str], *, scripts: bool = True, timeout: float = TIMEOUT_SECONDS) -> list[dict[str, Any]]:
+def run_actionlint(sources: dict[str, str], *, scripts: str = "", timeout: float = TIMEOUT_SECONDS) -> list[dict[str, Any]]:
     """actionlint's issues for each workflow's text, as plain dicts keyed by
     our path. The files are written as `.github/workflows/<n>.yml` in a
-    temporary folder, and actionlint runs once over all of them, with
-    ShellCheck on the scripts when `scripts` and it's on PATH. Raises
-    ActionlintError when it isn't there, doesn't finish, or can't be read."""
+    temporary folder, and actionlint runs once over all of them. `scripts`,
+    a ShellCheck to run on the `run:` scripts, is for the benchmark, which
+    measured what that would add. Raises ActionlintError when actionlint
+    isn't there, doesn't finish, or can't be read."""
     program = find_program("actionlint")
     if program is None:
         raise ActionlintError("actionlint isn't on PATH any more.")
-    # On Windows, actionlint 1.7.12 hangs handing ShellCheck a script of more than a few KB, so it gets none there.
-    checker = find_program("shellcheck") if scripts and os.name != "nt" else None
     with tempfile.TemporaryDirectory(prefix="stratum-actionlint-", ignore_cleanup_errors=True) as folder:
         workflows = os.path.join(folder, ".github", "workflows")
         os.makedirs(workflows)
@@ -203,8 +170,9 @@ def run_actionlint(sources: dict[str, str], *, scripts: bool = True, timeout: fl
             paths[name] = path
         config = os.path.join(folder, "actionlint.yaml")
         open(config, "w", encoding="utf-8").close()
+        # An empty -shellcheck and -pyflakes turn those off, whatever is on PATH.
         command = [
-            program, "-no-color", "-format", "{{json .}}", "-config-file", config, "-pyflakes=", f"-shellcheck={checker or ''}",
+            program, "-no-color", "-format", "{{json .}}", "-config-file", config, f"-shellcheck={scripts}", "-pyflakes=",
             *[os.path.join(".github", "workflows", name) for name in paths],
         ]
         # SHELLCHECK_OPTS would add options of whoever set it to the scripts' run.

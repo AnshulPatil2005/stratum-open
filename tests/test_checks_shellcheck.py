@@ -13,7 +13,7 @@ from stratum_open.runner import Context, review_pull
 
 ON = parse_policy("checks:\n  shellcheck: true\n")
 needs_shellcheck = pytest.mark.skipif(not shellcheck.available(), reason="ShellCheck isn't on PATH")
-WARNING = 2097  # one of the kept warnings: an assignment only the command sees
+WARNING = 2098  # one of the kept warnings: an assignment only the command sees
 
 
 def diff(path, added=(), context=(), *, start=1):
@@ -73,7 +73,7 @@ def test_a_policy_without_the_key_is_what_it_was():
 def test_errors_and_the_kept_warnings_on_added_lines_are_reported(monkeypatch):
     fake_shellcheck(monkeypatch, [
         issue(2),  # an error on an added line: kept
-        issue(3, code=WARNING, level="warning", message="This assignment is only seen by the forked process."),  # a kept warning
+        issue(3, code=WARNING, level="warning", message="This expansion will not see the mentioned assignment."),  # a kept warning
         issue(1),  # an unchanged line: dropped
         issue(3, code=2034, level="warning", message="x appears unused. Verify use (or export if used externally)."),  # a warning not kept
         issue(3, code=2086, level="info", message="Double quote to prevent globbing and word splitting."),  # info: never kept
@@ -303,9 +303,16 @@ def test_the_summary_names_scripts_shellcheck_didnt_read(monkeypatch):
 PLANTED = {
     2283: "#!/bin/bash\nx = 1\n",
     1073: '#!/bin/bash\necho "${a[@]"\n',
-    WARNING: "#!/bin/bash\na=1 echo $a\n",
+    2259: "#!/bin/bash\necho x | cat < file\n",
+    2071: "#!/bin/bash\n[ \"$n\" > 3 ] && echo big\n",
+    2168: "#!/bin/bash\nlocal y=1\n",
+    2069: "#!/bin/bash\nmake 2>&1 >build.log\n",
+    2098: "#!/bin/bash\nname=x echo \"$name\"\n",
+    2216: "#!/bin/bash\nfind . -name '*.tmp' | rm\n",
+    2252: "#!/bin/bash\nif [ \"$1\" != a ] || [ \"$1\" != b ]; then exit 1; fi\n",
 }
 # Scripts that work and look like a mistake: nothing the check keeps may fire on them.
+# Several are what ShellCheck reported on merged code (benchmark/results/2026-11-14-shell-checks).
 WORKING = """#!/bin/bash
 set -euo pipefail
 name="${1:-world}"
@@ -313,6 +320,16 @@ echo "hello $name"
 for f in ./*.txt; do [ -e "$f" ] || continue; wc -l "$f"; done
 cd /tmp || exit 1
 echo $HOME
+TERMUX_PKG_REVISION=2
+version= os= arch=
+tmpdir=$(mktemp -d)
+trap "rm -rf $tmpdir" EXIT
+shims=(a b)
+eval "conda_shim() { case \\"$1\\" in ${shims[@]:-} *) return 1;; esac; }"
+prefix_re=x
+grep -Ee "^$prefix_re[-.].*$" file || true
+for f in $(ls); do echo "$f"; done
+run() { command $@; }
 """
 
 

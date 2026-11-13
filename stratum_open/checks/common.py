@@ -1,6 +1,6 @@
 """Small helpers the checks share: which files are tests, which lines are
-comments, the new side of a file as far as the run can see it, and which
-lines a check judges."""
+comments, the new side of a file as far as the run can see it, which lines a
+check judges, and where a program a check starts is."""
 
 from __future__ import annotations
 

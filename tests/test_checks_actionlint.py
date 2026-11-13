@@ -1,6 +1,7 @@
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,7 @@ ON = parse_policy("checks:\n  actionlint: true\n")
 FLOW = ".github/workflows/ci.yml"
 needs_actionlint = pytest.mark.skipif(not actionlint.available(), reason="actionlint isn't on PATH")
 needs_both = pytest.mark.skipif(not (actionlint.available() and shellcheck.available()), reason="actionlint and ShellCheck aren't both on PATH")
+needs_unix = pytest.mark.skipif(os.name == "nt", reason="actionlint hangs handing ShellCheck a long script on Windows")
 
 
 def new_file(path, text):
@@ -83,37 +85,28 @@ def test_only_issues_on_added_lines_of_kinds_kept_are_reported(monkeypatch):
         issue(5, kind="runner-label", message='label "gpu" is unknown'),  # a self-hosted runner's label: dropped
         issue(5, kind="expression", message='"github.event.issue.title" is potentially untrusted. avoid using it directly in inline scripts'),  # the workflow check's
         issue(5, kind="action", message='input "fetch-dept" is not defined in action "actions/checkout@v4"'),  # kept, medium
+        issue(5, kind="action", message='specifying action "$/.github/actions/setup" in invalid format because ref is missing'),  # GitHub's newer form
+        issue(5, kind="syntax-check", message='anchor "step_test" is defined but not used'),  # tidiness
+        issue(5, kind="shellcheck", message="shellcheck reported issue in this script: SC2283:error:2:3: Remove spaces"),  # scripts aren't checked
+        issue(5, kind="pyflakes", message="pyflakes reported issue in this script: 1:7: undefined name 'x'"),
     ])
     files = parse_diff(changed(FLOW, before, WORKFLOW, 5))
     findings = actionlint.check(files, {FLOW: WORKFLOW})
     assert [(f.rule, f.severity, f.line_start) for f in findings] == [("actionlint/job-needs", "high", 5), ("actionlint/action", "medium", 5)]
     assert all(f.source == "check" and f.category == "bug" for f in findings)
     assert findings[0].title == 'actionlint (job-needs): `job "a" needs job "nope" which does not exist in this workflow`'
+    assert "GitHub won't run the workflow" in findings[0].detail and "doesn't do what this line says" in findings[1].detail
 
-
-def test_shellcheck_in_a_run_script_goes_on_the_scripts_line(monkeypatch):
-    sc = "shellcheck reported issue in this script: SC{}:{}:{}:3: {}"
+def test_only_what_stops_the_workflow_is_high_and_what_may_be_new_says_so(monkeypatch):
     fake_actionlint(monkeypatch, [
-        issue(7, kind="shellcheck", message=sc.format(2283, "error", 2, "Remove spaces around = to assign")),  # script line 2 of `run: |`: line 9
-        issue(7, kind="shellcheck", message=sc.format(2086, "info", 1, "Double quote to prevent globbing")),  # not kept
-        issue(10, kind="shellcheck", message=sc.format(WARNING, "warning", 1, "This assignment is only seen by the forked process")),  # inline: line 10
-        issue(11, kind="shellcheck", message=sc.format(2283, "error", 1, "Remove spaces around = to assign")),  # folded: its first line, 12
-        issue(11, kind="shellcheck", message=sc.format(2283, "error", 2, "Remove spaces around = to assign")),  # folded, later: not known
-        issue(7, kind="shellcheck", message="shellcheck reported something else"),
+        issue(5, kind="syntax-check", message="could not parse as YAML: did not find expected ',' or ']'"),
+        issue(5, kind="syntax-check", message='unexpected key "queue" for "concurrency" section. expected one of "cancel-in-progress", "group"'),
+        issue(5, kind="permissions", message='unknown permission scope "copilot-requests"'),
+        issue(5, kind="events", message='input "storage" of workflow_call event has the default value "x", but it is also required'),
     ])
     findings = actionlint.check(parse_diff(new_file(FLOW, WORKFLOW)), {FLOW: WORKFLOW})
-    assert [(f.rule, f.line_start) for f in findings] == [("shellcheck/SC2283", 9), (f"shellcheck/SC{WARNING}", 10), ("shellcheck/SC2283", 12)]
-    assert findings[0].title.startswith("ShellCheck SC2283 in a `run:` script")
-
-
-WARNING = 2097
-
-
-def test_the_scripts_line_follows_the_block_it_is_in():
-    text = "steps:\n  - run: |-  # a comment\n      a\n      b\n  - run: echo\n  - name: x\n"
-    assert [actionlint.script_line(text, 2, n) for n in (1, 2)] == [3, 4]
-    assert actionlint.script_line(text, 5, 1) == 5 and actionlint.script_line(text, 5, 2) is None
-    assert actionlint.script_line(text, 6, 1) is None and actionlint.script_line(text, 99, 1) is None
+    assert [f.severity for f in findings] == ["high", "medium", "medium", "medium"]
+    assert ["added this lately" in f.detail for f in findings] == [False, True, True, False]
 
 
 def test_text_from_the_pr_stays_inside_a_code_span(monkeypatch):
@@ -166,7 +159,7 @@ def fake_programs(monkeypatch, tmp_path, *names):
 
 def test_actionlint_is_started_where_the_pr_cant_steer_it(monkeypatch, tmp_path):
     calls = []
-    program, checker = fake_programs(monkeypatch, tmp_path, "actionlint", "shellcheck")
+    program, _ = fake_programs(monkeypatch, tmp_path, "actionlint", "shellcheck")
 
     def run(command, **kwargs):
         folder = Path(kwargs["cwd"])
@@ -175,31 +168,18 @@ def test_actionlint_is_started_where_the_pr_cant_steer_it(monkeypatch, tmp_path)
         return subprocess.CompletedProcess(command, 0, stdout="[]", stderr="")
 
     monkeypatch.setattr(actionlint.subprocess, "run", run)
-    monkeypatch.setenv("SHELLCHECK_OPTS", "--external-sources")
     checkout = tmp_path / "checkout"
     checkout.mkdir()
     monkeypatch.chdir(checkout)
     assert actionlint.run_actionlint({FLOW: "on: push\n", ".github/workflows/actionlint.yaml": "on: push\n"}) == []
     [(command, kwargs, written, config)] = calls
-    # On Windows actionlint hangs handing ShellCheck a long script, so it gets none there.
-    assert command[0] == program and "-pyflakes=" in command and config == ""
-    assert f"-shellcheck={checker if os.name != 'nt' else ''}" in command
+    # ShellCheck and pyflakes are off even with them on PATH, and the config is an empty one of ours.
+    assert command[0] == program and "-shellcheck=" in command and "-pyflakes=" in command and config == ""
     assert command[command.index("-config-file") + 1] == str(Path(kwargs["cwd"]) / "actionlint.yaml")
     assert written == [".github/workflows/0.yml", ".github/workflows/1.yml", "actionlint.yaml"]
     assert [Path(arg).as_posix() for arg in command[-2:]] == written[:2]
     assert checkout not in Path(kwargs["cwd"]).parents and not Path(kwargs["cwd"]).exists()
-    assert kwargs["timeout"] == actionlint.TIMEOUT_SECONDS and "SHELLCHECK_OPTS" not in kwargs["env"]
-    calls.clear()
-    actionlint.run_actionlint({FLOW: "on: push\n"}, scripts=False)
-    assert "-shellcheck=" in calls[0][0]
-
-
-def test_without_shellcheck_actionlint_checks_no_scripts(monkeypatch, tmp_path):
-    calls = []
-    fake_programs(monkeypatch, tmp_path, "actionlint")
-    monkeypatch.setattr(actionlint.subprocess, "run", lambda command, **kwargs: calls.append(command) or subprocess.CompletedProcess(command, 0, stdout="[]", stderr=""))
-    actionlint.run_actionlint({FLOW: "on: push\n"})
-    assert "-shellcheck=" in calls[0]
+    assert kwargs["timeout"] == actionlint.TIMEOUT_SECONDS
 
 
 def test_an_actionlint_that_fails_or_cant_be_read_is_an_error_not_a_clean_result(monkeypatch, tmp_path):
@@ -321,7 +301,30 @@ def test_real_actionlint_reads_no_config_from_where_the_review_runs(monkeypatch,
     assert "actionlint/job-needs" in {f.rule for f in run_real(PLANTED["job-needs"])}
 
 
+SCRIPT = "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo $UNQUOTED\n          x = 1\n"
+
+
 @needs_both
-def test_real_actionlint_runs_shellcheck_on_scripts_and_keeps_only_what_it_keeps():
-    text = "on: push\njobs:\n  a:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          echo $UNQUOTED\n          x = 1\n"
-    assert [(f.rule, f.line_start) for f in run_real(text)] == [("shellcheck/SC2283", 8)]
+def test_real_actionlint_runs_no_shellcheck_on_scripts_even_with_it_on_path():
+    assert run_real(SCRIPT) == []
+
+
+@needs_both
+@needs_unix
+def test_the_benchmark_can_still_ask_for_scripts_and_places_them_on_their_line():
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "benchmark"))
+    import shell_checks
+
+    rows = shell_checks.actionlint_rows({FLOW: SCRIPT})
+    assert ("actionlint+shellcheck", "SC2283", 8, "no") in {(r["tool"], r["code"], r["line"], r["kept"]) for r in rows}
+
+
+def test_the_benchmark_puts_a_scripts_issue_on_the_line_it_is_about():
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "benchmark"))
+    import shell_checks
+
+    text = "steps:\n  - run: |-  # a comment\n      a\n      b\n  - run: echo\n  - name: x\n  - run: >\n      c\n      d\n"
+    assert [shell_checks.script_line(text, 2, n) for n in (1, 2)] == [3, 4]
+    assert shell_checks.script_line(text, 5, 1) == 5 and shell_checks.script_line(text, 5, 2) is None
+    assert shell_checks.script_line(text, 7, 1) == 8 and shell_checks.script_line(text, 7, 2) is None  # folded: lines are joined
+    assert shell_checks.script_line(text, 6, 1) is None and shell_checks.script_line(text, 99, 1) is None

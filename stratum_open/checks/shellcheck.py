@@ -48,12 +48,24 @@ MAX_FILES = 20
 MAX_FILE_CHARS = 100_000
 TIMEOUT_SECONDS = 60
 EXTENSIONS = (".sh", ".bash")
-# ShellCheck's errors that are about style, not about a script that breaks.
-DROPPED: dict[int, str] = {}
+# ShellCheck's errors that are left out: code -> why.
+DROPPED: dict[int, str] = {
+    2045: "`for f in $(ls)` breaks on odd file names, but works on the names most scripts see",
+    2068: "an unquoted `$@` splits arguments with spaces, but works for the arguments most scripts get",
+    2145: "fired on merged code that works: an array in a string handed to `eval`",
+    1087: "fired on merged code that works: `$name[-.]` in a regular expression",
+    1072: "comes with SC1073 on the same syntax error, which is kept: SC1073 is on the line where it starts, SC1072 often on the last",
+}
 # ShellCheck's warnings that are kept: code -> what goes wrong.
-WARNINGS: dict[int, str] = {}
-# What a kept error says goes wrong, where ShellCheck's message doesn't.
-_BROKEN = "Bash rejects this line, or the whole script: it doesn't run as written."
+WARNINGS: dict[int, str] = {
+    2069: "The redirections run left to right, so stderr goes where stdout went before `>file`, not into the file.",
+    # SC2097, its twin on the assignment, is left out: the two always come together.
+    2098: "An assignment in front of a command is passed to that command only: the variable isn't set when this line expands it.",
+    2216: "The command doesn't read its input, so what is piped to it is thrown away.",
+    2252: "A value can't equal both, so one of the two `!=` tests is always true, and so is the whole condition.",
+}
+# What a kept error says goes wrong.
+_BROKEN = "ShellCheck rates this an error: the line fails, or does something other than what it says, when the script gets to it."
 _SHEBANG = re.compile(r"#!\s*(?:\S*/)?(?:env\s+(?:-\S+\s+)*)?(?:sh|bash|dash)(?:\s|$)")
 # A directive that switches checks off: `# shellcheck disable=SC2086,SC2154`.
 _DISABLE = re.compile(r"(#\s*shellcheck\s(?:[^#\n]*?\s)?)disable=([\w,-]*)")

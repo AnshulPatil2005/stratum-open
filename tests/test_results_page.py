@@ -167,6 +167,8 @@ def _pairs(page, run=None):
         pairs |= {(row["caught"], row["cases"]), (row["alarm_prs"], row["prs"])}
     for row in rows("as_new"):
         pairs |= {(row["right"], row["right"] + row["wrong"])}
+    for row in rows("shell"):
+        pairs |= {(row["whole_right"], row["whole_right"] + row["whole_wrong"])}
     return {(hits, n) for hits, n in pairs if n}
 
 
@@ -256,7 +258,7 @@ def models_table_problems(text, page):
 
 def merged_prs_problems(text, page, where):
     """"184 merged PRs" has to be the number of merged PRs some run checked."""
-    known = {row["prs"] for kind in ("checks", "corpus", "awaits", "merged") for row in page.get(kind, [])}
+    known = {row["prs"] for kind in ("checks", "corpus", "awaits", "merged", "shell") for row in page.get(kind, [])}
     return [f"{where} says \"{number} merged PRs\". The runs on the page checked {', '.join(map(str, sorted(known)))}."
             for number in sorted({int(n) for n in re.findall(r"\b(\d+) (?:real |clean )?merged PRs\b", text)}) if number not in known]
 

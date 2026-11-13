@@ -135,6 +135,15 @@ Merged PRs add few lines, so a run can also read merged code as if a PR had just
 | [2026-11-13-floating-promises](results/2026-11-13-floating-promises/) | 12 whole repositories, `dev` | 19,108 | 2,300,697 | 27 | 6 | 16 | 5 | 0 | 6 of 22 | 13% to 48% |
 | [2026-11-13-floating-promises](results/2026-11-13-floating-promises/) | 6 whole repositories, `test` | 11,959 | 1,562,067 | 28 | 6 | 16 | 6 | 0 | 6 of 22 | 13% to 48% |
 
+## ShellCheck and actionlint
+
+Both are off unless their setting is on. Each ran on merged PRs that change a shell script or a workflow, where any finding is a possible false alarm, and on the whole of those files read as if every line were new. Each finding is marked right when what it says is true of the code, and wrong (a false alarm) when the code works as meant.
+
+| Setting | Run | Merged PRs | Added lines | Findings on them | Files read whole | Lines | Findings on them | Right | Wrong | Unsure | Right, of those marked | 95% interval |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `checks.shellcheck` | [2026-11-14-shell-checks](results/2026-11-14-shell-checks/) | 65 | 2,146 | 0 | 109 | 23,997 | 1 | 0 | 1 | 0 | 0 of 1 | 0% to 79% |
+| `checks.actionlint` | [2026-11-14-shell-checks](results/2026-11-14-shell-checks/) | 129 | 1,467 | 0 | 144 | 24,353 | 21 | 9 | 11 | 1 | 9 of 20 | 26% to 66% |
+
 ## The model's review: merged PRs as they are
 
 Real merged PRs with nothing planted, so each finding needs a maintainer to mark it. Until one does, a run has times and counts but no share right.
