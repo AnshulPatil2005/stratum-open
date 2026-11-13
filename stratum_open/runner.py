@@ -246,7 +246,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         coverage.append(f"Profile: `{engine.profile}` ({engine.profile_why}).")
     if learned is not None:
         coverage.append(learned.problem or f"Learned from the repo's last {count(learned.read, 'inline comment')}: what maintainers "
-                        "rejected with 👎 or `@stratum ignore` is left out (review.learn_from_history).")
+                        "rejected with 👎 or `/stratum ignore` is left out (review.learn_from_history).")
         if hidden:
             coverage.append("Left out for that: " + "; ".join(
                 f"{f.title} (`{f.path}`" + (f" line {f.line_start}" if f.line_start else "") + ")" if f.path else f.title for f in hidden[:10])

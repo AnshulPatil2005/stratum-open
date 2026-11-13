@@ -64,7 +64,7 @@ class Review:
     skip_labels: tuple[str, ...] = ()  # PRs with any of these labels aren't reviewed
     skip_branches: tuple[str, ...] = ()  # globs; PRs from a matching branch aren't reviewed
     quiet: bool = False  # fewer of the model's comments, and a summary that keeps them apart from the checks' findings
-    learn_from_history: bool = False  # leave out findings like ones maintainers rejected (👎, `@stratum ignore`) on recent PRs
+    learn_from_history: bool = False  # leave out findings like ones maintainers rejected (👎, `/stratum ignore`) on recent PRs
     learn_lookback: int = 100  # how many of the repo's latest comments of each kind that reads (one API call per 100)
 
 

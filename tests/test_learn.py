@@ -41,13 +41,13 @@ def gh():
 
 def test_a_rule_is_muted_by_the_apps_thresholds(gh):
     a, b, c = (stratum_comment(pr=pr, down=1) for pr in (3, 4, 5))
-    gh.history_review_comments = [a, b, c, reply(a, "@stratum ignore", "lisa")]
+    gh.history_review_comments = [a, b, c, reply(a, "/stratum ignore", "lisa")]
     for comment in (a, b, c):
         react(gh, comment, ("mona", "-1"))
     # mona's 👎 on three comments and lisa's ignore reply: four votes, one short of five.
     assert feedback.learn(gh, BOT).rules == {}
 
-    gh.issue_comments_[9] = [{"id": next(_ids), "body": "@stratum ignore workflow/unpinned-action", "user": {"login": "rob"}}]
+    gh.issue_comments_[9] = [{"id": next(_ids), "body": "/stratum ignore workflow/unpinned-action", "user": {"login": "rob"}}]
     assert feedback.learn(gh, BOT).rules == {"workflow/unpinned-action": [3, 4, 5, 9]}
 
     # 3 of 5 votes 👎 is the App's 60%: still muted. A third 👍 makes it 3 of 6, and it isn't.
@@ -56,7 +56,7 @@ def test_a_rule_is_muted_by_the_apps_thresholds(gh):
     react(gh, e, ("otto", "+1"))
     gh.history_review_comments = [a, b, d, e]
     gh.issue_comments_[9] = []
-    gh.history_review_comments.append(reply(a, "@stratum ignore", "lisa"))
+    gh.history_review_comments.append(reply(a, "/stratum ignore", "lisa"))
     assert feedback.learn(gh, BOT).rules == {"workflow/unpinned-action": [3, 4]}
     f = stratum_comment(pr=6, up=1)
     react(gh, f, ("rob", "+1"))
@@ -68,16 +68,16 @@ def test_only_people_with_write_access_count(gh):
     comments = [stratum_comment(pr=pr, down=1) for pr in range(3, 9)]
     for comment in comments:
         react(gh, comment, ("erin", "-1"), ("dependabot[bot]", "-1"))  # erin can only read; a bot never counts
-    gh.history_review_comments = comments + [reply(comments[0], "@stratum ignore", "erin")]
-    gh.issue_comments_[9] = [{"id": next(_ids), "body": "@stratum ignore workflow/unpinned-action", "user": {"login": "erin"}}]
+    gh.history_review_comments = comments + [reply(comments[0], "/stratum ignore", "erin")]
+    gh.issue_comments_[9] = [{"id": next(_ids), "body": "/stratum ignore workflow/unpinned-action", "user": {"login": "erin"}}]
     assert feedback.learn(gh, BOT).rules == {}
 
 
 def test_each_person_counts_once_per_comment_and_once_per_pr_for_a_rule(gh):
     a = stratum_comment(down=1)
     react(gh, a, ("mona", "-1"))
-    gh.history_review_comments = [a] + [reply(a, "@stratum ignore", "mona") for _ in range(4)]
-    gh.issue_comments_[3] = [{"id": next(_ids), "body": "@stratum ignore workflow/unpinned-action", "user": {"login": "mona"}}
+    gh.history_review_comments = [a] + [reply(a, "/stratum ignore", "mona") for _ in range(4)]
+    gh.issue_comments_[3] = [{"id": next(_ids), "body": "/stratum ignore workflow/unpinned-action", "user": {"login": "mona"}}
                              for _ in range(4)]
     # mona's 👎 and her four ignore replies are one vote; her four `ignore <rule>` on #3 one more: two in all.
     assert feedback.learn(gh, BOT).rules == {}
@@ -152,7 +152,7 @@ def test_github_refusing_a_read_hides_nothing_and_says_so(gh):
 
     offline = Offline(diff=DIFF)
     offline.history_review_comments = [stratum_comment(down=1)]
-    assert "`@stratum ignore <rule>` there wasn't counted" in feedback.learn(offline, BOT).problem
+    assert "`/stratum ignore <rule>` there wasn't counted" in feedback.learn(offline, BOT).problem
 
 
 def test_recent_comments_cost_one_call_per_hundred(monkeypatch):
@@ -266,3 +266,26 @@ def test_the_lookback_is_checked():
     assert parse_policy("review:\n  learn_lookback: 0\n").errors == ("review.learn_lookback must be at least 1.",)
     policy = parse_policy("review:\n  learn_lookback: 5000\n")
     assert policy.review.learn_lookback == 500 and policy.warnings == ("review.learn_lookback is read as 500, the most it can be.",)
+
+
+def test_an_old_at_stratum_ignore_is_not_a_rejection(gh):
+    """Since commands became `/stratum`, `@stratum ignore` does nothing on GitHub, so it isn't counted either."""
+    comments = [stratum_comment(pr=pr) for pr in range(3, 9)]
+    gh.history_review_comments = comments + [reply(c, "@stratum ignore", "mona") for c in comments]
+    gh.issue_comments_[9] = [{"id": next(_ids), "body": "@stratum ignore workflow/unpinned-action", "user": {"login": login}}
+                             for login in ("mona", "lisa", "otto", "rob", "sam")]
+    assert feedback.learn(gh, BOT).rules == {}
+    gh.history_review_comments += [reply(c, "/stratum ignore", "mona") for c in comments[:5]]
+    assert feedback.learn(gh, BOT).rules == {"workflow/unpinned-action": [3, 4, 5, 6, 7]}
+
+
+def test_the_actions_mute_reply_points_to_learning_when_it_is_on(gh):
+    from test_runner import comment_event
+
+    from stratum_open.github.commands import MUTE_LEARNS, MUTE_NEEDS_APP, handle
+
+    for policy, expected in ((parse_policy(None), MUTE_NEEDS_APP), (LEARN, MUTE_LEARNS)):
+        event, payload = comment_event("/stratum mute deps/new", login="mona")
+        assert handle(context(gh, None, policy=policy), event, payload) == "mute"
+        assert gh.issue_comments_[7][-1]["body"] == expected
+    assert "needs somewhere to store it" in MUTE_NEEDS_APP and "review.learn_from_history" in MUTE_LEARNS

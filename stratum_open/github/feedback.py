@@ -4,7 +4,7 @@ access, so a contributor can't vote down the findings on their own PR.
 The GitHub App stores the votes on each PR it reviews (`collect_votes`). The
 Action stores nothing: with `review.learn_from_history` on, it reads them at
 review time from the repo's latest inline comments instead, with the
-`@stratum ignore` commands maintainers gave (`learn`). Both mute a rule by
+`/stratum ignore` commands maintainers gave (`learn`). Both mute a rule by
 the same thresholds (`storage.muted_by_votes`).
 """
 
@@ -112,9 +112,9 @@ def learn(gh: GitHub, bot: str, *, lookback: int = 100) -> Learned:
     """Read the repo's latest `lookback` inline comments and `lookback`
     issue and PR comments, and work out what maintainers rejected:
 
-    - a 👎 on one of Stratum's inline comments, or an `@stratum ignore` reply
+    - a 👎 on one of Stratum's inline comments, or an `/stratum ignore` reply
       to it, is a vote against that finding and its rule; a 👍 is one for;
-    - `@stratum ignore <rule>` on a PR is a vote against the rule there.
+    - `/stratum ignore <rule>` on a PR is a vote against the rule there.
 
     Only people with write access count, as for the App's votes and for the
     commands, and each counts once per comment (or once per PR, for an ignored
@@ -168,7 +168,7 @@ def learn(gh: GitHub, bot: str, *, lookback: int = 100) -> Learned:
         commands = gh.recent_issue_comments(lookback)
     except (GitHubError, requests.RequestException) as exc:
         commands = []
-        learned.problem = f"Couldn't read the repo's earlier PR comments ({_why(exc)}), so `@stratum ignore <rule>` there wasn't counted."
+        learned.problem = f"Couldn't read the repo's earlier PR comments ({_why(exc)}), so `/stratum ignore <rule>` there wasn't counted."
     ignored: set[tuple[int | None, str, str]] = set()  # (PR, person, rule)
     for comment in commands:
         login = (comment.get("user") or {}).get("login") or ""
