@@ -19,7 +19,7 @@ from stratum_open.engine import default_conclusion
 from stratum_open.findings import Finding, counts, severity_rank
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.policy import Policy
-from stratum_open.review import MIN_REPEATED_FILES, COMMAND
+from stratum_open.review import COMMAND, MIN_REPEATED_FILES
 from stratum_open.triage import COLORS, DESCRIPTIONS, KEYS, Triage, label_for
 
 CHECK_NAME = "Stratum"
