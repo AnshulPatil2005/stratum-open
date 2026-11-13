@@ -100,7 +100,7 @@ The target is a 7–14B open coding model. Defaults:
 - any OpenAI-compatible server works;
 - a hosted model works too, if your project prefers one (`review.model: hosted`, with the key in `STRATUM_MODEL_API_KEY`).
 
-On GitHub's free runner (4 CPUs, 16 GB RAM, no GPU) you can choose between two models. The numbers are from the [planted-bug benchmark](benchmark/README.md): 39 real PRs, each with one bug planted.
+On GitHub's free runner (4 CPUs, 16 GB RAM, no GPU) you can choose between two models. The numbers are from the [planted-bug benchmark](benchmark/README.md): 39 real PRs, each with one bug planted. Every number, with its sample size and 95% interval, is on the [results page](benchmark/RESULTS.md).
 
 | `ollama-model` | Policy setting | Bugs found | Wrong comments per clean PR | Time per PR | Download |
 | --- | --- | --- | --- | --- | --- |
