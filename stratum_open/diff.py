@@ -12,6 +12,8 @@ import re
 from dataclasses import dataclass, field, replace
 from typing import Callable, Iterable
 
+from stratum_open import util  # not `count`, which `pack` takes as a parameter
+
 _HUNK = re.compile(r"^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@ ?(.*)$")
 
 
@@ -304,7 +306,7 @@ def _removal_note(hunk: Hunk) -> str:
     if before is None:
         before = hunk.new_start - 1
     where = f"after line {before}" if before > 0 else "at the start of the file"
-    return f"({removed} line{'' if removed == 1 else 's'} removed {where})"
+    return f"({util.count(removed, 'line')} removed {where})"
 
 
 def approx_tokens(text: str) -> int:

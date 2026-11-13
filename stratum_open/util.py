@@ -26,6 +26,11 @@ _SECRET = re.compile(
 REDACTED = "[redacted]"
 
 
+def count(n: int, noun: str) -> str:
+    """`n` and `noun`, plural unless `n` is 1: "1 file", "3 files"."""
+    return f"{n} {noun}{'' if n == 1 else 's'}"
+
+
 def redact(text: str) -> str:
     """`text` with anything shaped like a credential replaced, for anything
     that's written down: the database, a log line, an error message."""

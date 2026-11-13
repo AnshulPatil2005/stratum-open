@@ -43,6 +43,8 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Iterable
 
+from stratum_open.util import count
+
 PY_EXTENSIONS = (".py",)
 JS_EXTENSIONS = (".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".mts", ".cts")
 SKIP_DIRS = frozenset({"node_modules", "dist", "build", "vendor", "__pycache__", "venv", "site-packages"})
@@ -128,7 +130,7 @@ def related_note(found: Importers) -> str:
     parts = []
     if found.count:
         shown = ", ".join(f"`{example}`" for example in found.examples)
-        parts.append(f"Imported by {found.count} file{'' if found.count == 1 else 's'}: {shown}"
+        parts.append(f"Imported by {count(found.count, 'file')}: {shown}"
                      + (" and others." if found.count > len(found.examples) else "."))
     if found.imports:
         parts.append("It imports " + ", ".join(f"`{target}`" for target in found.imports) + ".")

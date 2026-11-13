@@ -9,11 +9,10 @@ once, which says nothing about who changes what.
 
 from __future__ import annotations
 
-import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from stratum_open.track_record import author_identity
+from stratum_open.track_record import _git, author_identity, commit_sha
 
 
 @dataclass(frozen=True)
@@ -34,10 +33,10 @@ class Commit:
 def recent_commits(repo_dir: str, ref: str = "HEAD", *, window_days: int = 180, now: datetime | None = None) -> list[Commit]:
     """Non-merge commits on `ref` in the last `window_days`, newest first.
     An empty repo or a ref that doesn't exist has none."""
-    if not has_commit(repo_dir, ref):
+    if commit_sha(repo_dir, ref) is None:
         return []
     since = (now or datetime.now(timezone.utc)) - timedelta(days=window_days)
-    out = git(  # the --since form is explained in track_record._history
+    out = _git(  # the --since form is explained in track_record._history
         repo_dir, "log", "--no-merges", "-M", "--name-status", "-z",
         f"--since=@{max(0, int(since.timestamp()))} +0000", "--format=%x1e%H%x1f%P%x1f%aE%x1f%s", ref,
     )
@@ -50,21 +49,6 @@ def recent_commits(repo_dir: str, ref: str = "HEAD", *, window_days: int = 180, 
         if parents.strip():
             commits.append(Commit(sha, author_identity(email), _changes(body.strip("\n").split("\0")), subject.strip()))
     return commits
-
-
-def has_commit(repo_dir: str, ref: str) -> bool:
-    try:
-        git(repo_dir, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}")
-    except subprocess.CalledProcessError:
-        return False
-    return True
-
-
-def git(repo_dir: str, *args: str) -> str:
-    return subprocess.run(
-        ["git", "-C", repo_dir, *args],
-        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120, check=True,
-    ).stdout
 
 
 def _changes(fields: list[str]) -> tuple[Change, ...]:

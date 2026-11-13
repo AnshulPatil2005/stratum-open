@@ -18,6 +18,7 @@ from stratum_open.util import retry_after
 API = "https://api.github.com"
 TIMEOUT = 30  # seconds, per call
 RETRIES = 2  # extra tries on 5xx and rate limits
+WRITE = {"admin", "maintain", "write"}  # the permission() roles with write access
 _NEXT = re.compile(r'<([^>]+)>;\s*rel="next"')
 
 

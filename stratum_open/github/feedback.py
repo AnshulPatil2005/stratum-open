@@ -7,11 +7,10 @@ Only the GitHub App counts them, because it can store votes across PRs.
 from __future__ import annotations
 
 from stratum_open.github import publish
-from stratum_open.github.api import GitHub, GitHubError
+from stratum_open.github.api import WRITE, GitHub, GitHubError
 from stratum_open.storage import Storage
 
 VOTES = {"+1": 1, "-1": -1}
-WRITE = {"admin", "maintain", "write"}
 
 
 def collect_votes(gh: GitHub, number: int, bot: str, storage: Storage) -> int:
@@ -20,7 +19,7 @@ def collect_votes(gh: GitHub, number: int, bot: str, storage: Storage) -> int:
     permissions: dict[str, bool] = {}
     recorded = 0
     for comment in gh.review_comments(number):
-        if (comment.get("user") or {}).get("login", "").lower() != bot.lower():
+        if not publish._is_bot(comment, bot):
             continue
         match = publish._FINDING.search(comment.get("body") or "")
         totals = comment.get("reactions") or {}
