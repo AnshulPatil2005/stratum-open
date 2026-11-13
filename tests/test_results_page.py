@@ -7,6 +7,7 @@ A new folder under benchmark/results/ changes the page, and the first test
 then says which command to run. No test names a result folder, so a new one
 needs nothing else here, unless it makes a figure in a README out of date."""
 
+import json
 import re
 import sys
 from itertools import zip_longest
@@ -120,21 +121,52 @@ def test_a_folder_that_cant_be_counted_is_listed_with_the_reason(tmp_path):
     assert str(tmp_path) not in text and tmp_path.name not in text
 
 
+def _checks(folder, cases, merged, prs, repo="o/r"):
+    """A run of `planted.py checks`: its planted cases, and findings on `prs` merged PRs."""
+    folder.mkdir(parents=True)
+    (folder / "planted.json").write_text(json.dumps(cases), encoding="utf-8")
+    (folder / "prs.json").write_text(json.dumps([{"repo": repo, "pr": number} for number in range(1, prs + 1)]), encoding="utf-8")
+    rows = [{"set": "planted", "case": case["id"], "rule": case["rule"], "expected": "yes"} for case in cases if case["caught"] and not case.get("control")]
+    rows += [{"set": "merged", "case": case, "rule": rule, "verdict": verdict} for case, rule, verdict in merged]
+    bench._write(folder / "checks.csv", planted.CHECK_COLUMNS, rows)
+
+
+def test_a_rule_that_is_off_by_default_gets_a_row_of_its_own_and_groups_are_added_up(tmp_path):
+    name = planted.UNKNOWN_NAME
+    cases = [{"id": "secret", "rule": "code/secret", "caught": True}, {"id": "name-1", "rule": name, "caught": True},
+             {"id": "name-2", "rule": name, "caught": False}, {"id": "name-control", "rule": name, "caught": False, "control": True}]
+    _checks(tmp_path / "split" / "go", cases, [("o/r#1", name, "wrong"), ("o/r#2", "paths/always-human", "right")], prs=3)
+    _checks(tmp_path / "split" / "js", cases, [("o/s#1", name, "")], prs=2, repo="o/s")
+    page = results_page.collect(tmp_path)
+    assert [(row["group"], row["caught"], row["risks"], row["left_alone"], row["controls"]) for row in page["checks"]] == [("go", 2, 3, 1, 1), ("js", 2, 3, 1, 1)]
+    assert [(row["setting"], row["caught"], row["risks"], row["findings"], row["wrong_prs"], row["open_prs"]) for row in page["rules"]] == [
+        ("checks.unknown_names", 1, 2, 1, 1, 0), ("checks.unknown_names", 1, 2, 1, 0, 1)]
+    (together,) = page["corpus"]
+    assert (together["prs"], together["findings"], together["flagged"], together["wrong_prs"], together["open_prs"]) == (5, 3, 3, 1, 1)
+    text = results_page.render(page)
+    assert "(results/split/)" in text and "(results/split/go/)" in text and "| `checks.unknown_names` | `code/unknown-name` | 1 of 2 |" in text
+    assert "| at least 1 of 5 |" in text
+
+
 # ── the figures the READMEs quote ────────────────────────────────────────
 
 
 def _pairs(page, run=None):
     """Every "k of n" the page gives as settled, for one run or for all of them."""
     def rows(kind):
-        return [row for row in page[kind] if run in (None, row["run"])]
+        return [row for row in page.get(kind, []) if run in (None, row["run"])]
 
     pairs = set()
     for row in rows("models"):
         pairs |= {(row["near_clean"], row["clean"])} | ({(row["found"], row["shown"])} if not row["open"] else set())
-    for row in rows("checks"):
-        pairs |= {(row["caught"], row["risks"]), (row["flagged"], row["prs"])} | ({(row["wrong_prs"], row["prs"])} if not row["open_prs"] else set())
+    for row in rows("checks") + rows("rules"):
+        pairs |= {(row["caught"], row["risks"]), (row["left_alone"], row["controls"])}
+    for row in rows("checks") + rows("rules") + rows("corpus"):
+        pairs |= {(row["flagged"], row["prs"])} | ({(row["wrong_prs"], row["prs"])} if not row["open_prs"] else set())
     for row in rows("awaits"):
         pairs |= {(row["caught"], row["cases"]), (row["alarm_prs"], row["prs"])}
+    for row in rows("as_new"):
+        pairs |= {(row["right"], row["right"] + row["wrong"])}
     return {(hits, n) for hits, n in pairs if n}
 
 
@@ -224,7 +256,7 @@ def models_table_problems(text, page):
 
 def merged_prs_problems(text, page, where):
     """"184 merged PRs" has to be the number of merged PRs some run checked."""
-    known = {row["prs"] for kind in ("checks", "awaits", "merged") for row in page[kind]}
+    known = {row["prs"] for kind in ("checks", "corpus", "awaits", "merged") for row in page.get(kind, [])}
     return [f"{where} says \"{number} merged PRs\". The runs on the page checked {', '.join(map(str, sorted(known)))}."
             for number in sorted({int(n) for n in re.findall(r"\b(\d+) (?:real |clean )?merged PRs\b", text)}) if number not in known]
 
@@ -242,11 +274,11 @@ def run_table_problems(text, page):
         where = f"benchmark/README.md, on {run}"
         models = [row for row in page["models"] if row["run"] == run]
         checks = [row for row in page["checks"] if row["run"] == run]
-        if not any(row["run"] == run for kind in ("models", "checks", "awaits", "merged") for row in page[kind]):
+        if not any(row["run"] == run for kind in results_page.KINDS for row in page.get(kind, [])):
             problems.append(f"{where}: benchmark/RESULTS.md has no numbers for that run.")
             continue
         problems += count_problems(said, _pairs(page, run), where)
-        problems += merged_prs_problems(said, {kind: [row for row in page[kind] if row["run"] == run] for kind in ("checks", "awaits", "merged")}, where)
+        problems += merged_prs_problems(said, {kind: [row for row in page.get(kind, []) if row["run"] == run] for kind in results_page.KINDS}, where)
         found = sorted(row["found"] for row in models)
 
         every = re.match(r"Planted bugs found: (.+?), of (\d+)", said)  # "... 7B 1, 14B 10, of 39"
@@ -312,7 +344,7 @@ MADE_UP = {
         _model("third", "big:20b", "reasoning-low-verify-lenient", 16, clean=39, near_clean=2, on_clean=10, seconds=222.0),
         _model("third", "big:20b", "reasoning-low-verify-strict", 16, clean=39, on_clean=7, seconds=209.75),
     ],
-    "checks": [{"run": "checks", "risks": 44, "caught": 43, "prs": 184, "flagged": 2, "wrong_prs": 0, "open_prs": 0,
+    "checks": [{"run": "checks", "risks": 44, "caught": 43, "controls": 0, "left_alone": 0, "prs": 184, "flagged": 2, "wrong_prs": 0, "open_prs": 0,
                 "marked": {"right": 3, "wrong": 0, "unsure": 0, "": 0}}],
     "awaits": [], "merged": [],
 }
