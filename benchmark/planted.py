@@ -12,9 +12,14 @@ answer is known before the model reads it.
     python benchmark/planted.py checks --risks benchmark/planted/risks.yml --prs benchmark/planted/clean.json \\
         --out benchmark/results/<name>-checks
 
+    python benchmark/planted.py validate --bugs benchmark/planted/bugs.json --bugs benchmark/planted/bugs-2.json
+
 `run` reviews each case the way the Action does (the `small` profile, an
 8,192-token window) and writes reviews.csv and findings.csv. A finding counts
 as near the bug when it's on the planted file within LINES_NEAR lines of it.
+A case whose `replace` is null drops its line instead of changing it (a
+statement the PR should have written): the diff is numbered as if the line
+were never there, and a finding is near within LINES_NEAR lines of the gap.
 Mark the `verdict` column of findings.csv by hand: `right` for a finding near
 the bug that describes it, or for any other finding that's a real problem;
 `wrong` or `unsure` otherwise. `score` reads every reviews.csv under the run
@@ -23,11 +28,18 @@ folder (one per shard), so shards run as separate jobs.
 `checks` runs the checks that need no model: on planted risks (risks.yml),
 each of which should get its rule's finding, and on merged PRs as they are,
 where every finding is a possible false alarm for a person to mark.
+
+`validate` reads every case of a case file against its PR, before a model
+does: the fields are in order, the line is one the PR adds and reads `find`,
+and the file still parses with the bug in it. It notes, without failing, a
+`find` that several added lines match and a `replace` the PR's diff already
+holds; `--strict` fails on those too.
 """
 
 from __future__ import annotations
 
 import argparse
+import ast
 import csv
 import json
 import os
@@ -39,6 +51,7 @@ import sys
 import time
 from collections import defaultdict
 from pathlib import Path
+from typing import Callable
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -61,6 +74,7 @@ POLICY = "review:\n  profile: small\n  context_tokens: {tokens}\n"  # what the A
 REVIEW_COLUMNS = ["case", "set", "kind", "path", "line", "model", "variant", "version", "seconds", "shown", "calls", "failed_calls", "findings", "near", "error"]
 FINDING_COLUMNS = ["case", "model", "variant", "version", "severity", "category", "path", "line", "near", "title", "detail", "verdict", "note"]
 BUGS = Path(__file__).resolve().parent / "planted" / "bugs.json"
+CASE_KEYS = ("repo", "pr", "path", "line", "kind", "set", "find", "replace", "why")  # and `invalid`, on a case found not to be a bug
 CHECK_COLUMNS = ["set", "case", "rule", "path", "line", "title", "expected", "verdict", "note"]
 
 
@@ -80,6 +94,9 @@ def main() -> int:
     run.add_argument("--variant", default="", help="a name for what --policy changes, kept with the results")
     fetch = sub.add_parser("fetch", help="fill the cache, so parallel jobs needn't each call GitHub")
     fetch.add_argument("--bugs", required=True)
+    validate = sub.add_parser("validate", help="check every case against its PR, before a model reads any of them")
+    validate.add_argument("--bugs", required=True, action="append", help="a case file; repeat for several")
+    validate.add_argument("--strict", action="store_true", help="also fail on the notes, such as a `find` that several added lines match")
     score = sub.add_parser("score")
     score.add_argument("out")
     checks = sub.add_parser("checks")
@@ -92,7 +109,7 @@ def main() -> int:
             _, text = _fetch(bug["repo"], int(bug["pr"]))
             _head_contents(bug["repo"], int(bug["pr"]), parse_diff(text))
         return 0
-    return {"run": _run, "score": lambda a: _score(Path(a.out)), "checks": _checks}[args.command](args)
+    return {"run": _run, "score": lambda a: _score(Path(a.out)), "checks": _checks, "validate": _validate}[args.command](args)
 
 
 # ── the model review ─────────────────────────────────────────────────────
@@ -100,18 +117,51 @@ def main() -> int:
 
 def plant(bug: dict, files: list[FileDiff]) -> Line:
     """Swap the planted line into the parsed diff; fails loudly if the PR's
-    line isn't what bugs.json says, so a stale case can't pass for a miss."""
+    line isn't what bugs.json says, so a stale case can't pass for a miss.
+
+    A case whose `replace` is null drops the line instead, as if the PR had
+    never written it. The line returned is then the one beside the gap, which
+    is what `shown` can look for."""
     for file in files:
         if file.path != bug["path"]:
             continue
         for hunk in file.hunks:
-            for line in hunk.lines:
+            for index, line in enumerate(hunk.lines):
                 if line.kind == "+" and line.new == bug["line"]:
                     if line.text != bug["find"]:
                         raise SystemExit(f"{bug['repo']}#{bug['pr']} {bug['path']}:{bug['line']} reads {line.text!r}, not {bug['find']!r}")
+                    if bug["replace"] is None:
+                        return _drop(bug, file, hunk, index)
                     line.text = bug["replace"]
                     return line
     raise SystemExit(f"{bug['repo']}#{bug['pr']}: no added line {bug['path']}:{bug['line']}")
+
+
+def _drop(bug: dict, file: FileDiff, hunk: Hunk, index: int) -> Line:
+    """Take an added line out of the diff. Every later line of the file moves
+    up by one, so the diff still numbers the new file as it would be without
+    the line, and `bug["line"]` is now the number of the line that followed it:
+    the gap is just above. Returns that line, or the one above the gap when
+    the dropped line ended its hunk."""
+    del hunk.lines[index]
+    if not any(line.kind == "+" for line in hunk.lines):
+        # The PR wouldn't have this hunk, or would only remove lines there,
+        # which the model is told of in a note and can't comment on.
+        raise SystemExit(f"{bug['repo']}#{bug['pr']} {bug['path']}:{bug['line']} is the only line its hunk adds, so without it the diff wouldn't show the place")
+    after = False
+    for other in file.hunks:
+        if other is hunk:
+            after, moved = True, hunk.lines[index:]
+        elif after:
+            other.new_start -= 1
+            moved = other.lines
+        else:
+            continue
+        for line in moved:
+            if line.new is not None:
+                line.new -= 1
+    below = [line for line in hunk.lines[index:] if line.new is not None]
+    return below[0] if below else [line for line in hunk.lines[:index] if line.new is not None][-1]
 
 
 def near(finding, bug: dict) -> bool:
@@ -123,8 +173,9 @@ def near(finding, bug: dict) -> bool:
 def shown(chunks: list[str], path: str, line: Line) -> bool:
     """Whether the planted line, numbered as `render` numbers it, is in the
     planted file's part of a prompt: its text alone (`return True`) could be
-    anywhere else in a clipped diff."""
-    numbered = f"{line.new:>6} +  {line.text}"
+    anywhere else in a clipped diff. For a dropped line it's the line beside
+    the gap, which the PR may have added or only left as it was."""
+    numbered = f"{line.new:>6} {line.kind}  {line.text}"
     return any(
         section.startswith(f"{path} (") and numbered in section.split("\n")
         for chunk in chunks for section in ("\n" + chunk).split("\n## ")[1:]
@@ -149,14 +200,14 @@ def original(bug: dict, files: list[FileDiff]) -> Line:
     raise SystemExit(f"{bug['repo']}#{bug['pr']}: no added line {bug['path']}:{bug['line']}")
 
 
-def with_line(contents: dict[str, str], bug: dict, text: str) -> dict[str, str]:
+def with_line(contents: dict[str, str], bug: dict, text: str | None) -> dict[str, str]:
     """The files' full text as the Action reads it, with the planted line in
-    it too, so code shown around a hunk (`review.context_lines`) agrees with
-    the diff."""
+    it too (or out of it, when `text` is None: a dropped line), so code shown
+    around a hunk (`review.context_lines`) agrees with the diff."""
     contents = dict(contents)
     lines = contents.get(bug["path"], "").split("\n")
     if len(lines) >= bug["line"] and lines[bug["line"] - 1] in (bug["find"], bug["replace"]):
-        lines[bug["line"] - 1] = text
+        lines[bug["line"] - 1:bug["line"]] = [] if text is None else [text]
         contents[bug["path"]] = "\n".join(lines)
     return contents
 
@@ -177,7 +228,8 @@ def _run(args) -> int:
         pull, text = _fetch(bug["repo"], int(bug["pr"]))
         files = parse_diff(text)
         planted = original(bug, files) if args.clean else plant(bug, files)
-        contents = with_line(_head_contents(bug["repo"], int(bug["pr"]), files), bug, planted.text)
+        dropped = bug["replace"] is None and not args.clean
+        contents = with_line(_head_contents(bug["repo"], int(bug["pr"]), files), bug, None if dropped else planted.text)
         started = time.monotonic()
         result = analyze(title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=policy, model=model,
                          contents=contents)
@@ -206,6 +258,123 @@ def _run(args) -> int:
     return 0
 
 
+def case_format(bug: object) -> list[str]:
+    """What is wrong with a case's fields, before its PR is read."""
+    if not isinstance(bug, dict):
+        return ["isn't an object"]
+    problems = [f"has no `{key}`" for key in CASE_KEYS if key not in bug]
+    problems += [f"has an unknown key `{key}`" for key in bug if key not in (*CASE_KEYS, "invalid")]
+    if problems:
+        return problems
+    if not (isinstance(bug["repo"], str) and re.fullmatch(r"[\w.-]+/[\w.-]+", bug["repo"])):
+        problems.append("`repo` isn't owner/name")
+    for key in ("pr", "line"):
+        if type(bug[key]) is not int or bug[key] < 1:
+            problems.append(f"`{key}` isn't a positive whole number")
+    for key in ("path", "kind", "find", "why", *(["invalid"] if "invalid" in bug else [])):
+        if not (isinstance(bug[key], str) and bug[key].strip()):
+            problems.append(f"`{key}` is empty or isn't text")
+    if bug["set"] not in ("dev", "test"):
+        problems.append("`set` is neither dev nor test")
+    if bug["replace"] is not None and not isinstance(bug["replace"], str):
+        problems.append("`replace` is neither text nor null (null drops the line)")
+    elif bug["replace"] == bug["find"]:
+        problems.append("`replace` is the same as `find`")
+    return problems
+
+
+def case_problems(bug: dict, files: list[FileDiff], contents: dict[str, str]) -> tuple[list[str], list[str]]:
+    """A well-formed case against its PR's diff and the files at its head:
+    what makes it unusable, and notes. The bug has to be on a line the PR
+    adds, since only those are reviewed, and the file has to parse with the
+    bug in it, so that a finding there isn't just a syntax error's."""
+    where = f"{bug['path']}:{bug['line']}"
+    file = next((f for f in files if f.path == bug["path"]), None)
+    added = file.added() if file else []
+    here = [text for number, text in added if number == bug["line"]]
+    if not here:
+        return [f"the PR adds no line {where}"], []
+    if here[0] != bug["find"]:
+        return [f"{where} reads {here[0]!r}, not `find`"], []
+    problems, notes = [], []
+    same = [number for number, text in added if text == bug["find"]]
+    if len(same) > 1:
+        notes.append(f"`find` is on {len(same)} added lines of {bug['path']} ({', '.join(map(str, same))}): only the line number tells them apart")
+    if bug["replace"] in file.removed():
+        notes.append(f"`replace` is a line the PR removes from {bug['path']}: planted, the diff would show it removed and added back")
+    if bug["replace"] in [text for number, text in added if number != bug["line"]]:
+        notes.append(f"`replace` is already an added line of {bug['path']}: planted, the diff would hold it twice")
+    hunk = next(h for h in file.hunks if any(line.kind == "+" and line.new == bug["line"] for line in h.lines))
+    if bug["replace"] is None and not any(line.kind == "+" and line.new != bug["line"] for line in hunk.lines):
+        problems.append(f"{where} is the only line its hunk adds, so without it the diff wouldn't show the place")
+    text = contents.get(bug["path"])
+    planted = with_line(contents, bug, bug["replace"]).get(bug["path"])
+    if text is None:
+        problems.append(f"the cache has no text of {bug['path']} at the PR's head, so it can't be parsed")
+    elif planted == text:
+        problems.append(f"{where} at the PR's head doesn't read `find`")
+    elif error := _syntax_error(text):
+        problems.append(f"{bug['path']} doesn't parse as merged, on Python {sys.version_info.major}.{sys.version_info.minor}: {error}")
+    elif error := _syntax_error(planted):
+        problems.append(f"{bug['path']} doesn't parse with the bug planted: {error}")
+    elif bug["replace"] is None and not _is_statement(text, bug["line"]):
+        problems.append(f"{where} isn't a whole statement, and only a whole one can be dropped")
+    return problems, notes
+
+
+def _syntax_error(text: str) -> str:
+    try:
+        ast.parse(text)
+    except (SyntaxError, ValueError) as error:
+        return f"{getattr(error, 'msg', error)} (line {getattr(error, 'lineno', '?')})"
+    return ""
+
+
+def _is_statement(text: str, line: int) -> bool:
+    """Whether the line holds one statement, all of it."""
+    return any(isinstance(node, ast.stmt) and node.lineno == line == node.end_lineno for node in ast.walk(ast.parse(text)))
+
+
+def validate(bugs: object, load: Callable[[dict], tuple[list[FileDiff], dict[str, str]]]) -> list[tuple[str, list[str], list[str]]]:
+    """Every case of a case file checked: (case, problems, notes) for each one
+    that has either. `load` gives a case's parsed diff and its files' text."""
+    if not isinstance(bugs, list):
+        return [("the file", ["isn't a list of cases"], [])]
+    found, seen = [], set()
+    for index, bug in enumerate(bugs, start=1):
+        problems, notes = case_format(bug), []
+        case = f"{bug['repo']}#{bug['pr']}" if not problems else f"case {index}"
+        if not problems and case in seen:
+            problems.append("is in the file twice: a PR holds one planted bug")
+        seen.add(case)
+        if not problems:
+            problems, notes = case_problems(bug, *load(bug))
+        if problems or notes:
+            found.append((case, problems, notes))
+    return found
+
+
+def _validate(args) -> int:
+    def load(bug: dict) -> tuple[list[FileDiff], dict[str, str]]:
+        files = parse_diff(_fetch(bug["repo"], int(bug["pr"]))[1])
+        return files, _head_contents(bug["repo"], int(bug["pr"]), files)
+
+    failed = False
+    for name in args.bugs:
+        bugs = json.loads(Path(name).read_text(encoding="utf-8"))
+        found = validate(bugs, load)
+        for case, problems, notes in found:
+            for problem in problems:
+                print(f"{case}: {problem}")
+            for note in notes:
+                print(f"{case}: note: {note}")
+        wrong = sum(len(problems) for _, problems, _ in found)
+        noted = sum(len(notes) for _, _, notes in found)
+        failed = failed or bool(wrong) or (args.strict and bool(noted))
+        print(f"{name}: {len(bugs) if isinstance(bugs, list) else 0} case(s), {wrong} problem(s), {noted} note(s)", flush=True)
+    return 1 if failed else 0
+
+
 def _score(out: Path) -> int:
     """summary.md for whatever the run folder holds: the checks' results,
     the model reviews (every reviews.csv under it, one per shard), or both."""
@@ -224,12 +393,21 @@ def _score(out: Path) -> int:
     return 0
 
 
+def _cases_of(reviews: list[dict]) -> list[dict]:
+    """Every case of the case files (planted/bugs*.json) a run's cases come
+    from. No PR is in two of them, so a case names its file."""
+    ran = {row["case"] for row in reviews}
+    files = [json.loads(path.read_text(encoding="utf-8")) for path in sorted(BUGS.parent.glob("bugs*.json"))]
+    return [bug for bugs in files if any(f"{b['repo']}#{b['pr']}" in ran for b in bugs) for bug in bugs]
+
+
 def _model_summary(out: Path) -> str:
-    every = json.loads(BUGS.read_text(encoding="utf-8"))
+    reviews = [row for path in sorted(out.rglob("reviews.csv")) for row in _read(path)]
+    every = _cases_of(reviews)
     sets = {f"{b['repo']}#{b['pr']}": b.get("set", "") for b in every}
     invalid = {f"{b['repo']}#{b['pr']}": b["invalid"] for b in every if b.get("invalid")}
     # A case found not to be a bug after a run is left out of its scores too.
-    reviews = [row for path in sorted(out.rglob("reviews.csv")) for row in _read(path) if row["case"] not in invalid]
+    reviews = [row for row in reviews if row["case"] not in invalid]
     findings = [row for path in sorted(out.rglob("findings.csv")) for row in _read(path) if row["case"] not in invalid]
     for row in reviews + findings:  # runs from before the clean control and the split
         row["variant"] = row.get("variant") or ""
