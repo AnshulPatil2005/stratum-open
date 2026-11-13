@@ -11,7 +11,7 @@ from __future__ import annotations
 PYPI = tuple("""
 boto3 botocore urllib3 requests setuptools certifi charset-normalizer idna typing-extensions python-dateutil
 s3transfer packaging six numpy pyyaml fsspec s3fs pip cryptography cffi pycparser pandas importlib-metadata
-protobuf pyasn1 pyasn1-modules rsa zipp attrs jmespath click platformdirs wheel pydantic pydantic-core
+protobuf pyasn1 pyasn1-modules rsa zipp attrs cattrs jmespath click platformdirs wheel pydantic pydantic-core
 jinja2 markupsafe pytz filelock colorama awscli toml tomli tomlkit virtualenv pyjwt cachetools google-auth
 google-api-core googleapis-common-protos pluggy pytest wrapt jsonschema psutil iniconfig annotated-types
 sqlalchemy aiohttp multidict yarl frozenlist aiosignal async-timeout tzdata pyarrow docutils

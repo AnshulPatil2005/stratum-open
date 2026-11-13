@@ -313,6 +313,7 @@ def test_each_new_dependency_is_a_low_supply_chain_finding():
     ("preact", "npm", None),
     ("sha3", "crates", None),
     ("numba", "pypi", None),
+    ("cattrs", "pypi", None),  # a real package beside attrs
     ("requests", "pypi", None),
     ("cobra", "go", None),
 ])

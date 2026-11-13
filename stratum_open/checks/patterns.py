@@ -111,7 +111,7 @@ _ASSIGNED = re.compile(
 _PLACEHOLDER = re.compile(
     r"(?i)change[_-]?me|example|dummy|test|sample|placeholder|your|fake|redacted|xxx|\*{3}|\.{3}|[<>]|\$\{|\{\{|%\(|%s|^\$"
 )
-_WORDY = re.compile(r"[A-Za-z]+(?:[_.-][A-Za-z]+)*")  # a field name like "access_token", not a secret
+_WORDY = re.compile(r"[^\W\d_]+(?:[_.-][^\W\d_]+)*")  # a field name like "access_token", not a secret
 _ENV_LOOKUP = re.compile(r"environ|getenv|process\.env|\bENV\[|\bsecrets\.|\benv\(")
 _TEMPLATE_FILE = re.compile(r"\.(?:example|sample|template|tmpl|dist)(?:\.|$)")
 
