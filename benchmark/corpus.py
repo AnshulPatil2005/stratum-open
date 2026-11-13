@@ -7,7 +7,7 @@ what the checks found on them.
     # mark the verdict column of each checks.csv: right | wrong | unsure
     python benchmark/corpus.py summary benchmark/results/<name>
 
-planted/clean.json is merged PRs from Python projects only. `pick` writes four
+planted/clean.json is merged PRs from Python projects only. `pick` writes six
 more lists in the same form, each PR pinned by its head commit:
 
 - clean-js.json, clean-go.json, clean-rust.json: for each project below, its
@@ -18,6 +18,16 @@ more lists in the same form, each PR pinned by its head commit:
   line to a workflow, the newest by a person that adds a line to a dependency
   manifest, and the newest by a bot (Dependabot, Renovate, a release action)
   that does either.
+- clean-tests.json: for each of the same projects, from the PRs in none of the
+  lists above and under the same size limit, the TESTS_PER_PROJECT newest that
+  remove a line from a test file of the project's language. The lists above
+  were picked for their source, and the rules about weakened tests read what
+  a PR takes out of the tests.
+- clean-flaky.json: for each of the same projects, from the PRs in none of the
+  lists above and under the same size limit, the FLAKY_PER_PROJECT newest that
+  change a test file of the project's language and whose title is about a
+  flaky test, or about skipping, disabling or ignoring one: the PRs where a
+  test is most likely to be switched off or loosened, and to say so.
 
 "Newest" is by PR number. Only PRs merged into the project's default branch
 before CUTOFF count (a backport to a release branch repeats a PR already
@@ -42,6 +52,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -57,6 +68,9 @@ from stratum_open.checks.dependencies import manifest_kind  # noqa: E402
 
 CUTOFF = "2026-11-13T00:00:00Z"
 PER_PROJECT = 10
+TESTS_PER_PROJECT = 20
+FLAKY_PER_PROJECT = 10
+FLAKY = re.compile(r"flak|\b(?:skip|disabl|ignor|xfail|quarantin)\w*\b.*\btests?\b|\btests?\b.*\b(?:skip|disabl|ignor|xfail|quarantin)", re.I)
 MAX_ADDED = 400
 LOOK_BACK = 300
 PAGE = 50
@@ -86,9 +100,9 @@ query($owner: String!, $name: String!, $first: Int!, $files: Int!, $after: Strin
     pullRequests(states: MERGED, first: $first, after: $after, orderBy: {field: CREATED_AT, direction: DESC}) {
       pageInfo { hasNextPage endCursor }
       nodes {
-        number mergedAt additions changedFiles headRefOid baseRefName
+        number title mergedAt additions changedFiles headRefOid baseRefName
         author { login __typename }
-        files(first: $files) { nodes { path additions } }
+        files(first: $files) { nodes { path additions deletions } }
       }
     }
   }
@@ -112,6 +126,8 @@ def main() -> int:
 
 def _pick(out: Path) -> int:
     infra: list[dict] = []
+    tests: list[dict] = []
+    flaky: list[dict] = []
     for language, repos in PROJECTS.items():
         picked: list[dict] = []
         for repo in repos:
@@ -121,10 +137,19 @@ def _pick(out: Path) -> int:
             taken = {p["number"] for p in mine}
             slots = infra_slots([p for p in pulls if fits(p) and p["number"] not in taken])
             infra += [entry(repo, p, slot) for slot, p in slots.items()]
+            taken |= {p["number"] for p in slots.values()}
+            trimmed = [p for p in pulls if fits(p) and p["number"] not in taken and trims_tests(p, language)][:TESTS_PER_PROJECT]
+            tests += [entry(repo, p) for p in trimmed]
+            taken |= {p["number"] for p in trimmed}
+            named = [p for p in pulls if fits(p) and p["number"] not in taken and FLAKY.search(p["title"]) and changes_tests(p, language)][:FLAKY_PER_PROJECT]
+            flaky += [entry(repo, p) for p in named]
             oldest = min((p["mergedAt"][:10] for p in mine), default="-")
-            print(f"{repo}: {len(mine)} {language} PR(s) back to {oldest}; infra: {', '.join(slots) or 'none'}", flush=True)
+            print(f"{repo}: {len(mine)} {language} PR(s) back to {oldest}; infra: {', '.join(slots) or 'none'}; "
+                  f"{len(trimmed)} that trim tests, {len(named)} about a flaky or skipped test", flush=True)
         write(out / f"clean-{language}.json", picked)
     write(out / "clean-infra.json", infra)
+    write(out / "clean-tests.json", tests)
+    write(out / "clean-flaky.json", flaky)
     return 0
 
 
@@ -138,6 +163,15 @@ def added_paths(pull: dict) -> list[str]:
 
 def adds_source(pull: dict, language: str) -> bool:
     return any(extension(path) in SOURCE[language] and not is_test_path(path) for path in added_paths(pull))
+
+
+def trims_tests(pull: dict, language: str) -> bool:
+    return any(f["deletions"] and extension(f["path"]) in SOURCE[language] and is_test_path(f["path"]) for f in pull["files"]["nodes"])
+
+
+def changes_tests(pull: dict, language: str) -> bool:
+    return any((f["additions"] or f["deletions"]) and extension(f["path"]) in SOURCE[language] and is_test_path(f["path"])
+               for f in pull["files"]["nodes"])
 
 
 def is_bot(pull: dict) -> bool:
@@ -179,7 +213,10 @@ def merged_pulls(repo: str) -> list[dict]:
     CACHE.mkdir(exist_ok=True)
     cached = CACHE / f"corpus__{repo.replace('/', '__')}__{CUTOFF[:10]}.json"
     if cached.exists():
-        return json.loads(cached.read_text(encoding="utf-8"))
+        pulls = json.loads(cached.read_text(encoding="utf-8"))
+        # A listing kept before the query asked for titles and deleted lines is read again.
+        if all("title" in p and all("deletions" in f for f in p["files"]["nodes"]) for p in pulls):
+            return pulls
     owner, name = repo.split("/")
     pulls: list[dict] = []
     after = None
