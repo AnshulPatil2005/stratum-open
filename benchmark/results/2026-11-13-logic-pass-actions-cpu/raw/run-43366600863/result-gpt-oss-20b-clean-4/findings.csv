@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8413,gpt-oss:20b,reasoning-low-verify-strict,clean,high,bug,scrapy/pipelines/files.py,56,,Missing _maybeDeferred_coro definition,"The code imports _maybeDeferred_coro, but this function is not defined in scrapy.utils.defer. Importing it will raise ImportError at runtime, breaking the pipeline.",,

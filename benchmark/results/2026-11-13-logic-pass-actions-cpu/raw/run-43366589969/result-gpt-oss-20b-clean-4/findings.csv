@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/werkzeug#3339,gpt-oss:20b,logic-context10-verify-strict,clean,medium,bug,src/werkzeug/test.py,952,,Potential crash on missing base_url,"If the supplied environ lacks the keys required to construct a Request.base_url (e.g. 'wsgi.url_scheme', 'SERVER_NAME', or 'PATH_INFO'), Request(environ).base_url will be None and urlsplit(None) raises a TypeError.",,
+scrapy/scrapy#8413,gpt-oss:20b,logic-context10-verify-strict,clean,medium,bug,scrapy/pipelines/files.py,56,,Missing import of _maybeDeferred_coro,"The code imports _maybeDeferred_coro from scrapy.utils.defer, but that name is not exported by that module. This will raise an ImportError at runtime, breaking the pipeline.",,

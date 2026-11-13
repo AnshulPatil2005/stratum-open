@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5899,dev,negated-condition,src/flask/app.py,1590,gpt-oss:20b,reasoning-low-verify-strict-context10,planted,176.4,yes,2,0,1,1,
+pallets/jinja#2026,dev,flipped-comparison,src/jinja2/runtime.py,998,gpt-oss:20b,reasoning-low-verify-strict-context10,planted,167.9,yes,2,0,1,1,
+pydantic/pydantic#14244,dev,flipped-comparison,pydantic/json_schema.py,2967,gpt-oss:20b,reasoning-low-verify-strict-context10,planted,243.9,yes,2,0,1,1,
+scrapy/scrapy#8431,dev,wrong-boolean,scrapy/downloadermiddlewares/cookies.py,45,gpt-oss:20b,reasoning-low-verify-strict-context10,planted,163.1,yes,2,0,1,1,
+Textualize/rich#4006,dev,off-by-one,rich/cells.py,197,gpt-oss:20b,reasoning-low-verify-strict-context10,planted,149.5,yes,1,0,0,0,

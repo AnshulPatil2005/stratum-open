@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/click#3884,gpt-oss:20b,logic-verify-strict,clean,medium,bug,src/click/core.py,3446,yes,Incorrect auto envvar handling for empty envvar,"When envvar is an empty list or empty string, `not envvar` is true, so the code incorrectly generates an auto envvar and later treats the original empty envvar as valid, causing the help screen to show an envvar that should be omitted.",,

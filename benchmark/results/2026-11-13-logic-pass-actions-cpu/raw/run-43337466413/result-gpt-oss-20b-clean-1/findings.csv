@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8431,gpt-oss:20b,samples2-logic-verify-strict,clean,medium,bug,scrapy/downloadermiddlewares/cookies.py,45,yes,Missing path_specified check for __Secure- cookies,"The function does not enforce that __Secure- cookies must have a path_specified attribute. As a result, a cookie with name __Secure-foo that lacks a path attribute will incorrectly be considered valid.",,

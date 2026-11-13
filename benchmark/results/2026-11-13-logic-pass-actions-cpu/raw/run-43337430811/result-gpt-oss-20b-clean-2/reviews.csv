@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3884,dev,negated-condition,src/click/core.py,3453,gpt-oss:20b,reasoning-low-verify-strict,clean,415.3,yes,3,0,1,1,
+psf/black#5645,dev,flipped-comparison,src/blackd/client.py,68,gpt-oss:20b,reasoning-low-verify-strict,clean,280.7,yes,2,0,0,0,
+pydantic/pydantic#14199,dev,flipped-comparison,pydantic/_internal/_contextlib.py,45,gpt-oss:20b,reasoning-low-verify-strict,clean,204.6,yes,1,0,0,0,
+encode/httpx#3673,dev,inverted-return,src/ahttpx/_parsers.py,384,gpt-oss:20b,reasoning-low-verify-strict,clean,632.8,yes,3,0,1,0,
+psf/black#5626,dev,inverted-return,src/black/linegen.py,2025,gpt-oss:20b,reasoning-low-verify-strict,clean,192.3,yes,1,0,0,0,

@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/rich#3953,gpt-oss:20b,reasoning-low-verify-strict,clean,medium,bug,rich/cells.py,58,yes,Null character not treated as non-printable,"When character is the null byte (codepoint 0), the condition evaluates to False and the function proceeds to table lookup, which returns a width of 1. Tests expect width 0 for all control codes 0–31.",,

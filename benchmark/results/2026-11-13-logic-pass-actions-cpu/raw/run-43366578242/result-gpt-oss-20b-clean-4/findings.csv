@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pypa/pip#14349,gpt-oss:20b,reasoning-low-verify-strict-context10,clean,high,bug,src/pip/_internal/commands/debug.py,58,,Uncaught ImportError on missing vendor module,"The function get_module_from_module_name now always calls importlib.import_module without catching ImportError. If the requested vendor module is absent, the call raises ImportError, causing the entire debug command to crash instead of returning None or handling the error gracefully.",,
