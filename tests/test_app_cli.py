@@ -261,6 +261,41 @@ def test_review_local_looks_names_up_in_the_modules_as_the_branch_leaves_them(tm
     assert "`close`" not in out  # the branch adds it
 
 
+def test_review_local_finds_a_name_the_branch_removes_and_another_file_still_uses(tmp_path, capsys, monkeypatch):
+    empty = tmp_path / "gitconfig"
+    empty.write_text("")
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": str(empty), "GIT_CONFIG_NOSYSTEM": "1",
+           "GIT_AUTHOR_NAME": "a", "GIT_AUTHOR_EMAIL": "a@example.com", "GIT_COMMITTER_NAME": "a", "GIT_COMMITTER_EMAIL": "a@example.com"}
+    repo = tmp_path / "repo"
+    (repo / "app").mkdir(parents=True)
+    (repo / ".stratum").mkdir()
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, env=env)
+
+    git("init", "-q", "-b", "main")
+    (repo / ".stratum" / "policy.yml").write_text("checks:\n  removed_names: true\n")
+    (repo / "app" / "__init__.py").write_text("")
+    (repo / "app" / "db.py").write_text("import sqlite3\n\n\ndef connect():\n    pass\n\n\ndef close():\n    pass\n")
+    (repo / "app" / "users.py").write_text("from app.db import close, connect\n")
+    (repo / "app" / "jobs.py").write_text("from app.db import close\n")
+    git("add", ".")
+    git("commit", "-q", "-m", "init")
+    git("checkout", "-q", "-b", "feature")
+    # The branch renames both, and fixes one of the two files that import `close`.
+    (repo / "app" / "db.py").write_text("import sqlite3\n\n\ndef open_connection():\n    pass\n\n\ndef shut():\n    pass\n")
+    (repo / "app" / "jobs.py").write_text("from app.db import shut\n")
+    git("commit", "-q", "-am", "Rename the connection helpers")
+    monkeypatch.chdir(repo / "app")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    assert cli.main(["review", "--local", "main", "--no-model"]) == 0
+    out = capsys.readouterr().out
+    # The working tree is the branch already, so what it removed is read from the diff undone.
+    assert "app/db.py:4" in out and "`app/db.py` no longer has `connect`, which is still used" in out
+    assert "app/db.py:8" in out and "`app/db.py` no longer has `close`, which is still used" in out
+    assert "`app/users.py:1` still imports it" in out and "app/jobs.py" not in out
+
+
 def test_a_redelivered_webhook_is_ignored(server):
     def deliver(delivery):
         body = pr_event()

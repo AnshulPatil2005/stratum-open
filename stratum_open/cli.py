@@ -172,6 +172,7 @@ def _review_local(args, base: str) -> int:
     from stratum_open.checks.dependencies import PackageLookup
     from stratum_open.engine import analyze
     from stratum_open.repo.boundaries import boundary_findings
+    from stratum_open.repo.removed_names import removed_name_findings
     from stratum_open.repo.unknown_names import unknown_name_findings
 
     try:
@@ -198,6 +199,7 @@ def _review_local(args, base: str) -> int:
             file.binary = True  # a move with no edits: the diff couldn't say it was binary
         elif text is not None:
             contents[file.path] = text
+    top = (_git_or_none(".", "rev-parse", "--show-toplevel") or ".").strip()
     result = analyze(
         title=_git(".", "log", "-1", "--format=%s").strip(), description=_git(".", "log", "-1", "--format=%b").strip(),
         files=files, policy=policy, model=model, contents=contents or None,
@@ -205,7 +207,8 @@ def _review_local(args, base: str) -> int:
         # The working tree is HEAD, the change itself: the module baseline comes from where it branched off.
         extra_findings=boundary_findings(files, policy, ".", ref=(_git_or_none(".", "merge-base", base, "HEAD") or base).strip())
         # ... while a name is looked for in the modules as they'll be, and the working tree is that already.
-        + unknown_name_findings(files, policy, (_git_or_none(".", "rev-parse", "--show-toplevel") or ".").strip(), contents=contents, applied=True),
+        + unknown_name_findings(files, policy, top, contents=contents, applied=True)
+        + removed_name_findings(files, policy, top, contents=contents, applied=True),
     )
     if model is not None:
         print(f"Profile: {result.profile} ({result.profile_why}).", file=sys.stderr)

@@ -1,0 +1,907 @@
+[
+ {
+  "id": "secret-github-token",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-aws-key",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-stripe-live",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-slack-bot",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-google-api",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-openai",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-private-key",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-db-password",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-yaml-config",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "eval-request",
+  "rule": "code/eval",
+  "caught": true,
+  "found": [
+   "bandit/B307",
+   "code/eval"
+  ]
+ },
+ {
+  "id": "exec-download",
+  "rule": "code/eval",
+  "caught": true,
+  "found": [
+   "bandit/B102",
+   "code/eval"
+  ]
+ },
+ {
+  "id": "js-new-function",
+  "rule": "code/eval",
+  "caught": true,
+  "found": [
+   "code/eval"
+  ]
+ },
+ {
+  "id": "shell-true",
+  "rule": "code/shell",
+  "caught": true,
+  "found": [
+   "bandit/B602",
+   "code/shell"
+  ]
+ },
+ {
+  "id": "os-system",
+  "rule": "code/shell",
+  "caught": true,
+  "found": [
+   "bandit/B605",
+   "code/shell"
+  ]
+ },
+ {
+  "id": "js-child-process",
+  "rule": "code/shell",
+  "caught": true,
+  "found": [
+   "code/shell"
+  ]
+ },
+ {
+  "id": "sql-fstring",
+  "rule": "code/sql",
+  "caught": true,
+  "found": [
+   "bandit/B608",
+   "code/sql"
+  ]
+ },
+ {
+  "id": "sql-percent",
+  "rule": "code/sql",
+  "caught": true,
+  "found": [
+   "bandit/B608",
+   "code/sql"
+  ]
+ },
+ {
+  "id": "sql-concat-js",
+  "rule": "code/sql",
+  "caught": true,
+  "found": [
+   "code/sql"
+  ]
+ },
+ {
+  "id": "cors-credentials",
+  "rule": "code/cors-any",
+  "caught": true,
+  "found": [
+   "code/cors-any"
+  ]
+ },
+ {
+  "id": "cors-header",
+  "rule": "code/cors-any",
+  "caught": true,
+  "found": [
+   "code/cors-any"
+  ]
+ },
+ {
+  "id": "bandit-pickle",
+  "rule": "bandit/B301",
+  "caught": true,
+  "found": [
+   "bandit/B301"
+  ]
+ },
+ {
+  "id": "bandit-yaml-load",
+  "rule": "bandit/B506",
+  "caught": true,
+  "found": [
+   "bandit/B506"
+  ]
+ },
+ {
+  "id": "bandit-verify-false",
+  "rule": "bandit/B501",
+  "caught": true,
+  "found": [
+   "bandit/B501"
+  ]
+ },
+ {
+  "id": "wf-pwn-request",
+  "rule": "workflow/pwn-request",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/pwn-request",
+   "workflow/unpinned-action"
+  ]
+ },
+ {
+  "id": "wf-branch-name-injection",
+  "rule": "workflow/script-injection or workflow/pwn-request",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/pwn-request",
+   "workflow/script-injection"
+  ]
+ },
+ {
+  "id": "wf-issue-title-injection",
+  "rule": "workflow/script-injection",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/script-injection"
+  ]
+ },
+ {
+  "id": "wf-write-all",
+  "rule": "workflow/write-all",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/unpinned-action",
+   "workflow/write-all"
+  ]
+ },
+ {
+  "id": "wf-unpinned-third-party",
+  "rule": "workflow/unpinned-action",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/unpinned-action"
+  ]
+ },
+ {
+  "id": "wf-self-hosted-pr",
+  "rule": "workflow/self-hosted-pr",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/self-hosted-pr",
+   "workflow/unpinned-action"
+  ]
+ },
+ {
+  "id": "wf-write-on-target",
+  "rule": "workflow/write-permission or workflow/pull-request-target",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/pull-request-target",
+   "workflow/unpinned-action",
+   "workflow/write-permission"
+  ]
+ },
+ {
+  "id": "dep-typo-requests",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-colourama",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-python3-dateutil",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-jellyfish",
+  "rule": "deps/lookalike",
+  "caught": false,
+  "found": [
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-crossenv",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-electorn",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-made-up-pypi",
+  "rule": "deps/missing",
+  "caught": true,
+  "found": [
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-made-up-npm",
+  "rule": "deps/missing",
+  "caught": true,
+  "found": [
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "agents-md",
+  "rule": "agents/instructions",
+  "caught": true,
+  "found": [
+   "agents/instructions"
+  ]
+ },
+ {
+  "id": "cursorrules",
+  "rule": "agents/instructions",
+  "caught": true,
+  "found": [
+   "agents/instructions"
+  ]
+ },
+ {
+  "id": "copilot-instructions",
+  "rule": "agents/instructions",
+  "caught": true,
+  "found": [
+   "agents/instructions"
+  ]
+ },
+ {
+  "id": "trojan-source",
+  "rule": "unicode/hidden",
+  "caught": true,
+  "found": [
+   "bandit/B613",
+   "unicode/hidden"
+  ]
+ },
+ {
+  "id": "zero-width-name",
+  "rule": "unicode/hidden",
+  "caught": true,
+  "found": [
+   "unicode/hidden"
+  ]
+ },
+ {
+  "id": "unicode-tags",
+  "rule": "unicode/hidden",
+  "caught": true,
+  "found": [
+   "unicode/hidden"
+  ]
+ },
+ {
+  "id": "name-import-near-miss",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-module-attribute",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-relative-import",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-package-init",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-dotted-chain",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-in-a-module-the-pr-adds",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-src-layout-from-tests",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-script-beside-its-helper",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-import-inside-a-function",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-missing-from-every-branch",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-missing-behind-star-imports",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-stdlib-os-path",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-stdlib-json",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-stdlib-from-import",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-stdlib-python-2",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-stdlib-submodule",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-stdlib-logging",
+  "rule": "code/unknown-name",
+  "caught": true,
+  "found": [
+   "code/unknown-name"
+  ]
+ },
+ {
+  "id": "name-third-party",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": []
+ },
+ {
+  "id": "name-stdlib-unlisted-module",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": []
+ },
+ {
+  "id": "name-control-module-getattr",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-star-import-in-the-module",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-star-import-in-the-file",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-set-through-globals",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-set-through-sys-modules",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-set-from-another-file",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-defined-in-a-branch",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-reexported-by-the-package",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-type-checking",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-two-places-for-one-package",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-namespace-package",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-compiled-module",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-stub-only-module",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-module-written-by-the-build",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-name-bound-again",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-not-a-module",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-guarded",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-other-python-versions",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "name-control-own-module-named-like-the-stdlib",
+  "rule": "code/unknown-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-renamed-function",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-deleted-function-used-as-an-attribute",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-class-behind-a-relative-import",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-constant",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-from-the-package-init",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-name-the-tests-import-from-src",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-fixed-in-one-caller-and-not-the-other",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-still-used-in-a-file-the-pr-changes",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-behind-a-dotted-chain",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-moved-to-a-new-module",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-from-a-script-helper",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-import-other-modules-took-from-here",
+  "rule": "code/removed-name",
+  "caught": true,
+  "found": [
+   "code/removed-name"
+  ]
+ },
+ {
+  "id": "removed-method-of-a-class",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": []
+ },
+ {
+  "id": "removed-used-through-a-star-import",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": []
+ },
+ {
+  "id": "removed-control-kept-as-an-alias",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-imported-back-from-where-it-moved",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-still-defined-in-a-branch",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-kept-alive-by-getattr",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-module-with-a-getattr-that-could-answer",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-reexported-with-a-star",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-module-fills-its-names-in",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-set-from-another-file",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-every-use-fixed",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-the-use-is-removed-too",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-guarded-uses",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-a-test-that-it-is-gone",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-another-module-has-the-name",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-two-places-for-one-package",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-compiled-module-beside-it",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-the-module-name-bound-again",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-not-a-name-of-the-module",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-moved-within-its-file",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "removed-control-mentioned-not-used",
+  "rule": "code/removed-name",
+  "caught": false,
+  "found": [],
+  "control": true
+ }
+]

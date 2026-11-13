@@ -1,0 +1,494 @@
+set,case,module,name,kind,outcome,why,uses,where,left
+merged,fastapi/typer#1942,typer/_click/exceptions.py,Abort,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+merged,fastapi/typer#1942,typer/_click/exceptions.py,Exit,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+merged,pallets/flask#6095,tests/conftest.py,_reset_os_environ,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+merged,pallets/werkzeug#3273,src/werkzeug/user_agent.py,UserAgent,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+merged,pallets/werkzeug#3276,src/werkzeug/utils.py,environ_property,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+merged,pallets/werkzeug#3278,src/werkzeug/utils.py,_T,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+merged,pallets/werkzeug#3282,src/werkzeug/utils.py,_environ_property,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+merged,pallets/werkzeug#3282,src/werkzeug/utils.py,header_property,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+merged,pallets/werkzeug#3287,src/werkzeug/datastructures/structures.py,HeaderSet,class,the module's names can't be listed after the PR: left alone,globals(),,,
+merged,pallets/werkzeug#3304,src/werkzeug/wsgi.py,responder,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+merged,pallets/werkzeug#3306,src/werkzeug/wsgi.py,FileWrapper,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+merged,pallets/werkzeug#3332,src/werkzeug/wsgi.py,wrap_file,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+merged,pallets/werkzeug#3337,src/werkzeug/sansio/http.py,_cookie_re,name,the module's names can't be listed after the PR: left alone,__getattr__,,,
+merged,pallets/werkzeug#3337,src/werkzeug/sansio/http.py,_cookie_unslash_re,name,the module's names can't be listed after the PR: left alone,__getattr__,,,
+merged,pallets/werkzeug#3337,src/werkzeug/sansio/http.py,_cookie_unslash_replace,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+merged,pallets/werkzeug#3338,src/werkzeug/datastructures/accept.py,_mime_split_re,name,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,Textualize/rich@4101991898,rich/traceback.py,console,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,Textualize/rich@532f0cb7fc,rich/__main__.py,message,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,Textualize/rich@7f40063da7,rich/segment.py,log,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,Textualize/rich@89cd92f4d5,rich/pretty.py,JUPYTER_CLASSES_TO_NOT_RENDER,name,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,Textualize/rich@8b84ee998a,tests/test_repr.py,skip_py37,name,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,Textualize/rich@92abd703b3,rich/progress.py,IterationSpeedColumn,class,still used: reported,,1,tests/test_progress.py:17,0
+alone,Textualize/rich@f000c31491,rich/cells.py,line,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,Textualize/rich@f000c31491,rich/cells.py,n,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,Textualize/textual@31e2b41153,src/textual/widgets/_select.py,BLANK,name,still used: reported,,1,src/textual/widgets/select.py:2,0
+alone,encode/httpx@1805ee0d22,httpx/_config.py,SSLContext,class,still used: reported,,2,httpx/_main.py:18 httpx/_transports/default.py:38,0
+alone,encode/httpx@1d73150c1f,httpx/_utils.py,guess_json_utf,function,still used: reported,,2,httpx/_models.py:46 tests/test_utils.py:13,0
+alone,encode/httpx@359f77d4f6,httpx/_types.py,URLTypes,name,still used: reported,,4,httpx/_api.py:21 httpx/_client.py:49 httpx/_config.py:13,0
+alone,encode/httpx@41597adffa,httpx/_utils.py,is_known_encoding,function,still used: reported,,1,httpx/_models.py:48,0
+alone,encode/httpx@41597adffa,httpx/_utils.py,obfuscate_sensitive_headers,function,still used: reported,,1,httpx/_models.py:49,0
+alone,encode/httpx@41597adffa,httpx/_utils.py,parse_content_type_charset,function,still used: reported,,1,httpx/_models.py:50,0
+alone,encode/httpx@41597adffa,httpx/_utils.py,parse_header_links,function,still used: reported,,1,httpx/_models.py:51,0
+alone,encode/httpx@59914c7690,httpx/_utils.py,NetRCInfo,class,still used: reported,,2,httpx/_client.py:50 tests/test_utils.py:8,0
+alone,encode/httpx@6212e8fa3b,httpx/_utils.py,format_form_param,function,still used: reported,,1,httpx/_multipart.py:17,0
+alone,encode/httpx@6212e8fa3b,httpx/_utils.py,guess_content_type,function,still used: reported,,1,httpx/_multipart.py:18,0
+alone,encode/httpx@7b19cd5f4b,httpx/_utils.py,is_https_redirect,function,still used: reported,,1,httpx/_client.py:51,0
+alone,encode/httpx@7b19cd5f4b,httpx/_utils.py,same_origin,function,still used: reported,,1,httpx/_client.py:52,0
+alone,encode/httpx@83a85189c7,httpx/_utils.py,normalize_header_key,function,still used: reported,,1,httpx/_models.py:49,0
+alone,encode/httpx@83a85189c7,httpx/_utils.py,normalize_header_value,function,still used: reported,,1,httpx/_models.py:50,0
+alone,encode/httpx@8e36f2bc68,httpx/_types.py,CertTypes,name,still used: reported,,4,httpx/_api.py:11 httpx/_client.py:37 httpx/_config.py:13,0
+alone,encode/httpx@8e36f2bc68,httpx/_types.py,ProxiesTypes,name,still used: reported,,2,httpx/_api.py:14 httpx/_client.py:40,0
+alone,encode/httpx@8e36f2bc68,httpx/_types.py,RawURL,name,still used: reported,,1,httpx/_urls.py:8,0
+alone,encode/httpx@8e36f2bc68,httpx/_types.py,VerifyTypes,name,still used: reported,,4,httpx/_api.py:21 httpx/_client.py:49 httpx/_config.py:13,0
+alone,encode/httpx@8e36f2bc68,httpx/_utils.py,Timer,class,still used: reported,,1,httpx/_client.py:53,0
+alone,encode/httpx@8e36f2bc68,httpx/_utils.py,get_ca_bundle_from_env,function,still used: reported,,2,httpx/_config.py:15 tests/test_utils.py:12,0
+alone,encode/httpx@ba2e51215e,httpx/_urlparse.py,urlencode,function,still used: reported,,1,httpx/_urls.py:9,0
+alone,encode/httpx@f1157dbc41,httpx/_utils.py,_LOGGER_INITIALIZED,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,encode/httpx@f1157dbc41,httpx/_utils.py,get_logger,function,still used: reported,,2,httpx/_client.py:53 httpx/_config.py:13,0
+alone,fastapi/fastapi@91a335ce94,fastapi/dependencies/utils.py,_get_request_param_names,function,still used: reported,,1,fastapi/routing.py:63,0
+alone,fastapi/typer@0c15b1b239,typer/rich_utils.py,STYLE_METAVAR_SEPARATOR,name,still used: reported,,1,tests/test_rich_utils.py:115,0
+alone,fastapi/typer@0c15b1b239,typer/rich_utils.py,metavar_highlighter,name,still used: reported,,1,tests/test_rich_utils.py:118,0
+alone,fastapi/typer@41dea8f4a0,typer/_click/exceptions.py,Abort,class,still used: reported,,3,typer/__init__.py:8 typer/_click/core.py:21 typer/_click/termui.py:6,0
+alone,fastapi/typer@41dea8f4a0,typer/_click/exceptions.py,Exit,class,still used: reported,,6,typer/__init__.py:10 typer/_click/core.py:23 typer/_completion_shared.py:84,0
+alone,fastapi/typer@7ca7c4855d,typer/models.py,TyperPath,class,still used: reported,,1,typer/main.py:53,0
+alone,fastapi/typer@7ca7c4855d,typer/models.py,os,import,still used: reported,,1,tests/test_type_conversion.py:313,0
+alone,marshmallow-code/marshmallow@50b2849cca,src/marshmallow/utils.py,validate_unknown_parameter_value,function,still used: reported,,1,src/marshmallow/schema.py:38,0
+alone,marshmallow-code/marshmallow@61f2e88877,src/marshmallow/utils.py,EXCLUDE,name,still used: reported,,2,src/marshmallow/__init__.py:11 src/marshmallow/schema.py:31,0
+alone,marshmallow-code/marshmallow@61f2e88877,src/marshmallow/utils.py,INCLUDE,name,still used: reported,,2,src/marshmallow/__init__.py:11 src/marshmallow/schema.py:32,0
+alone,marshmallow-code/marshmallow@61f2e88877,src/marshmallow/utils.py,RAISE,name,still used: reported,,2,src/marshmallow/__init__.py:11 src/marshmallow/schema.py:33,0
+alone,marshmallow-code/marshmallow@701f52c83e,src/marshmallow/utils.py,isoformat,function,still used: reported,,7,src/marshmallow/fields.py:1277 src/marshmallow/fields.py:1278 tests/test_schema.py:436,0
+alone,marshmallow-code/marshmallow@701f52c83e,src/marshmallow/utils.py,to_iso_date,function,still used: reported,,1,src/marshmallow/fields.py:1422,0
+alone,marshmallow-code/marshmallow@701f52c83e,src/marshmallow/utils.py,to_iso_time,function,still used: reported,,1,src/marshmallow/fields.py:1390,0
+alone,marshmallow-code/marshmallow@7609530d0a,src/marshmallow/types.py,Tag,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,marshmallow-code/marshmallow@84bed79a67,src/marshmallow/exceptions.py,FieldInstanceResolutionError,class,still used: reported,,2,src/marshmallow/fields.py:19 src/marshmallow/utils.py:18,0
+alone,marshmallow-code/marshmallow@84bed79a67,src/marshmallow/fields.py,Inferred,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,marshmallow-code/marshmallow@84bed79a67,src/marshmallow/utils.py,from_iso_date,function,still used: reported,,2,src/marshmallow/fields.py:1448 tests/test_utils.py:226,0
+alone,marshmallow-code/marshmallow@84bed79a67,src/marshmallow/utils.py,from_iso_datetime,function,still used: reported,,3,src/marshmallow/fields.py:1270 src/marshmallow/fields.py:1271 tests/test_utils.py:202,0
+alone,marshmallow-code/marshmallow@84bed79a67,src/marshmallow/utils.py,from_iso_time,function,still used: reported,,3,src/marshmallow/fields.py:1419 tests/test_utils.py:210 tests/test_utils.py:218,0
+alone,marshmallow-code/marshmallow@84bed79a67,src/marshmallow/utils.py,get_func_args,function,still used: reported,,2,src/marshmallow/fields.py:2081 tests/test_utils.py:269,0
+alone,marshmallow-code/marshmallow@84bed79a67,src/marshmallow/utils.py,pprint,function,still used: reported,,1,src/marshmallow/__init__.py:18,0
+alone,marshmallow-code/marshmallow@84bed79a67,src/marshmallow/utils.py,resolve_field_instance,function,still used: reported,,1,src/marshmallow/fields.py:26,0
+alone,marshmallow-code/marshmallow@84bed79a67,tests/base.py,BlogSchemaMeta,class,"still used, and something in the repository may set it from outside: left alone",,1,tests/test_schema.py:35,0
+alone,marshmallow-code/marshmallow@84bed79a67,tests/base.py,BlogUserMetaSchema,class,"still used, and something in the repository may set it from outside: left alone",,1,tests/test_schema.py:36,0
+alone,marshmallow-code/marshmallow@84bed79a67,tests/base.py,UserAdditionalSchema,class,"still used, and something in the repository may set it from outside: left alone",,1,tests/test_schema.py:39,0
+alone,marshmallow-code/marshmallow@84bed79a67,tests/base.py,UserMetaSchema,class,"still used, and something in the repository may set it from outside: left alone",,1,tests/test_schema.py:43,0
+alone,marshmallow-code/marshmallow@c188cdb25c,src/marshmallow/base.py,SchemaABC,class,"still used, and something in the repository may set it from outside: left alone",,1,src/marshmallow/fields.py:17,0
+alone,marshmallow-code/marshmallow@dc9d85245d,src/marshmallow/utils.py,is_keyed_tuple,function,still used: reported,,5,tests/test_utils.py:100 tests/test_utils.py:102 tests/test_utils.py:104,0
+alone,marshmallow-code/marshmallow@de5e842aea,src/marshmallow/utils.py,is_instance_or_subclass,function,still used: reported,,1,src/marshmallow/schema.py:36,0
+alone,marshmallow-code/marshmallow@ead65cb18c,src/marshmallow/utils.py,from_rfc,function,still used: reported,,3,src/marshmallow/fields.py:1288 src/marshmallow/fields.py:1289 tests/test_utils.py:136,0
+alone,marshmallow-code/marshmallow@ead65cb18c,src/marshmallow/utils.py,rfcformat,function,still used: reported,,3,src/marshmallow/fields.py:1279 src/marshmallow/fields.py:1280 tests/test_utils.py:118,0
+alone,pallets/click@6a141c3681,src/click/_compat.py,auto_wrap_for_ansi,name,"still used, and something in the repository may set it from outside: left alone",,1,src/click/utils.py:16,0
+alone,pallets/click@81a482fbfd,src/click/parser.py,_flag_needs_value,name,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/click@8a1b1a33d7,src/click/_compat.py,MAC,name,"still used, and something in the repository may set it from outside: left alone",,1,tests/test_utils.py:19,0
+alone,pallets/click@a46a95c733,src/click/_textwrap.py,_truncate_visible,function,still used: reported,,1,tests/test_compat.py:12,0
+alone,pallets/click@c69643b60c,src/click/_termui_impl.py,pager,function,"still used, and something in the repository may set it from outside: left alone",,1,src/click/termui.py:308,0
+alone,pallets/click@c9f7d9d8a0,src/click/decorators.py,HelpOption,class,still used: reported,,1,src/click/__init__.py:22,0
+alone,pallets/click@f36d58bbd7,src/click/_termui_impl.py,MaybeStripAnsi,class,"still used, and something in the repository may set it from outside: left alone",,2,tests/test_utils/test_echo_via_pager.py:207 tests/test_utils/test_echo_via_pager.py:213,0
+alone,pallets/flask@0e0e8ddcdc,src/flask/globals.py,__app_ctx_stack,name,still used: reported,,1,src/flask/__init__.py:47,0
+alone,pallets/flask@0e0e8ddcdc,src/flask/globals.py,__request_ctx_stack,name,still used: reported,,1,src/flask/__init__.py:58,0
+alone,pallets/flask@0e0e8ddcdc,src/flask/helpers.py,is_ip,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/flask@0e0e8ddcdc,src/flask/helpers.py,locked_cached_property,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/flask@1ee22e1736,src/flask/helpers.py,get_env,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/flask@1ee22e1736,src/flask/json/__init__.py,JSONDecoder,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pallets/flask@1ee22e1736,src/flask/json/__init__.py,JSONEncoder,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pallets/flask@5775d1e9b1,src/flask/globals.py,_cv_req,name,still used: reported,,6,src/flask/app.py:42 src/flask/ctx.py:11 src/flask/helpers.py:15,0
+alone,pallets/flask@57e926c791,tests/conftest.py,install_egg,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/flask@57e926c791,tests/conftest.py,modules_tmpdir,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/flask@57e926c791,tests/conftest.py,modules_tmpdir_prefix,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/flask@633f421031,src/flask/cli.py,DispatchingApp,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/flask@633f421031,tests/test_cli.py,test_lazy_load_error,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/flask@6a2f545bfd,tests/conftest.py,_reset_os_environ,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/flask@98ca00d545,src/flask/cli.py,_env_option,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/flask@98ca00d545,src/flask/cli.py,_set_env,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/flask@9b44bf2818,src/flask/typing.py,ErrorHandlerDecorator,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pallets/flask@9b44bf2818,src/flask/typing.py,RouteDecorator,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pallets/flask@9b44bf2818,src/flask/typing.py,ViewCallable,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pallets/flask@adf363679d,src/flask/globals.py,_cv_request,name,still used: reported,,5,src/flask/app.py:34 src/flask/ctx.py:13 src/flask/helpers.py:17,0
+alone,pallets/flask@b78b5a210b,tests/conftest.py,limit_loader,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/jinja@06230b0022,src/jinja2/runtime.py,_get_func,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/jinja@06230b0022,src/jinja2/runtime.py,resolve_or_missing,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/jinja@076d380361,src/jinja2/utils.py,_digits,name,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,pallets/jinja@076d380361,src/jinja2/utils.py,_entity_re,name,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,pallets/jinja@076d380361,src/jinja2/utils.py,_letters,name,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,pallets/jinja@076d380361,src/jinja2/utils.py,_striptags_re,name,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,pallets/jinja@1a3342b27e,src/jinja2/environment.py,_environment_sanity_check,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/jinja@1a3342b27e,src/jinja2/environment.py,_spontaneous_environments,name,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/jinja@1a3342b27e,src/jinja2/runtime.py,ContextMeta,class,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/jinja@3915eb5c2a,src/jinja2/runtime.py,to_string,name,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/jinja@3915eb5c2a,src/jinja2/utils.py,soft_unicode,function,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,pallets/jinja@9d4689b04d,src/jinja2/utils.py,have_async_gen,name,still used: reported,,2,src/jinja2/environment.py:48 tests/conftest.py:7,0
+alone,pallets/jinja@b285d0c2e6,src/jinja2/ext.py,autoescape,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pallets/jinja@b285d0c2e6,src/jinja2/filters.py,contextfilter,function,still used: reported,,1,src/jinja2/__init__.py:17,0
+alone,pallets/jinja@b285d0c2e6,src/jinja2/filters.py,environmentfilter,function,still used: reported,,1,src/jinja2/__init__.py:18,0
+alone,pallets/jinja@b285d0c2e6,src/jinja2/filters.py,evalcontextfilter,function,still used: reported,,1,src/jinja2/__init__.py:19,0
+alone,pallets/jinja@b285d0c2e6,src/jinja2/runtime.py,unicode_join,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/jinja@b285d0c2e6,src/jinja2/utils.py,Markup,class,still used: reported,,1,src/jinja2/__init__.py:39,0
+alone,pallets/jinja@b285d0c2e6,src/jinja2/utils.py,contextfunction,function,still used: reported,,1,src/jinja2/__init__.py:34,0
+alone,pallets/jinja@b285d0c2e6,src/jinja2/utils.py,environmentfunction,function,still used: reported,,1,src/jinja2/__init__.py:35,0
+alone,pallets/jinja@b285d0c2e6,src/jinja2/utils.py,escape,function,still used: reported,,1,src/jinja2/__init__.py:36,0
+alone,pallets/jinja@b285d0c2e6,src/jinja2/utils.py,evalcontextfunction,function,still used: reported,,1,src/jinja2/__init__.py:37,0
+alone,pallets/jinja@b2bc7be67f,src/jinja2/debug.py,_CTraceback,class,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/jinja@b2bc7be67f,src/jinja2/debug.py,tb_set_next,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/jinja@beabf304b0,src/jinja2/environment.py,fail_for_missing_callable,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/jinja@f1b1caf003,src/jinja2/utils.py,_lead_pattern,name,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,pallets/jinja@f1b1caf003,src/jinja2/utils.py,_punctuation_re,name,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,pallets/jinja@f1b1caf003,src/jinja2/utils.py,_simple_email_re,name,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,pallets/jinja@f1b1caf003,src/jinja2/utils.py,_trail_pattern,name,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,pallets/jinja@f1b1caf003,src/jinja2/utils.py,_word_split_re,name,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,pallets/werkzeug@08887995ed,src/werkzeug/http.py,_continuation_re,name,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@19b20246de,src/werkzeug/_reloader.py,_get_args_for_reloading,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/werkzeug@2adaad1ab6,src/werkzeug/_internal.py,_get_environ,function,still used: reported,,2,src/werkzeug/exceptions.py:11 src/werkzeug/test.py:21,0
+alone,pallets/werkzeug@3635850560,src/werkzeug/datastructures/etag.py,ETags,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@5d33a39956,src/werkzeug/urls.py,_invalid_iri_to_uri,function,still used: reported,,1,src/werkzeug/wrappers/response.py:17,0
+alone,pallets/werkzeug@6048fa4875,src/werkzeug/http.py,quote_etag,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@6048fa4875,src/werkzeug/http.py,unquote_etag,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@665e760ca6,src/werkzeug/exceptions.py,default_exceptions,name,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@671537e0e5,src/werkzeug/wsgi.py,FileWrapper,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@6bcd0eb4c2,src/werkzeug/datastructures/structures.py,HeaderSet,class,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@6c4c680f53,src/werkzeug/exceptions.py,_default_exceptions,name,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@7641d4990f,src/werkzeug/utils.py,environ_property,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/werkzeug@830d4b3957,src/werkzeug/http.py,is_byte_range_valid,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@830d4b3957,src/werkzeug/http.py,is_resource_modified,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@830d4b3957,src/werkzeug/sansio/http.py,is_resource_modified,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@87bd23357d,src/werkzeug/_internal.py,_DictAccessorProperty,class,still used: reported,,1,src/werkzeug/utils.py:18,0
+alone,pallets/werkzeug@87bd23357d,src/werkzeug/_internal.py,_TAccessorValue,name,still used: reported,,1,src/werkzeug/utils.py:20,0
+alone,pallets/werkzeug@87bd23357d,src/werkzeug/utils.py,_T,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/werkzeug@91e4896988,src/werkzeug/datastructures/structures.py,_ImmutableOrderedMultiDict,class,still used: reported,,3,src/werkzeug/datastructures/__init__.py:54 tests/test_datastructures.py:15 tests/test_wrappers.py:23,0
+alone,pallets/werkzeug@91e4896988,src/werkzeug/datastructures/structures.py,_OrderedMultiDict,class,still used: reported,,2,src/werkzeug/datastructures/__init__.py:43 tests/test_datastructures.py:16,0
+alone,pallets/werkzeug@96264fef56,src/werkzeug/_internal.py,_cookie_parse_impl,function,still used: reported,,1,src/werkzeug/sansio/http.py:5,0
+alone,pallets/werkzeug@96264fef56,src/werkzeug/_internal.py,_cookie_quote,function,still used: reported,,1,src/werkzeug/http.py:18,0
+alone,pallets/werkzeug@96264fef56,src/werkzeug/_internal.py,_make_cookie_domain,function,still used: reported,,1,src/werkzeug/http.py:20,0
+alone,pallets/werkzeug@a7cad31895,src/werkzeug/formparser.py,default_stream_factory,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@b38fe5d5bf,src/werkzeug/datastructures/headers.py,ContentSecurityPolicy,class,still used: reported,,1,src/werkzeug/datastructures/__init__.py:11,0
+alone,pallets/werkzeug@b38fe5d5bf,src/werkzeug/datastructures/headers.py,ETags,class,still used: reported,,1,src/werkzeug/datastructures/__init__.py:13,0
+alone,pallets/werkzeug@b73dce5a2c,src/werkzeug/datastructures/accept.py,_mime_split_re,name,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,_etag_re,name,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,_q_value_re,name,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,dump_csp_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_accept_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_cache_control_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_content_range_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_csp_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_etags,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_if_range_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_range_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_set_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@bd957c8756,src/werkzeug/utils.py,_environ_property,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/werkzeug@bd957c8756,src/werkzeug/utils.py,header_property,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/werkzeug@c012b33e39,src/werkzeug/security.py,gen_salt,function,still used: reported,,1,src/werkzeug/debug/__init__.py:27,0
+alone,pallets/werkzeug@c7a1dbc60f,src/werkzeug/_internal.py,_encode_idna,function,still used: reported,,3,src/werkzeug/routing/map.py:9 src/werkzeug/sansio/utils.py:4 src/werkzeug/urls.py:21,0
+alone,pallets/werkzeug@c7a1dbc60f,src/werkzeug/datastructures/structures.py,_options_header_vkw,function,still used: reported,,1,src/werkzeug/datastructures/headers.py:7,0
+alone,pallets/werkzeug@c7a1dbc60f,src/werkzeug/datastructures/structures.py,_unicodify_header_value,function,still used: reported,,1,src/werkzeug/datastructures/headers.py:8,0
+alone,pallets/werkzeug@ce52388246,src/werkzeug/wsgi.py,wrap_file,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@d3a3f1179b,src/werkzeug/_internal.py,_easteregg,function,still used: reported,,1,tests/test_internal.py:9,0
+alone,pallets/werkzeug@d4b6754922,src/werkzeug/wsgi.py,responder,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/_internal.py,_check_str_tuple,function,still used: reported,,1,src/werkzeug/urls.py:19,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/_internal.py,_decode_idna,function,still used: reported,,1,src/werkzeug/urls.py:20,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/_internal.py,_make_encode_wrapper,function,still used: reported,,3,src/werkzeug/test.py:20 src/werkzeug/urls.py:21 src/werkzeug/wsgi.py:11,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/_internal.py,_to_bytes,function,still used: reported,,1,src/werkzeug/wsgi.py:12,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/_internal.py,_to_str,function,still used: reported,,2,src/werkzeug/urls.py:22 src/werkzeug/wsgi.py:13,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/datastructures/auth.py,name,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,URL,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,url_decode,function,still used: reported,,5,tests/test_urls.py:92 tests/test_urls.py:97 tests/test_urls.py:102,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,url_decode_stream,function,still used: reported,,1,tests/test_urls.py:114,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,url_encode,function,still used: reported,,9,tests/test_urls.py:74 tests/test_urls.py:75 tests/test_urls.py:118,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,url_encode_stream,function,still used: reported,,4,tests/test_urls.py:145 tests/test_urls.py:150 tests/test_urls.py:153,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,url_fix,function,still used: reported,,12,tests/test_urls.py:77 tests/test_urls.py:164 tests/test_urls.py:167,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,url_join,function,still used: reported,,5,tests/test_urls.py:314 tests/test_urls.py:315 tests/test_urls.py:316,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,url_parse,function,still used: reported,,13,tests/test_urls.py:16 tests/test_urls.py:36 tests/test_urls.py:44,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,url_quote,function,still used: reported,,4,tests/test_urls.py:68 tests/test_urls.py:69 tests/test_urls.py:81,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,url_quote_plus,function,still used: reported,,3,tests/test_urls.py:70 tests/test_urls.py:72 tests/test_urls.py:80,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,url_unquote,function,still used: reported,,2,tests/test_urls.py:69 tests/test_urls.py:86,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,url_unquote_plus,function,still used: reported,,3,tests/test_urls.py:71 tests/test_urls.py:73 tests/test_urls.py:271,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/wsgi.py,make_chunk_iter,function,still used: reported,,6,src/werkzeug/urls.py:1173 tests/test_wsgi.py:326 tests/test_wsgi.py:331,0
+alone,pallets/werkzeug@ea77ffd6d6,src/werkzeug/wsgi.py,make_line_iter,function,still used: reported,,8,tests/test_wsgi.py:264 tests/test_wsgi.py:274 tests/test_wsgi.py:287,0
+alone,pallets/werkzeug@eae0a8ff34,src/werkzeug/_internal.py,_plain_float,function,still used: reported,,1,src/werkzeug/http.py:21,0
+alone,pallets/werkzeug@ec95ee993a,src/werkzeug/sansio/http.py,_cookie_re,name,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ec95ee993a,src/werkzeug/sansio/http.py,_cookie_unslash_re,name,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ec95ee993a,src/werkzeug/sansio/http.py,_cookie_unslash_replace,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/formparser.py,FormDataParser,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/formparser.py,parse_form_data,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,_entity_headers,name,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,dump_age,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,generate_etag,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,is_entity_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,parse_age,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,remove_entity_headers,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,remove_hop_by_hop_headers,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/sansio/utils.py,get_content_length,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/utils.py,append_slash_redirect,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/utils.py,get_content_type,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,LimitedStream,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,get_content_length,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,get_current_url,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,get_host,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,get_input_stream,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,get_path_info,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/cache_control.py,cache_control_property,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/mixins.py,ImmutableDictMixin,class,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/mixins.py,ImmutableListMixin,class,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/mixins.py,UpdateDictMixin,class,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/structures.py,ImmutableDict,class,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/structures.py,ImmutableList,class,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/structures.py,ImmutableTypeConversionDict,class,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/structures.py,TypeConversionDict,class,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,pallets/werkzeug@f5af329db2,src/werkzeug/routing/converters.py,DEFAULT_CONVERTERS,name,still used: reported,,1,src/werkzeug/routing/map.py:21,0
+alone,pallets/werkzeug@f97c305673,src/werkzeug/user_agent.py,UserAgent,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,psf/black@d078e8eee2,scripts/release.py,tuple_calver,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,psf/black@e744e77f49,src/black/nodes.py,RARROW,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,psf/requests@15e1f17bb6,setup.py,PyTest,class,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,psf/requests@8bce583b95,setup.py,packages,name,the module's names can't be listed after the PR: left alone,exec(),,,
+alone,pydantic/pydantic@1c8a330acc,pydantic/_internal/_validators.py,deque_validator,function,still used: reported,,1,pydantic/_internal/_generate_schema.py:657,0
+alone,pydantic/pydantic@69e9ca4658,pydantic-core/python/pydantic_core/core_schema.py,FieldValidationInfo,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pydantic/pydantic@69e9ca4658,pydantic-core/python/pydantic_core/core_schema.py,tuple_positional_schema,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pydantic/pydantic@69e9ca4658,pydantic-core/python/pydantic_core/core_schema.py,tuple_variable_schema,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pydantic/pydantic@69e9ca4658,pydantic/_internal/_utils.py,deprecated_instance_property,class,still used: reported,,2,pydantic/main.py:282 pydantic/main.py:293,0
+alone,pydantic/pydantic@69e9ca4658,pydantic/warnings.py,PydanticDeprecatedSince210,class,still used: reported,,2,pydantic/_internal/_config.py:20 tests/test_config.py:37,0
+alone,pydantic/pydantic@69e9ca4658,pydantic/warnings.py,PydanticDeprecatedSince212,class,still used: reported,,1,pydantic/functional_validators.py:19,0
+alone,pydantic/pydantic@69e9ca4658,pydantic/warnings.py,PydanticDeprecatedSince214,class,still used: reported,,1,pydantic/experimental/missing_sentinel.py:10,0
+alone,pydantic/pydantic@69e9ca4658,pydantic/warnings.py,PydanticDeprecatedSince26,class,still used: reported,,1,pydantic/json_schema.py:44,0
+alone,pydantic/pydantic@69e9ca4658,pydantic/warnings.py,PydanticDeprecatedSince29,class,still used: reported,,1,pydantic/json_schema.py:44,0
+alone,pydantic/pydantic@b75fadbaa5,pydantic/_internal/_typing_extra.py,is_callable,function,still used: reported,,1,pydantic/_internal/_generate_schema.py:1104,0
+alone,pydantic/pydantic@b75fadbaa5,pydantic/_internal/_typing_extra.py,is_finalvar,function,still used: reported,,1,pydantic/_internal/_generate_schema.py:1125,0
+alone,pydantic/pydantic@b75fadbaa5,pydantic/_internal/_typing_extra.py,is_hashable,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pydantic/pydantic@b75fadbaa5,pydantic/_internal/_typing_extra.py,is_none_type,function,still used: reported,,1,tests/test_typing.py:13,0
+alone,pydantic/pydantic@f002759018,pydantic/_internal/_core_utils.py,get_type_ref,function,still used: reported,,3,pydantic/_internal/_decorators.py:19 pydantic/_internal/_generate_schema.py:86 pydantic/_internal/_generics.py:22,0
+alone,pydantic/pydantic@f052186538,pydantic/_internal/_decorators.py,RootValidatorDecoratorInfo,class,still used: reported,,2,pydantic/_internal/_generate_schema.py:95 pydantic/deprecated/class_validators.py:254,0
+alone,pydantic/pydantic@f052186538,pydantic/_internal/_decorators.py,ValidatorDecoratorInfo,class,still used: reported,,2,pydantic/_internal/_generate_schema.py:96 pydantic/deprecated/class_validators.py:147,0
+alone,pydantic/pydantic@f052186538,pydantic/_internal/_utils.py,AbstractSetIntStr,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pydantic/pydantic@f052186538,pydantic/_internal/_utils.py,MappingIntStrAny,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pydantic/pydantic@f052186538,pydantic/_internal/_utils.py,ValueItems,class,still used: reported,,8,pydantic/deprecated/copy_internals.py:43 pydantic/deprecated/copy_internals.py:48 pydantic/deprecated/copy_internals.py:58,0
+alone,pydantic/pydantic@f052186538,pydantic/_internal/_utils.py,deep_update,function,still used: reported,,1,tests/test_utils.py:20,0
+alone,pydantic/pydantic@f052186538,pydantic/_internal/_utils.py,sequence_like,function,still used: reported,,1,pydantic/deprecated/copy_internals.py:172,0
+alone,pydantic/pydantic@f052186538,pydantic/_internal/_utils.py,unique_list,function,still used: reported,,1,tests/test_utils.py:23,0
+alone,pydantic/pydantic@f052186538,pydantic/types.py,PaymentCardBrand,class,still used: reported,,1,tests/test_types_payment_card_number.py:8,0
+alone,pydantic/pydantic@f052186538,pydantic/types.py,PaymentCardNumber,class,still used: reported,,1,tests/test_types_payment_card_number.py:8,0
+alone,pypa/pip@0e7f1b314f,tests/lib/__init__.py,_create_main_file,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pypa/pip@0e7f1b314f,tests/lib/__init__.py,_create_test_package,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pypa/pip@0e7f1b314f,tests/lib/__init__.py,_git_commit,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pypa/pip@0f798f1195,src/pip/_vendor/rich/cells.py,line,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pypa/pip@0f798f1195,src/pip/_vendor/rich/cells.py,n,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pypa/pip@0f798f1195,src/pip/_vendor/rich/segment.py,log,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pypa/pip@1be21eac83,src/pip/_vendor/platformdirs/version.py,TYPE_CHECKING,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pypa/pip@237a925881,src/pip/_internal/operations/install/wheel.py,_script_within_dir,function,still used: reported,,4,tests/unit/test_wheel.py:718 tests/unit/test_wheel.py:723 tests/unit/test_wheel.py:724,0
+alone,pypa/pip@3e05f398a0,src/pip/_internal/commands/install.py,_prevent_further_imports,function,"still used, and something in the repository may set it from outside: left alone",,1,tests/unit/test_command_install.py:12,0
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/exceptions.py,SNIMissingWarning,class,still used: reported,,1,src/pip/_vendor/urllib3/util/ssl_.py:13,0
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/exceptions.py,SubjectAltNameWarning,class,still used: reported,,1,src/pip/_vendor/urllib3/connection.py:51,0
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/util/proxy.py,create_proxy_ssl_context,function,still used: reported,,1,src/pip/_vendor/urllib3/connection.py:15,0
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/util/ssl_.py,DEFAULT_CIPHERS,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/util/ssl_.py,HAS_SNI,name,"still used, and something in the repository may set it from outside: left alone",,1,src/pip/_vendor/urllib3/util/__init__.py:10,0
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/util/ssl_.py,IS_SECURETRANSPORT,name,"still used, and something in the repository may set it from outside: left alone",,1,src/pip/_vendor/urllib3/util/__init__.py:12,0
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/util/timeout.py,current_time,name,still used: reported,,1,src/pip/_vendor/urllib3/util/__init__.py:20,0
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/util/url.py,BRACELESS_IPV6_ADDRZ_RE,name,still used: reported,,1,src/pip/_vendor/urllib3/util/ssl_.py:17,0
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/util/url.py,IPV4_RE,name,still used: reported,,1,src/pip/_vendor/urllib3/util/ssl_.py:17,0
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/util/url.py,get_host,function,still used: reported,,3,src/pip/_vendor/urllib3/__init__.py:20 src/pip/_vendor/urllib3/connectionpool.py:52 src/pip/_vendor/urllib3/util/__init__.py:21,0
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/util/url.py,split_first,function,still used: reported,,1,src/pip/_vendor/urllib3/util/__init__.py:21,0
+alone,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/util/wait.py,NoWayToWaitForSocketError,class,still used: reported,,1,src/pip/_vendor/urllib3/util/connection.py:8,0
+alone,pypa/pip@8e3414c225,src/pip/_internal/commands/install.py,_EAGER_IMPORTS,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pypa/pip@8e3414c225,src/pip/_internal/commands/install.py,_MISSING_MODULES,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pypa/pip@8e3414c225,src/pip/_internal/commands/install.py,_STDLIB_MODULE_NAMES,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pypa/pip@8e3414c225,tests/unit/test_command_install.py,test_prevent_further_imports_warns_on_import,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,pypa/pip@b369bfc96c,src/pip/_internal/cli/index_command.py,_pip_self_version_check,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pypa/pip@b369bfc96c,src/pip/_internal/self_outdated_check.py,_self_version_check_logic,function,"still used, and something in the repository may set it from outside: left alone",,1,tests/unit/test_self_check_outdated.py:109,0
+alone,pypa/pip@b369bfc96c,src/pip/_internal/self_outdated_check.py,pip_self_version_check,function,"still used, and something in the repository may set it from outside: left alone",,3,src/pip/_internal/cli/index_command.py:138 tests/unit/test_self_check_outdated.py:18 tests/unit/test_self_check_outdated.py:52,0
+alone,pypa/pip@c06a1b8747,src/pip/_internal/utils/compat.py,stdlib_pkgs,name,still used: reported,,4,src/pip/_internal/commands/freeze.py:8 src/pip/_internal/commands/inspect.py:13 src/pip/_internal/commands/list.py:20,0
+alone,pypa/pip@e31a9e5ecb,src/pip/_internal/network/session.py,CI_ENVIRONMENT_VARIABLES,name,still used: reported,,1,tests/unit/test_network_session.py:37,0
+alone,pypa/pip@e4ea3766de,src/pip/_vendor/idna/uts46data.py,uts46data,name,still used: reported,,1,src/pip/_vendor/idna/core.py:334,0
+alone,pypa/pip@e4ea3766de,src/pip/_vendor/urllib3/_version.py,TYPE_CHECKING,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pypa/pip@e9dc2fbee0,src/pip/_vendor/packaging/utils.py,_,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,pypa/pip@ec43c48b2f,src/pip/_internal/cli/cmdoptions.py,check_build_constraints,function,still used: reported,,4,src/pip/_internal/commands/download.py:87 src/pip/_internal/commands/install.py:398 src/pip/_internal/commands/lock.py:106,0
+alone,pypa/pip@fb1d166092,src/pip/_internal/configuration.py,kinds,name,still used: reported,,3,src/pip/_internal/commands/configuration.py:16 tests/lib/configuration_helpers.py:16 tests/unit/test_configuration.py:8,0
+alone,pypa/pip@fb1d166092,src/pip/_internal/utils/misc.py,enum,function,still used: reported,,2,src/pip/_internal/configuration.py:29 src/pip/_internal/utils/temp_dir.py:17,0
+alone,pypa/pip@fb1d166092,src/pip/_internal/utils/temp_dir.py,tempdir_kinds,name,"still used, and something in the repository may set it from outside: left alone",,5,src/pip/_internal/build_env/venv.py:16 src/pip/_internal/build_env/virtual.py:17 src/pip/_internal/cache.py:19,0
+alone,pypa/pip@fb1d166092,tests/lib/configuration_helpers.py,kinds,name,"still used, and something in the repository may set it from outside: left alone",,2,tests/functional/test_configuration.py:21 tests/unit/test_command_debug.py:9,0
+alone,python-attrs/attrs@00f6ac4821,src/attr/_compat.py,PY_3_9_PLUS,name,still used: reported,,1,src/attr/_funcs.py:6,0
+alone,python-attrs/attrs@19175d91df,src/attr/_make.py,_Deproxier,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,python-attrs/attrs@19175d91df,src/attr/_make.py,_deproxier,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,python-attrs/attrs@62bdbf234f,src/attr/_funcs.py,evolve,function,still used: reported,,1,src/attr/__init__.py:13,0
+alone,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_eq,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_hash,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_init,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_method,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_ne,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_repr,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+alone,python-attrs/attrs@9b98a730bf,src/attr/_compat.py,PY_3_10_PLUS,name,still used: reported,,4,src/attr/_make.py:23 tests/conftest.py:9 tests/test_abc.py:10,0
+alone,python-attrs/attrs@a8e24b0186,src/attr/_compat.py,PY_3_8_PLUS,name,still used: reported,,4,src/attr/_make.py:23 tests/strategies.py:16 tests/test_make.py:24,0
+alone,python-attrs/attrs@a8e24b0186,src/attr/_compat.py,Protocol,import,still used: reported,,1,src/attr/__init__.py:12,0
+alone,python-poetry/poetry@1213c05b91,src/poetry/config/config_source.py,drop_empty_config_category,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,python-poetry/poetry@1cef37be89,src/poetry/utils/_compat.py,getencoding,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,python-poetry/poetry@2b0723c277,src/poetry/vcs/git/backend.py,annotated_tag,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,python-poetry/poetry@4e181a1ab7,tests/types.py,HTTPPrettyRequestCallbackWrapper,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,python-poetry/poetry@4e181a1ab7,tests/types.py,HTTPrettyRequestCallback,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,python-poetry/poetry@4e181a1ab7,tests/types.py,HTTPrettyResponse,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,python-poetry/poetry@7ef28ec94b,tests/helpers.py,TestLocker,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,python-poetry/poetry@7ef28ec94b,tests/helpers.py,TestRepository,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,python-poetry/poetry@92b74dcfe3,src/poetry/utils/helpers.py,Downloader,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,python-poetry/poetry@92b74dcfe3,src/poetry/utils/helpers.py,HTTPRangeRequestSupportedError,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,python-poetry/poetry@92b74dcfe3,src/poetry/utils/helpers.py,download_file,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+alone,python-poetry/poetry@bbd2be8767,tests/console/commands/cache/conftest.py,cache,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,scrapy/scrapy@3a799fd701,scrapy/shell.py,_request_deferred,function,the module's names can't be listed after the PR: left alone,globals(),,,
+alone,scrapy/scrapy@46e3fa1f04,scrapy/linkextractors/__init__.py,_is_valid_url,function,still used: reported,,1,scrapy/linkextractors/lxmlhtml.py:21,0
+alone,scrapy/scrapy@48590c105d,scrapy/core/downloader/handlers/http11.py,_TunnelingEndpoint,class,still used: reported,,1,tests/test_downloader_handler_twisted_http11.py:37,0
+alone,scrapy/scrapy@506555bf9d,scrapy/utils/_deps_compat.py,PARSEL_SUPPORTS_JMESPATH,name,still used: reported,,1,tests/test_selector.py:7,0
+alone,scrapy/scrapy@54783efe74,scrapy/pipelines/files.py,_md5sum,function,"still used, and something in the repository may set it from outside: left alone",,2,scrapy/pipelines/images.py:21 tests/test_pipeline_images.py:20,0
+alone,scrapy/scrapy@ad817afb88,scrapy/utils/_deps_compat.py,W3LIB_STRIPS_IPV6_BRACKETS,name,still used: reported,,1,tests/utils/bases/download_handlers_http.py:45,0
+alone,scrapy/scrapy@ad817afb88,scrapy/utils/url.py,_add_http_if_no_scheme,function,"still used, and something in the repository may set it from outside: left alone",,3,scrapy/core/downloader/handlers/_base_streaming.py:38 scrapy/core/downloader/handlers/http11.py:72 tests/test_utils_url.py:14,0
+alone,scrapy/scrapy@bb1b5c6785,scrapy/core/engine.py,_EngineState,class,still used: reported,,2,tests/test_engine.py:16 tests/test_engine_lifecycle.py:10,0
+alone,scrapy/scrapy@cc4238c3a2,scrapy/robotstxt.py,logger,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+alone,scrapy/scrapy@d2810adf6d,scrapy/core/downloader/handlers/http11.py,_TunnelingTCP4ClientEndpoint,class,still used: reported,,1,tests/test_downloader_handler_twisted_http11.py:20,0
+commits,Textualize/rich@4101991898,rich/traceback.py,console,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,Textualize/rich@532f0cb7fc,rich/__main__.py,message,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,Textualize/rich@7f40063da7,rich/segment.py,log,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,Textualize/rich@89cd92f4d5,rich/pretty.py,JUPYTER_CLASSES_TO_NOT_RENDER,name,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,Textualize/rich@8b84ee998a,tests/test_repr.py,skip_py37,name,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,Textualize/rich@f000c31491,rich/cells.py,line,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,Textualize/rich@f000c31491,rich/cells.py,n,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,encode/httpx@1805ee0d22,httpx/_config.py,SSLContext,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,encode/httpx@ba2e51215e,httpx/_urlparse.py,urlencode,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,fastapi/typer@41dea8f4a0,typer/_click/exceptions.py,Abort,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,fastapi/typer@41dea8f4a0,typer/_click/exceptions.py,Exit,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,marshmallow-code/marshmallow@61f2e88877,src/marshmallow/utils.py,EXCLUDE,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,marshmallow-code/marshmallow@61f2e88877,src/marshmallow/utils.py,INCLUDE,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,marshmallow-code/marshmallow@61f2e88877,src/marshmallow/utils.py,RAISE,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,marshmallow-code/marshmallow@701f52c83e,src/marshmallow/utils.py,isoformat,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pallets/click@81a482fbfd,src/click/parser.py,_flag_needs_value,name,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/click@c69643b60c,src/click/_termui_impl.py,pager,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pallets/flask@0e0e8ddcdc,src/flask/helpers.py,is_ip,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/flask@0e0e8ddcdc,src/flask/helpers.py,locked_cached_property,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/flask@1ee22e1736,src/flask/helpers.py,get_env,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/flask@57e926c791,tests/conftest.py,install_egg,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/flask@57e926c791,tests/conftest.py,modules_tmpdir,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/flask@57e926c791,tests/conftest.py,modules_tmpdir_prefix,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/flask@633f421031,src/flask/cli.py,DispatchingApp,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/flask@633f421031,tests/test_cli.py,test_lazy_load_error,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/flask@6a2f545bfd,tests/conftest.py,_reset_os_environ,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/flask@98ca00d545,src/flask/cli.py,_env_option,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/flask@98ca00d545,src/flask/cli.py,_set_env,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/flask@b78b5a210b,tests/conftest.py,limit_loader,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/jinja@06230b0022,src/jinja2/runtime.py,_get_func,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/jinja@06230b0022,src/jinja2/runtime.py,resolve_or_missing,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/jinja@076d380361,src/jinja2/utils.py,_digits,name,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,pallets/jinja@076d380361,src/jinja2/utils.py,_entity_re,name,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,pallets/jinja@076d380361,src/jinja2/utils.py,_letters,name,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,pallets/jinja@076d380361,src/jinja2/utils.py,_striptags_re,name,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,pallets/jinja@1a3342b27e,src/jinja2/environment.py,_environment_sanity_check,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/jinja@1a3342b27e,src/jinja2/environment.py,_spontaneous_environments,name,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/jinja@1a3342b27e,src/jinja2/runtime.py,ContextMeta,class,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/jinja@3915eb5c2a,src/jinja2/runtime.py,to_string,name,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/jinja@3915eb5c2a,src/jinja2/utils.py,soft_unicode,function,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,pallets/jinja@b285d0c2e6,src/jinja2/ext.py,autoescape,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pallets/jinja@b285d0c2e6,src/jinja2/runtime.py,unicode_join,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/jinja@b285d0c2e6,src/jinja2/utils.py,Markup,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pallets/jinja@b285d0c2e6,src/jinja2/utils.py,escape,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pallets/jinja@b2bc7be67f,src/jinja2/debug.py,_CTraceback,class,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/jinja@b2bc7be67f,src/jinja2/debug.py,tb_set_next,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/jinja@beabf304b0,src/jinja2/environment.py,fail_for_missing_callable,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/jinja@f1b1caf003,src/jinja2/utils.py,_lead_pattern,name,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,pallets/jinja@f1b1caf003,src/jinja2/utils.py,_punctuation_re,name,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,pallets/jinja@f1b1caf003,src/jinja2/utils.py,_simple_email_re,name,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,pallets/jinja@f1b1caf003,src/jinja2/utils.py,_trail_pattern,name,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,pallets/jinja@f1b1caf003,src/jinja2/utils.py,_word_split_re,name,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,pallets/werkzeug@08887995ed,src/werkzeug/http.py,_continuation_re,name,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@19b20246de,src/werkzeug/_reloader.py,_get_args_for_reloading,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/werkzeug@3635850560,src/werkzeug/datastructures/etag.py,ETags,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@6048fa4875,src/werkzeug/http.py,quote_etag,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@6048fa4875,src/werkzeug/http.py,unquote_etag,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@665e760ca6,src/werkzeug/exceptions.py,default_exceptions,name,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@671537e0e5,src/werkzeug/wsgi.py,FileWrapper,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@6bcd0eb4c2,src/werkzeug/datastructures/structures.py,HeaderSet,class,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@6c4c680f53,src/werkzeug/exceptions.py,_default_exceptions,name,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@7641d4990f,src/werkzeug/utils.py,environ_property,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/werkzeug@830d4b3957,src/werkzeug/http.py,is_byte_range_valid,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@830d4b3957,src/werkzeug/http.py,is_resource_modified,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@830d4b3957,src/werkzeug/sansio/http.py,is_resource_modified,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@87bd23357d,src/werkzeug/utils.py,_T,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/werkzeug@a7cad31895,src/werkzeug/formparser.py,default_stream_factory,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@b38fe5d5bf,src/werkzeug/datastructures/headers.py,ContentSecurityPolicy,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pallets/werkzeug@b38fe5d5bf,src/werkzeug/datastructures/headers.py,ETags,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pallets/werkzeug@b73dce5a2c,src/werkzeug/datastructures/accept.py,_mime_split_re,name,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,_etag_re,name,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,_q_value_re,name,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,dump_csp_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_accept_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_cache_control_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_content_range_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_csp_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_etags,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_if_range_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_range_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@b97e13cc74,src/werkzeug/http.py,parse_set_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@bd957c8756,src/werkzeug/utils.py,_environ_property,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/werkzeug@bd957c8756,src/werkzeug/utils.py,header_property,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/werkzeug@ce52388246,src/werkzeug/wsgi.py,wrap_file,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@d4b6754922,src/werkzeug/wsgi.py,responder,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ea77ffd6d6,src/werkzeug/datastructures/auth.py,name,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pallets/werkzeug@ea77ffd6d6,src/werkzeug/urls.py,URL,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pallets/werkzeug@ec95ee993a,src/werkzeug/sansio/http.py,_cookie_re,name,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ec95ee993a,src/werkzeug/sansio/http.py,_cookie_unslash_re,name,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ec95ee993a,src/werkzeug/sansio/http.py,_cookie_unslash_replace,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/formparser.py,FormDataParser,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/formparser.py,parse_form_data,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,_entity_headers,name,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,dump_age,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,generate_etag,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,is_entity_header,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,parse_age,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,remove_entity_headers,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/http.py,remove_hop_by_hop_headers,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/sansio/utils.py,get_content_length,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/utils.py,append_slash_redirect,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/utils.py,get_content_type,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,LimitedStream,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,get_content_length,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,get_current_url,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,get_host,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,get_input_stream,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@ed82ed5e8c,src/werkzeug/wsgi.py,get_path_info,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/cache_control.py,cache_control_property,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/mixins.py,ImmutableDictMixin,class,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/mixins.py,ImmutableListMixin,class,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/mixins.py,UpdateDictMixin,class,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/structures.py,ImmutableDict,class,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/structures.py,ImmutableList,class,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/structures.py,ImmutableTypeConversionDict,class,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@f5af329db2,src/werkzeug/datastructures/structures.py,TypeConversionDict,class,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,pallets/werkzeug@f97c305673,src/werkzeug/user_agent.py,UserAgent,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,psf/black@e744e77f49,src/black/nodes.py,RARROW,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,psf/requests@15e1f17bb6,setup.py,PyTest,class,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,psf/requests@8bce583b95,setup.py,packages,name,the module's names can't be listed after the PR: left alone,exec(),,,
+commits,pydantic/pydantic@69e9ca4658,pydantic-core/python/pydantic_core/core_schema.py,tuple_variable_schema,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pydantic/pydantic@f052186538,pydantic/types.py,PaymentCardNumber,class,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@0f798f1195,src/pip/_vendor/rich/cells.py,line,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@0f798f1195,src/pip/_vendor/rich/cells.py,n,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@0f798f1195,src/pip/_vendor/rich/segment.py,log,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@1be21eac83,src/pip/_vendor/platformdirs/version.py,TYPE_CHECKING,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@8b618231c2,src/pip/_vendor/urllib3/util/url.py,get_host,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@8e3414c225,src/pip/_internal/commands/install.py,_EAGER_IMPORTS,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pypa/pip@8e3414c225,src/pip/_internal/commands/install.py,_MISSING_MODULES,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pypa/pip@8e3414c225,src/pip/_internal/commands/install.py,_STDLIB_MODULE_NAMES,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pypa/pip@8e3414c225,tests/unit/test_command_install.py,test_prevent_further_imports_warns_on_import,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,pypa/pip@e31a9e5ecb,src/pip/_internal/network/session.py,CI_ENVIRONMENT_VARIABLES,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@e4ea3766de,src/pip/_vendor/idna/uts46data.py,uts46data,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@e4ea3766de,src/pip/_vendor/urllib3/_version.py,TYPE_CHECKING,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@e9dc2fbee0,src/pip/_vendor/packaging/utils.py,_,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@ec43c48b2f,src/pip/_internal/cli/cmdoptions.py,check_build_constraints,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@fb1d166092,src/pip/_internal/utils/misc.py,enum,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,pypa/pip@fc24f1eae6,src/pip/_vendor/packaging/specifiers.py,_next_prefix_dev0,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,python-attrs/attrs@19175d91df,src/attr/_make.py,_Deproxier,class,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,python-attrs/attrs@19175d91df,src/attr/_make.py,_deproxier,name,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,python-attrs/attrs@62bdbf234f,src/attr/_funcs.py,evolve,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_eq,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_hash,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_init,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_method,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_ne,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,python-attrs/attrs@74007f67d2,src/attr/_make.py,_make_repr,function,the module's names can't be listed after the PR: left alone,sys.modules,,,
+commits,python-poetry/poetry@1cef37be89,src/poetry/utils/_compat.py,getencoding,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,python-poetry/poetry@92b74dcfe3,src/poetry/utils/helpers.py,Downloader,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,python-poetry/poetry@92b74dcfe3,src/poetry/utils/helpers.py,HTTPRangeRequestSupportedError,class,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,python-poetry/poetry@92b74dcfe3,src/poetry/utils/helpers.py,download_file,function,the module's names can't be listed after the PR: left alone,__getattr__,,,
+commits,python-poetry/poetry@bbd2be8767,tests/console/commands/cache/conftest.py,cache,function,"another file imports or reads a name like it, in no use that is certain: left alone",,,,
+commits,scrapy/scrapy@3a799fd701,scrapy/shell.py,_request_deferred,function,the module's names can't be listed after the PR: left alone,globals(),,,
+commits,scrapy/scrapy@cc4238c3a2,scrapy/robotstxt.py,logger,name,"another file imports or reads a name like it, in no use that is certain: left alone",,,,

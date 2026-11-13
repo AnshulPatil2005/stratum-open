@@ -1,0 +1,6 @@
+# Flag a name a PR removes from a module while another file still imports or uses it. It reads the repository, so the
+# merged PRs need --repos. The unknown-names check is on as well, as it would be beside it: a use on a line the PR adds is
+# then that check's to report, and its planted cases are in the same file.
+checks:
+  removed_names: true
+  unknown_names: true

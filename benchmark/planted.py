@@ -26,9 +26,10 @@ the bug that describes it, or for any other finding that's a real problem;
 folder (one per shard), so shards run as separate jobs.
 
 Some checks read the repository, not only the PR. For those a planted case
-can have `repo`, the files already on the default branch, and `checks --repos
-<folder>` reads each merged PR against a clone of its project, as it was just
-before the PR merged (unknown_names.py makes the clones).
+can have `repo`, the files already on the default branch (a file the case has
+too is then a change to it, not a new file), and `checks --repos <folder>`
+reads each merged PR against a clone of its project, as it was just before
+the PR merged (unknown_names.py makes the clones).
 
 `checks` runs the checks that need no model: on planted risks (risks.yml),
 each of which should get its rule's finding, and on merged PRs as they are,
@@ -51,6 +52,7 @@ import argparse
 import dataclasses
 import ast
 import csv
+import difflib
 import json
 import os
 import random
@@ -70,6 +72,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import yaml  # noqa: E402
 
 from bench import CACHE, _fetch, _token, _write  # noqa: E402
+import removed_names  # noqa: E402
 import unknown_names  # noqa: E402
 from stratum_open.checks import run_checks  # noqa: E402
 from stratum_open.checks.bandit import available as bandit_available  # noqa: E402
@@ -81,6 +84,7 @@ from stratum_open.github.api import GitHub, GitHubError  # noqa: E402
 from stratum_open.runner import MAX_BANDIT_FILES, MAX_CONTEXT_FILES  # noqa: E402
 from stratum_open.model import Model  # noqa: E402
 from stratum_open.policy import parse_policy  # noqa: E402
+from stratum_open.repo.removed_names import RULE as REMOVED_NAME, removed_name_findings  # noqa: E402
 from stratum_open.repo.unknown_names import RULE as UNKNOWN_NAME, unknown_name_findings  # noqa: E402
 
 LINES_NEAR = 3
@@ -535,6 +539,10 @@ def _checks(args) -> int:
         print("checks.unknown_names is off, so its cases are missed: --policy benchmark/planted/variants/unknown-names.yml.")
     elif not args.repos:
         print("No --repos, so the unknown-names check doesn't see the merged PRs: benchmark/unknown_names.py clone makes the clones.")
+    if not policy.checks.removed_names:
+        print("checks.removed_names is off, so its cases are missed: --policy benchmark/planted/variants/removed-names.yml.")
+    elif not args.repos:
+        print("No --repos, so the removed-names check doesn't see the merged PRs: benchmark/unknown_names.py clone makes the clones.")
     for item in prs:
         repo, number = item["repo"], int(item["pr"])
         pull, text = _fetch(repo, number)
@@ -542,6 +550,7 @@ def _checks(args) -> int:
         found = run_checks(files, policy, lookup=lookup, contents=_head_contents(repo, number, files), pr_text=f"{pull.get('title') or ''}\n{pull.get('body') or ''}")
         if args.repos:
             found += unknown_names.at_base(Path(args.repos), repo, number, files, policy, out)
+            found += removed_names.at_base(Path(args.repos), repo, number, files, policy, out)
         for f in found:
             rows.append({"set": "merged", "case": f"{repo}#{number}", "rule": f.rule, "path": f.path, "line": f.line_start or "",
                          "title": f.title, "expected": "", "verdict": "", "note": ""})
@@ -572,15 +581,17 @@ def _checks_summary(out: Path) -> str:
     names = {"code": "Secrets and risky code", "bandit": "Bandit (optional extra)", "ruff": "Ruff (optional extra, off by default)",
              "workflow": "GitHub workflows",
              "deps": "Dependencies", "agents": "Coding-agent files", "unicode": "Hidden Unicode", "tests": "Weakened tests"}
-    # The unknown-names rule is off by default and measured on its own, so it gets its own line.
-    own = [case for case in groups["code"] if case["rule"] == UNKNOWN_NAME]
-    if own:
-        groups["code"] = [case for case in groups["code"] if case["rule"] != UNKNOWN_NAME]
-        groups[UNKNOWN_NAME], names[UNKNOWN_NAME] = own, "Names their module doesn't define (off by default)"
+    # The rules that are off by default are each measured on their own, so each gets its own line.
+    for rule, title in ((UNKNOWN_NAME, "Names their module doesn't define (off by default)"),
+                        (REMOVED_NAME, "Names a PR removes that are still used (off by default)")):
+        own = [case for case in groups["code"] if case["rule"] == rule]
+        if own:
+            groups["code"] = [case for case in groups["code"] if case["rule"] != rule]
+            groups[rule], names[rule] = own, title
     lines = [
         "# Checks that need no model",
         "",
-        f"{len(planted)} planted risks, each a PR adding files with one problem in them, and {len(prs)} real merged PRs as they are.",
+        f"{len(planted)} planted risks, each a small PR with one problem in it, and {len(prs)} real merged PRs as they are.",
         "",
         "| Planted risk | Caught by its rule |",
         "| --- | --- |",
@@ -639,7 +650,7 @@ def _case_files(case: dict) -> tuple[list[FileDiff], dict[str, str]]:
     for a rule that reads what a PR removes."""
     if "diff" in case:
         return parse_diff(case["diff"]), {}
-    return _added_files({path: _fill(text, case["id"]) for path, text in case["files"].items()})
+    return _added_files({path: _fill(text, case["id"]) for path, text in case["files"].items()}, case.get("repo"))
 
 
 def _repo_checks(case: dict, files: list[FileDiff], policy, contents: dict[str, str]) -> list:
@@ -650,13 +661,18 @@ def _repo_checks(case: dict, files: list[FileDiff], policy, contents: dict[str, 
             target = Path(root, path)
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(text, encoding="utf-8")
-        return unknown_name_findings(files, policy, root, contents=contents)
+        return unknown_name_findings(files, policy, root, contents=contents) + removed_name_findings(files, policy, root, contents=contents)
 
 
-def _added_files(spec: dict[str, str]) -> tuple[list[FileDiff], dict[str, str]]:
-    """New files as a diff that adds every line, with their full text."""
+def _added_files(spec: dict[str, str], before: dict[str, str] | None = None) -> tuple[list[FileDiff], dict[str, str]]:
+    """New files as a diff that adds every line, with their full text. A
+    file the default branch already has (`before`) is a change to it."""
     files = []
     for path, text in spec.items():
+        if path in (before or {}):
+            changed = difflib.unified_diff(before[path].splitlines(), text.splitlines(), f"a/{path}", f"b/{path}", lineterm="")
+            files += parse_diff("\n".join([f"diff --git a/{path} b/{path}", *changed]) + "\n")
+            continue
         lines = [Line("+", t, None, i) for i, t in enumerate(text.splitlines(), start=1)]
         files.append(FileDiff(path=path, status="added", hunks=[Hunk(0, 1, f"@@ -0,0 +1,{len(lines)} @@", lines)]))
     return files, dict(spec)

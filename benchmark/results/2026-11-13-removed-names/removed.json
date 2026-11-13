@@ -1,0 +1,2100 @@
+{
+ "commits": {
+  "Textualize/rich": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 5,
+    "definitions the commit also took out of a line of another Python file, reported": 1,
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 5,
+    "definitions: no other file imports or reads a name like it: nothing to report": 17,
+    "definitions: still used: reported": 1,
+    "definitions: the module's names can't be listed after the PR: left alone": 2,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 6,
+    "imports: no other file imports or reads a name like it: nothing to report": 7,
+    "imports: the module's names can't be listed after the PR: left alone": 1,
+    "uses named in the findings": 1,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "3a109ccdffe5b2d0e30684a304fbd388e99ce57b",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 5,
+    "definitions: no other file imports or reads a name like it: nothing to report": 18,
+    "definitions: the module's names can't be listed after the PR: left alone": 2,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 61,
+    "imports: no other file imports or reads a name like it: nothing to report": 150,
+    "imports: the module's names can't be listed after the PR: left alone": 2
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 30,
+    "commits that take lines out of a Python file": 158,
+    "files that lose a definition": 19,
+    "files that lose a definition, read alone": 19
+   },
+   "tally": {
+    "module: read": 383,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 66,
+    "name: its line is removed, and the module still defines it: nothing to report": 548,
+    "name: no other file imports or reads a name like it: nothing to report": 168,
+    "name: the module's names can't be listed after the PR: left alone": 4
+   }
+  },
+  "Textualize/textual": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 1,
+    "definitions the commit also took out of a line of another Python file, reported": 1,
+    "definitions: no other file imports or reads a name like it: nothing to report": 9,
+    "definitions: still used: reported": 1,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "imports: no other file imports or reads a name like it: nothing to report": 6,
+    "uses named in the findings": 1,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "5e5b7ef58b8c5572c13a3ff9027d756623661495",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 10,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 19,
+    "imports: no other file imports or reads a name like it: nothing to report": 20,
+    "imports: the module's names can't be listed after the PR: left alone": 2
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 27,
+    "commits that take lines out of a Python file": 196,
+    "files that lose a definition": 10,
+    "files that lose a definition, read alone": 10
+   },
+   "tally": {
+    "module: read": 548,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 19,
+    "name: its line is removed, and the module still defines it: nothing to report": 236,
+    "name: no other file imports or reads a name like it: nothing to report": 30,
+    "name: the module's names can't be listed after the PR: left alone": 2
+   }
+  },
+  "encode/httpx": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 28,
+    "definitions the commit also took out of a line of another Python file, reported": 22,
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "definitions: no other file imports or reads a name like it: nothing to report": 68,
+    "definitions: still used: reported": 22,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 13,
+    "imports: no other file imports or reads a name like it: nothing to report": 24,
+    "uses named in the findings": 37,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "definitions: no other file imports or reads a name like it: nothing to report": 89,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 24,
+    "imports: no other file imports or reads a name like it: nothing to report": 94
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 50,
+    "commits that take lines out of a Python file": 138,
+    "files that lose a definition": 39,
+    "files that lose a definition, read alone": 39
+   },
+   "tally": {
+    "module: read": 346,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 26,
+    "name: its line is removed, and the module still defines it: nothing to report": 240,
+    "name: no other file imports or reads a name like it: nothing to report": 183
+   }
+  },
+  "fastapi/fastapi": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 2,
+    "definitions the commit also took out of a line of another Python file, reported": 1,
+    "definitions: no other file imports or reads a name like it: nothing to report": 23,
+    "definitions: still used: reported": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 3,
+    "uses named in the findings": 1,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "5add7a458d629b07311d48261f696b5ac2bb9a5f",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 24,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 3,
+    "imports: no other file imports or reads a name like it: nothing to report": 13
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 18,
+    "commits that take lines out of a Python file": 91,
+    "files that lose a definition": 16,
+    "files that lose a definition, read alone": 16
+   },
+   "tally": {
+    "module: read": 213,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 3,
+    "name: its line is removed, and the module still defines it: nothing to report": 114,
+    "name: no other file imports or reads a name like it: nothing to report": 37
+   }
+  },
+  "fastapi/typer": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 12,
+    "definitions the commit also took out of a line of another Python file, reported": 5,
+    "definitions: no other file imports or reads a name like it: nothing to report": 40,
+    "definitions: still used: reported": 5,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 12,
+    "imports: no other file imports or reads a name like it: nothing to report": 28,
+    "imports: still used: reported": 1,
+    "uses named in the findings": 13,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "73500169e87b4e31717d687818c5ed955b584c18",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "definitions: no other file imports or reads a name like it: nothing to report": 43,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 27,
+    "imports: no other file imports or reads a name like it: nothing to report": 48
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 13,
+    "commits that take lines out of a Python file": 45,
+    "files that lose a definition": 25,
+    "files that lose a definition, read alone": 25
+   },
+   "tally": {
+    "module: read": 214,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 29,
+    "name: its line is removed, and the module still defines it: nothing to report": 135,
+    "name: no other file imports or reads a name like it: nothing to report": 91
+   }
+  },
+  "marshmallow-code/marshmallow": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 25,
+    "definitions the commit also took out of a line of another Python file, reported": 18,
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "definitions: no other file imports or reads a name like it: nothing to report": 61,
+    "definitions: still used, and something in the repository may set it from outside: left alone": 5,
+    "definitions: still used: reported": 18,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 12,
+    "imports: no other file imports or reads a name like it: nothing to report": 22,
+    "uses named in the findings": 42,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "a38b7f6842042e65fd1a485ed152ca99f87880c0",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 4,
+    "definitions: no other file imports or reads a name like it: nothing to report": 82,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 15,
+    "imports: no other file imports or reads a name like it: nothing to report": 54
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 27,
+    "commits that take lines out of a Python file": 113,
+    "files that lose a definition": 35,
+    "files that lose a definition, read alone": 35
+   },
+   "tally": {
+    "module: read": 278,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 19,
+    "name: its line is removed, and the module still defines it: nothing to report": 155,
+    "name: no other file imports or reads a name like it: nothing to report": 136
+   }
+  },
+  "pallets/click": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 8,
+    "definitions the commit also took out of a line of another Python file, reported": 2,
+    "definitions: no other file imports or reads a name like it: nothing to report": 43,
+    "definitions: still used, and something in the repository may set it from outside: left alone": 4,
+    "definitions: still used: reported": 2,
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 3,
+    "imports: no other file imports or reads a name like it: nothing to report": 3,
+    "uses named in the findings": 2,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "e38188e9e205005d5af5f9e59df51904c984586a",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "definitions: no other file imports or reads a name like it: nothing to report": 48,
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 11,
+    "imports: no other file imports or reads a name like it: nothing to report": 27,
+    "imports: the module's names can't be listed after the PR: left alone": 2
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 28,
+    "commits that take lines out of a Python file": 149,
+    "files that lose a definition": 28,
+    "files that lose a definition, read alone": 28
+   },
+   "tally": {
+    "module: read": 399,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 12,
+    "name: its line is removed, and the module still defines it: nothing to report": 192,
+    "name: no other file imports or reads a name like it: nothing to report": 75,
+    "name: the module's names can't be listed after the PR: left alone": 3
+   }
+  },
+  "pallets/flask": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 20,
+    "definitions the commit also took out of a line of another Python file, reported": 4,
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 5,
+    "definitions: no other file imports or reads a name like it: nothing to report": 56,
+    "definitions: still used: reported": 4,
+    "definitions: the module's names can't be listed after the PR: left alone": 12,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 19,
+    "imports: no other file imports or reads a name like it: nothing to report": 10,
+    "imports: the module's names can't be listed after the PR: left alone": 11,
+    "uses named in the findings": 13,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "49943b5a94413a530761350f04e896f76e8d620e",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 65,
+    "definitions: the module's names can't be listed after the PR: left alone": 12,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 62,
+    "imports: no other file imports or reads a name like it: nothing to report": 63,
+    "imports: the module's names can't be listed after the PR: left alone": 25
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 49,
+    "commits that take lines out of a Python file": 142,
+    "files that lose a definition": 41,
+    "files that lose a definition, read alone": 41
+   },
+   "tally": {
+    "module: read": 421,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 62,
+    "name: its line is removed, and the module still defines it: nothing to report": 162,
+    "name: no other file imports or reads a name like it: nothing to report": 128,
+    "name: the module's names can't be listed after the PR: left alone": 37
+   }
+  },
+  "pallets/jinja": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 17,
+    "definitions the commit also took out of a line of another Python file, reported": 9,
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "definitions: no other file imports or reads a name like it: nothing to report": 39,
+    "definitions: still used: reported": 9,
+    "definitions: the module's names can't be listed after the PR: left alone": 20,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 28,
+    "imports: no other file imports or reads a name like it: nothing to report": 26,
+    "imports: the module's names can't be listed after the PR: left alone": 17,
+    "uses named in the findings": 10,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "5ef70112a1ff19c05324ff889dd30405b1002044",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 3,
+    "definitions: no other file imports or reads a name like it: nothing to report": 46,
+    "definitions: the module's names can't be listed after the PR: left alone": 20,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 20,
+    "imports: no other file imports or reads a name like it: nothing to report": 113,
+    "imports: the module's names can't be listed after the PR: left alone": 41
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 26,
+    "commits that take lines out of a Python file": 118,
+    "files that lose a definition": 37,
+    "files that lose a definition, read alone": 37
+   },
+   "tally": {
+    "module: read": 558,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 23,
+    "name: its line is removed, and the module still defines it: nothing to report": 895,
+    "name: no other file imports or reads a name like it: nothing to report": 159,
+    "name: the module's names can't be listed after the PR: left alone": 61
+   }
+  },
+  "pallets/werkzeug": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 91,
+    "definitions the commit also took out of a line of another Python file, reported": 36,
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "definitions: no other file imports or reads a name like it: nothing to report": 163,
+    "definitions: still used: reported": 36,
+    "definitions: the module's names can't be listed after the PR: left alone": 61,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 34,
+    "imports: no other file imports or reads a name like it: nothing to report": 48,
+    "imports: the module's names can't be listed after the PR: left alone": 18,
+    "uses named in the findings": 107,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "0f43c6ebd426039e4b99ec22535c2c8a2ec2f69f",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 4,
+    "definitions: no other file imports or reads a name like it: nothing to report": 197,
+    "definitions: the module's names can't be listed after the PR: left alone": 61,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 117,
+    "imports: no other file imports or reads a name like it: nothing to report": 210,
+    "imports: the module's names can't be listed after the PR: left alone": 65
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 83,
+    "commits that take lines out of a Python file": 198,
+    "files that lose a definition": 99,
+    "files that lose a definition, read alone": 99
+   },
+   "tally": {
+    "module: read": 943,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 121,
+    "name: its line is removed, and the module still defines it: nothing to report": 378,
+    "name: no other file imports or reads a name like it: nothing to report": 407,
+    "name: the module's names can't be listed after the PR: left alone": 126
+   }
+  },
+  "psf/black": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 1,
+    "definitions the commit also took out of a line of another Python file, reported": 0,
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "definitions: no other file imports or reads a name like it: nothing to report": 12,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "head": "cf3e0938971fc5cd0d71e7b696e86a6fb953332a",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "definitions: no other file imports or reads a name like it: nothing to report": 13,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 6,
+    "imports: no other file imports or reads a name like it: nothing to report": 6
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 11,
+    "commits that take lines out of a Python file": 173,
+    "files that lose a definition": 6,
+    "files that lose a definition, read alone": 6
+   },
+   "tally": {
+    "module: read": 280,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 7,
+    "name: its line is removed, and the module still defines it: nothing to report": 52,
+    "name: no other file imports or reads a name like it: nothing to report": 19
+   }
+  },
+  "psf/requests": {
+   "alone": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 14,
+    "definitions: the module's names can't be listed after the PR: left alone": 2,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 3,
+    "imports: the module's names can't be listed after the PR: left alone": 1
+   },
+   "head": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 14,
+    "definitions: the module's names can't be listed after the PR: left alone": 2,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 7,
+    "imports: no other file imports or reads a name like it: nothing to report": 23,
+    "imports: the module's names can't be listed after the PR: left alone": 2
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 17,
+    "commits that take lines out of a Python file": 122,
+    "files that lose a definition": 8,
+    "files that lose a definition, read alone": 8
+   },
+   "tally": {
+    "module: read": 226,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 7,
+    "name: its line is removed, and the module still defines it: nothing to report": 565,
+    "name: no other file imports or reads a name like it: nothing to report": 37,
+    "name: the module's names can't be listed after the PR: left alone": 4
+   }
+  },
+  "pydantic/pydantic": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 35,
+    "definitions the commit also took out of a line of another Python file, reported": 19,
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 6,
+    "definitions: no other file imports or reads a name like it: nothing to report": 382,
+    "definitions: still used: reported": 19,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 49,
+    "imports: no other file imports or reads a name like it: nothing to report": 84,
+    "uses named in the findings": 32,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "560f0f96a37d6913afdfddb2de22030ef08e68c3",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "definitions: no other file imports or reads a name like it: nothing to report": 405,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 78,
+    "imports: no other file imports or reads a name like it: nothing to report": 127,
+    "imports: the module's names can't be listed after the PR: left alone": 8
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 39,
+    "commits that take lines out of a Python file": 163,
+    "files that lose a definition": 59,
+    "files that lose a definition, read alone": 59
+   },
+   "tally": {
+    "module: read": 520,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 80,
+    "name: its line is removed, and the module still defines it: nothing to report": 678,
+    "name: more removed than are looked for": 150,
+    "name: no other file imports or reads a name like it: nothing to report": 532,
+    "name: the module's names can't be listed after the PR: left alone": 8
+   }
+  },
+  "pypa/pip": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 44,
+    "definitions the commit also took out of a line of another Python file, reported": 16,
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 11,
+    "definitions: no other file imports or reads a name like it: nothing to report": 227,
+    "definitions: still used, and something in the repository may set it from outside: left alone": 7,
+    "definitions: still used: reported": 16,
+    "definitions: the module's names can't be listed after the PR: left alone": 4,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 80,
+    "imports: no other file imports or reads a name like it: nothing to report": 47,
+    "imports: the module's names can't be listed after the PR: left alone": 4,
+    "uses named in the findings": 30,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "4b71f36fb4dfbc87ce65ac4710eeccf81d379f55",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 12,
+    "definitions: no other file imports or reads a name like it: nothing to report": 249,
+    "definitions: the module's names can't be listed after the PR: left alone": 4,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 146,
+    "imports: no other file imports or reads a name like it: nothing to report": 155,
+    "imports: the module's names can't be listed after the PR: left alone": 9
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 67,
+    "commits that take lines out of a Python file": 200,
+    "files that lose a definition": 71,
+    "files that lose a definition, read alone": 71
+   },
+   "tally": {
+    "module: read": 832,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 158,
+    "name: its line is removed, and the module still defines it: nothing to report": 1096,
+    "name: no other file imports or reads a name like it: nothing to report": 404,
+    "name: the module's names can't be listed after the PR: left alone": 13
+   }
+  },
+  "python-attrs/attrs": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 6,
+    "definitions the commit also took out of a line of another Python file, reported": 4,
+    "definitions: no other file imports or reads a name like it: nothing to report": 3,
+    "definitions: still used: reported": 4,
+    "definitions: the module's names can't be listed after the PR: left alone": 8,
+    "imports: still used: reported": 1,
+    "imports: the module's names can't be listed after the PR: left alone": 4,
+    "uses named in the findings": 11,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "9d9f94a043de7fc4012459853a4ed597a5577855",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "definitions: no other file imports or reads a name like it: nothing to report": 6,
+    "definitions: the module's names can't be listed after the PR: left alone": 8,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 3,
+    "imports: no other file imports or reads a name like it: nothing to report": 18,
+    "imports: the module's names can't be listed after the PR: left alone": 14
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 16,
+    "commits that take lines out of a Python file": 69,
+    "files that lose a definition": 9,
+    "files that lose a definition, read alone": 9
+   },
+   "tally": {
+    "module: read": 144,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 55,
+    "name: no other file imports or reads a name like it: nothing to report": 24,
+    "name: the module's names can't be listed after the PR: left alone": 22
+   }
+  },
+  "python-poetry/poetry": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 17,
+    "definitions the commit also took out of a line of another Python file, reported": 0,
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 9,
+    "definitions: no other file imports or reads a name like it: nothing to report": 35,
+    "definitions: the module's names can't be listed after the PR: left alone": 3,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 6,
+    "imports: no other file imports or reads a name like it: nothing to report": 16,
+    "imports: the module's names can't be listed after the PR: left alone": 10
+   },
+   "head": "4acc75e19f128c8340c6f977a35e53b5f7f39071",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "definitions: no other file imports or reads a name like it: nothing to report": 42,
+    "definitions: the module's names can't be listed after the PR: left alone": 3,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 35,
+    "imports: no other file imports or reads a name like it: nothing to report": 152,
+    "imports: the module's names can't be listed after the PR: left alone": 10
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 42,
+    "commits that take lines out of a Python file": 184,
+    "files that lose a definition": 24,
+    "files that lose a definition, read alone": 24
+   },
+   "tally": {
+    "module: read": 534,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 37,
+    "name: its line is removed, and the module still defines it: nothing to report": 108,
+    "name: no other file imports or reads a name like it: nothing to report": 194,
+    "name: the module's names can't be listed after the PR: left alone": 13
+   }
+  },
+  "scrapy/scrapy": {
+   "alone": {
+    "definitions the commit also took out of a line of another Python file": 8,
+    "definitions the commit also took out of a line of another Python file, reported": 6,
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "definitions: no other file imports or reads a name like it: nothing to report": 132,
+    "definitions: still used, and something in the repository may set it from outside: left alone": 2,
+    "definitions: still used: reported": 6,
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 16,
+    "imports: no other file imports or reads a name like it: nothing to report": 37,
+    "imports: the module's names can't be listed after the PR: left alone": 3,
+    "uses named in the findings": 7,
+    "uses named in the findings that the commit left as they were": 0
+   },
+   "head": "f1e29c3822468f03f090d22714020f86b3d6e9a2",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "definitions: no other file imports or reads a name like it: nothing to report": 140,
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 53,
+    "imports: no other file imports or reads a name like it: nothing to report": 176,
+    "imports: the module's names can't be listed after the PR: left alone": 9
+   },
+   "seen": {
+    "commits": 300,
+    "commits that remove a name from a module": 76,
+    "commits that take lines out of a Python file": 231,
+    "files that lose a definition": 41,
+    "files that lose a definition, read alone": 41
+   },
+   "tally": {
+    "module: read": 921,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 54,
+    "name: its line is removed, and the module still defines it: nothing to report": 747,
+    "name: no other file imports or reads a name like it: nothing to report": 316,
+    "name: the module's names can't be listed after the PR: left alone": 10
+   }
+  }
+ },
+ "merged": {
+  "Textualize/rich#3180": {
+   "base": "b32e42bda00c6275d4e18dcbe298268094359549",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 3
+   },
+   "tally": {
+    "module: read": 2,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 3,
+    "name: its line is removed, and the module still defines it: nothing to report": 5
+   }
+  },
+  "Textualize/rich#3777": {
+   "base": "26af5f5eb4a499422f8294148c9165a517dd80ed",
+   "names": {},
+   "tally": {
+    "module: read": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 3
+   }
+  },
+  "Textualize/rich#3782": {
+   "base": "3b70db5a2997de191f7db3e422dbe4da35ca1c95",
+   "names": {},
+   "tally": {
+    "module: read": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 25
+   }
+  },
+  "Textualize/rich#3783": {
+   "base": "21b3800894f6a81d3f68a0e34796be67e3ccd39f",
+   "names": {},
+   "tally": {
+    "module: read": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 8
+   }
+  },
+  "Textualize/rich#3807": {
+   "base": "9c9b011187bba772dca57653c9114005b489f005",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "Textualize/rich#3845": {
+   "base": "7f40063da781f4990d21423f23f7ccb3165ce0bd",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1
+   },
+   "tally": {
+    "module: read": 1,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1
+   }
+  },
+  "Textualize/rich#3879": {
+   "base": "abd5a2afc41ff1196fe4d901b8784bb08acf3140",
+   "names": {},
+   "tally": {}
+  },
+  "Textualize/rich#3894": {
+   "base": "ffc639a3738e79ad73d35db09a70c338b35045a6",
+   "names": {},
+   "tally": {}
+  },
+  "Textualize/rich#3905": {
+   "base": "22b26678419dcb1c13fedda9c98faec022774940",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "Textualize/rich#3906": {
+   "base": "7a4a7a614b4893a8197d06800b241c2c28036ad4",
+   "names": {},
+   "tally": {
+    "module: read": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "Textualize/rich#3934": {
+   "base": "6764b24739b580c0c32ff5ef0b971ed4cfcf4f75",
+   "names": {},
+   "tally": {
+    "module: read": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 3
+   }
+  },
+  "Textualize/rich#3935": {
+   "base": "fe55a131c2780fa856464ad04d7d6dc8a1079b72",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "Textualize/rich#3937": {
+   "base": "05a6b9b17a7c778756187f15d6d4bf693db6345f",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "Textualize/rich#3938": {
+   "base": "05ff970926cbd0b5d0acb6fc18cdbd1fc971e582",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "Textualize/rich#3939": {
+   "base": "3286095ff8b70e093dbbc4136ff7ba7d51944bec",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1
+   },
+   "tally": {
+    "module: read": 1,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "Textualize/rich#3941": {
+   "base": "a9c4aaba7ead5599d969aa4c8f3c6dae5549cef4",
+   "names": {},
+   "tally": {
+    "module: no text before and after the PR": 1
+   }
+  },
+  "Textualize/rich#3953": {
+   "base": "1d402e0c59f8765e420a5a4440eb2fca7465d1ae",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "Textualize/rich#4006": {
+   "base": "27701029082052c6541031b6f139097230253900",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "Textualize/rich#4075": {
+   "base": "1fc7cb210ae52eb099df39818ddb9569e5b14c7b",
+   "names": {},
+   "tally": {
+    "module: read": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "Textualize/rich#4079": {
+   "base": "19c67b9a3479841e9133bea94607c89ee931d3fc",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "Textualize/textual#6335": {
+   "base": "7593cab7d9a60034e67b5c0f14b08e219bb1763c",
+   "names": {},
+   "tally": {}
+  },
+  "Textualize/textual#6362": {
+   "base": "f901b376025084da84ad14a53ea20de3a84ca984",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 5,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "Textualize/textual#6374": {
+   "base": "e49cc9485f4b55cc99df07b737cdf76ff9005216",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 2
+   },
+   "tally": {
+    "module: read": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 5,
+    "name: no other file imports or reads a name like it: nothing to report": 3
+   }
+  },
+  "Textualize/textual#6392": {
+   "base": "576104f515481cc05005ac2f013cd2eef852f7ad",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "Textualize/textual#6397": {
+   "base": "ac7ef91ee17f298d8ff24750905cffd36d46eed4",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "Textualize/textual#6402": {
+   "base": "260fc3f62854131e298d6c254634663b23b0fda0",
+   "names": {},
+   "tally": {
+    "module: read": 4
+   }
+  },
+  "Textualize/textual#6405": {
+   "base": "55d1eac0b8531908718fda842ed92dc023dd7cea",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "Textualize/textual#6410": {
+   "base": "431dc7d32c64948d0197851654729262f8ed35be",
+   "names": {},
+   "tally": {
+    "module: read": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "Textualize/textual#6455": {
+   "base": "e84eacc1899f940ea068c4ae5c7eca2dd4a489db",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "Textualize/textual#6464": {
+   "base": "04b03c8db64266a6a7811cc161bae9986e53b1a1",
+   "names": {},
+   "tally": {
+    "module: read": 3
+   }
+  },
+  "Textualize/textual#6470": {
+   "base": "32f1d23330efd7a47891a5ce90edd7677664fbc1",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "Textualize/textual#6471": {
+   "base": "f044be2a115a1f3655b8de9f734d2ba57ab2207e",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "Textualize/textual#6478": {
+   "base": "634ca6e786885ffebe211fc73e0e8a04e030f3c3",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "Textualize/textual#6542": {
+   "base": "f1929043fc5a9346a7a13649c1c2bc6ac4199a3b",
+   "names": {},
+   "tally": {
+    "module: read": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 6
+   }
+  },
+  "Textualize/textual#6543": {
+   "base": "e03efd50f83a8453f023e404fda3865773dc0c37",
+   "names": {},
+   "tally": {
+    "module: read": 3
+   }
+  },
+  "Textualize/textual#6544": {
+   "base": "3d2ed3566eab21e998eb891a357773d8b6685b42",
+   "names": {},
+   "tally": {
+    "module: read": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "Textualize/textual#6592": {
+   "base": "aea9d4b5529841757aead36670a8a7f75aa61ed9",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "Textualize/textual#6594": {
+   "base": "13eef1fe6acac857c82d3ff854a1cce54d0c8749",
+   "names": {},
+   "tally": {
+    "module: read": 3,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "encode/httpx#3412": {
+   "base": "189fc4bcbe5f314128775dec66a616ac9a31ad48",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "encode/httpx#3418": {
+   "base": "47f4a96ffaaaa07dca1614409549b5d7a6e7af49",
+   "names": {},
+   "tally": {}
+  },
+  "encode/httpx#3419": {
+   "base": "a33c87852b8a0dddc65e5f739af1e0a6fca4b91f",
+   "names": {},
+   "tally": {
+    "module: read": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 6
+   }
+  },
+  "encode/httpx#3670": {
+   "base": "f9d5e1204978c0c66666fa169edada1bf719f8ba",
+   "names": {},
+   "tally": {
+    "module: read": 5
+   }
+  },
+  "encode/httpx#3672": {
+   "base": "4acf5c2c37714cc63b5cf71b3e284fca83c90311",
+   "names": {},
+   "tally": {
+    "module: read": 8
+   }
+  },
+  "encode/httpx#3673": {
+   "base": "68989ae47d9fd10381a3859619a3880014d187f6",
+   "names": {},
+   "tally": {
+    "module: no text before and after the PR": 8
+   }
+  },
+  "encode/httpx#3690": {
+   "base": "20380490fd0bd13c68704080754c1385bff96d69",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "fastapi/fastapi#16598": {
+   "base": "80c8742d141e67beaf747343405c8facf999bc0c",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "fastapi/typer#1942": {
+   "base": "407d924044759cf9687662cd9638e940664a70f9",
+   "names": {
+    "definitions: another file imports or reads a name like it, in no use that is certain: left alone": 2
+   },
+   "tally": {
+    "module: read": 6,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 11
+   }
+  },
+  "fastapi/typer#1972": {
+   "base": "11b083b92126fb8e149ab9e7d5c9a0f5594dfe58",
+   "names": {},
+   "tally": {
+    "module: read": 3,
+    "name: its line is removed, and the module still defines it: nothing to report": 7
+   }
+  },
+  "marshmallow-code/marshmallow#3024": {
+   "base": "c7b559a1fa3aba57ca6dba0ab336841c5038a782",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 2
+   },
+   "tally": {
+    "module: read": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 1,
+    "name: no other file imports or reads a name like it: nothing to report": 2
+   }
+  },
+  "marshmallow-code/marshmallow#3034": {
+   "base": "0c05c83d8a0602bef2520e54f5fd62c2f8ccc955",
+   "names": {},
+   "tally": {
+    "module: read": 5
+   }
+  },
+  "pallets/click#3777": {
+   "base": "61b69e967e525bd502f5bf42def4d551e761fe0e",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "pallets/click#3780": {
+   "base": "420c8fb44eeadb537cae69d2fee3796e808558dd",
+   "names": {},
+   "tally": {}
+  },
+  "pallets/click#3781": {
+   "base": "2103e157683c5e4cadc8ee1838df526a54bde9a4",
+   "names": {},
+   "tally": {
+    "module: read": 3
+   }
+  },
+  "pallets/click#3805": {
+   "base": "3cbcf9b11546f4cf10b36d3e2e531733ba6fe001",
+   "names": {},
+   "tally": {}
+  },
+  "pallets/click#3818": {
+   "base": "b47c0529e99129d4785fecc2cb39a8ec8b4aa5f8",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/click#3821": {
+   "base": "be13b152cf5949a362926322c835fa76019cc6fe",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/click#3858": {
+   "base": "7944461a80b780d060899c8835acab3c273a04a6",
+   "names": {},
+   "tally": {
+    "module: read": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "pallets/click#3860": {
+   "base": "70689853e39c30e36eb0d83d586cc914a74db9d3",
+   "names": {},
+   "tally": {
+    "module: no text before and after the PR": 1
+   }
+  },
+  "pallets/click#3861": {
+   "base": "86949d19b930ef68a45566544cb4b9508d895d0d",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 2,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "pallets/click#3865": {
+   "base": "d036881798e34289a49b18a5c550c7cf687e5a7a",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "pallets/click#3884": {
+   "base": "bb695aaecdef95832d167fc1d508921745aa824e",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/click#3899": {
+   "base": "5e7cf6b6db197de4259e91b299bd4313beb481b4",
+   "names": {},
+   "tally": {
+    "module: read": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "pallets/flask#5700": {
+   "base": "c7c8dc38ea2890d62b7aaff7e4c016e4b98101b0",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/flask#5799": {
+   "base": "49b7e7bc8fb69d605719991d1c0a99fcee689053",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/flask#5898": {
+   "base": "eb58d862cc4a8f31a369b6e9ad1724e9e642f13f",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "pallets/flask#5899": {
+   "base": "0292047b22c82921dcf165322d93a0b988328c2e",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "pallets/flask#5917": {
+   "base": "d3b78fd18a8d9e224cb9ef58a23cec9b1ffc9ce9",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 3
+   },
+   "tally": {
+    "module: read": 5,
+    "name: its line is removed, and the module still defines it: nothing to report": 1,
+    "name: no other file imports or reads a name like it: nothing to report": 3
+   }
+  },
+  "pallets/flask#6013": {
+   "base": "06ea505ce2b2042af26e96d35ebf159af7c0869d",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/flask#6095": {
+   "base": "8285adf5a4f572dbf7a0a3b8f3a96ca0b19c50a4",
+   "names": {
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: the module's names can't be listed after the PR: left alone": 2
+   },
+   "tally": {
+    "module: read": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 1,
+    "name: the module's names can't be listed after the PR: left alone": 3
+   }
+  },
+  "pallets/flask#6096": {
+   "base": "514fc6b3e8402e4c646d5284e97a4f0ab50a7c4b",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "pallets/flask#6133": {
+   "base": "3596b1ab61cea85edb8970e83ff61daa073facf8",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/flask#6176": {
+   "base": "d04a0c15a83c78186cf31dc5d226b3110321b9e5",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/jinja#1979": {
+   "base": "e82013c39970c336ed33906b3c38464f1fadbd30",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "pallets/jinja#2017": {
+   "base": "13c42b3aabe57511537e14cf4736a5730b1a8782",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/jinja#2026": {
+   "base": "39d9ffff1f33a5e5141af655857f9dbe6b6df03d",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "pallets/jinja#2029": {
+   "base": "ba8847a466d0f3ad622502f86e819737a4b9fdc7",
+   "names": {},
+   "tally": {
+    "module: read": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "pallets/jinja#2061": {
+   "base": "767b23617628419ae3709ccfb02f9602ae9fe51f",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/jinja#2098": {
+   "base": "dfe82ade3dc7d112d7d166ca0d7ae7f794fe19e6",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/werkzeug#3270": {
+   "base": "f27af2652a798931aa00c2476a4de130f597c1d3",
+   "names": {},
+   "tally": {
+    "module: read": 5
+   }
+  },
+  "pallets/werkzeug#3273": {
+   "base": "a33190bffb7f6dd4c7084c08257b4542689b8c66",
+   "names": {
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 3,
+    "name: no other file imports or reads a name like it: nothing to report": 1,
+    "name: the module's names can't be listed after the PR: left alone": 1
+   }
+  },
+  "pallets/werkzeug#3276": {
+   "base": "f97c305673ba121a1dae6764c37e8be48907a1d1",
+   "names": {
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 4,
+    "name: no other file imports or reads a name like it: nothing to report": 1,
+    "name: the module's names can't be listed after the PR: left alone": 1
+   }
+  },
+  "pallets/werkzeug#3277": {
+   "base": "7641d4990f06d583425a4e6ba25e9d2f18934885",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "pallets/werkzeug#3278": {
+   "base": "56aa21d050c739944b623c087a50850dad40803c",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 2,
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: the module's names can't be listed after the PR: left alone": 3
+   },
+   "tally": {
+    "module: read": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 3,
+    "name: no other file imports or reads a name like it: nothing to report": 2,
+    "name: the module's names can't be listed after the PR: left alone": 4
+   }
+  },
+  "pallets/werkzeug#3282": {
+   "base": "e27473b7f765ad0d774a612cb76aa0b8a0332c27",
+   "names": {
+    "definitions: the module's names can't be listed after the PR: left alone": 2
+   },
+   "tally": {
+    "module: read": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 2,
+    "name: the module's names can't be listed after the PR: left alone": 2
+   }
+  },
+  "pallets/werkzeug#3287": {
+   "base": "6d03c6a3ff43a7577db742e13d54448384a1d0f8",
+   "names": {
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: the module's names can't be listed after the PR: left alone": 2
+   },
+   "tally": {
+    "module: read": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 3,
+    "name: the module's names can't be listed after the PR: left alone": 3
+   }
+  },
+  "pallets/werkzeug#3292": {
+   "base": "6048fa48753c7b61e35cc34537667809dee8fa35",
+   "names": {
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 1,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "pallets/werkzeug#3293": {
+   "base": "cdc9e2d2fff5f576580d7c73ad5280778ec5d55b",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/werkzeug#3298": {
+   "base": "25663ddc295879d362a206b4c33f16ea2e694392",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "pallets/werkzeug#3299": {
+   "base": "fa93b5cee027bc9baadba67f21360a8a39b2317b",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/werkzeug#3300": {
+   "base": "d4b67549221d050e3e7300dfaa002b8b59672a12",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 1,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 4,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 1,
+    "name: no other file imports or reads a name like it: nothing to report": 2
+   }
+  },
+  "pallets/werkzeug#3304": {
+   "base": "b5c57f308465deb39bcc801017c4edde1f81d6ea",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 1,
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 2,
+    "name: no other file imports or reads a name like it: nothing to report": 2,
+    "name: the module's names can't be listed after the PR: left alone": 1
+   }
+  },
+  "pallets/werkzeug#3306": {
+   "base": "4eabe333c6b359979664cc313c3241b5a770ee84",
+   "names": {
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 3,
+    "imports: the module's names can't be listed after the PR: left alone": 1
+   },
+   "tally": {
+    "module: read": 5,
+    "name: no other file imports or reads a name like it: nothing to report": 3,
+    "name: the module's names can't be listed after the PR: left alone": 2
+   }
+  },
+  "pallets/werkzeug#3309": {
+   "base": "4efac9df7ebabe13f82ab0823d5ca0109db20bc3",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/werkzeug#3322": {
+   "base": "ed82ed5e8c37f34b04a5910d58200c40b866605f",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/werkzeug#3327": {
+   "base": "0819a2a9b262aceab39d19ef30f3824d6048daf4",
+   "names": {
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 4,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "pallets/werkzeug#3329": {
+   "base": "456407ae4201661b14f726e1409db185418b6df7",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pallets/werkzeug#3332": {
+   "base": "ac7d7dd8a4dc0755ada16f7105afd14f736da831",
+   "names": {
+    "definitions: the module's names can't be listed after the PR: left alone": 1,
+    "imports: the module's names can't be listed after the PR: left alone": 1
+   },
+   "tally": {
+    "module: read": 2,
+    "name: the module's names can't be listed after the PR: left alone": 2
+   }
+  },
+  "pallets/werkzeug#3337": {
+   "base": "242a7380abcc325c7f0bc8f44eaf51377d6b5d8f",
+   "names": {
+    "definitions: the module's names can't be listed after the PR: left alone": 3,
+    "imports: no other file imports or reads a name like it: nothing to report": 1,
+    "imports: the module's names can't be listed after the PR: left alone": 2
+   },
+   "tally": {
+    "module: read": 5,
+    "name: its line is removed, and the module still defines it: nothing to report": 1,
+    "name: no other file imports or reads a name like it: nothing to report": 1,
+    "name: the module's names can't be listed after the PR: left alone": 5
+   }
+  },
+  "pallets/werkzeug#3338": {
+   "base": "ec95ee993a7975460c2e6468ebeccdd7c67386ba",
+   "names": {
+    "definitions: the module's names can't be listed after the PR: left alone": 1
+   },
+   "tally": {
+    "module: read": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 1,
+    "name: the module's names can't be listed after the PR: left alone": 1
+   }
+  },
+  "pallets/werkzeug#3339": {
+   "base": "b73dce5a2ce14f7c7fd645699d1d878de48d2948",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 1,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "imports: no other file imports or reads a name like it: nothing to report": 1,
+    "imports: the module's names can't be listed after the PR: left alone": 1
+   },
+   "tally": {
+    "module: read": 5,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 1,
+    "name: no other file imports or reads a name like it: nothing to report": 2,
+    "name: the module's names can't be listed after the PR: left alone": 1
+   }
+  },
+  "pallets/werkzeug#3341": {
+   "base": "2adaad1ab68312fa46efb07ff072b15b720e2444",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 9,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "psf/black#5510": {
+   "base": "fe241ccc443acbabbd75c8240d2fbc06ba4e52d6",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5606": {
+   "base": "976bbe4863e69775d05b66dc3d489e8ad8f7e72f",
+   "names": {},
+   "tally": {}
+  },
+  "psf/black#5609": {
+   "base": "f56455da375e6d122ae814c3ea9a5138c67f623e",
+   "names": {},
+   "tally": {
+    "module: no text before and after the PR": 1
+   }
+  },
+  "psf/black#5610": {
+   "base": "917ef58f86302a9fce8d5604f3d9166bd93abf1e",
+   "names": {},
+   "tally": {
+    "module: no text before and after the PR": 1
+   }
+  },
+  "psf/black#5612": {
+   "base": "67a69216d12f67ae6ae93eb165e4e6c55844df3c",
+   "names": {},
+   "tally": {
+    "module: no text before and after the PR": 1
+   }
+  },
+  "psf/black#5613": {
+   "base": "03a21a51940f7e1b5a9c703741bfc3f931ac8fdb",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "psf/black#5615": {
+   "base": "b75b3552192915e1878592e76d2f920775a7cefe",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5617": {
+   "base": "cb094d192bb6225ef01534e25108e8aed560fa61",
+   "names": {},
+   "tally": {
+    "module: read": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "psf/black#5618": {
+   "base": "f80efd49a60af5e202ac49499406cadd5305c154",
+   "names": {},
+   "tally": {
+    "module: no text before and after the PR": 1
+   }
+  },
+  "psf/black#5620": {
+   "base": "04afd895bf343e5dc41fc168ba3f8ac378a7ee5f",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "psf/black#5621": {
+   "base": "80db630ac532f0e2f3ba33493e42cc19106eb261",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5625": {
+   "base": "062d76a492d7337f3de951bd7ef1af1096a439ee",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5626": {
+   "base": "d16946630ead57eebf0db464c0cf2a58e4df7101",
+   "names": {},
+   "tally": {}
+  },
+  "psf/black#5628": {
+   "base": "f74dfd7f6dceb729ceee27ed636245f6dfd700d3",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5630": {
+   "base": "a74759ef4c9703e8c40e2f4ef165835a78592326",
+   "names": {
+    "imports: no other file imports or reads a name like it: nothing to report": 2
+   },
+   "tally": {
+    "module: read": 2,
+    "name: no other file imports or reads a name like it: nothing to report": 2
+   }
+  },
+  "psf/black#5631": {
+   "base": "9485ad42045c3b4384beabec7841a7d1b7da27ce",
+   "names": {},
+   "tally": {}
+  },
+  "psf/black#5634": {
+   "base": "c61c1db94a712346dd7029d297f3fccfb9fa4dd9",
+   "names": {},
+   "tally": {}
+  },
+  "psf/black#5635": {
+   "base": "ad56c609f491c9ec86053188cdc881565e19f933",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5637": {
+   "base": "2231c3877d6274004df2a78357202a44dc2ef0c9",
+   "names": {},
+   "tally": {}
+  },
+  "psf/black#5638": {
+   "base": "4ef88cd219c3e6c86b21de2d37425ebcc333b387",
+   "names": {},
+   "tally": {}
+  },
+  "psf/black#5641": {
+   "base": "408211f4ae4ec7f119aae8a773ad14bcc6a17cba",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5643": {
+   "base": "324e93c0cb20d7dab06345131c14aab9c9fa5d5b",
+   "names": {},
+   "tally": {
+    "module: read": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "psf/black#5645": {
+   "base": "2f0b40783a273eeb907b0f052a0eadc326c1e1c3",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5647": {
+   "base": "e0d5d1fa43105a1fd993b4e9ee447b4ed753fb3c",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5649": {
+   "base": "a755b562f5ed7d941bce785a6600fde233126fe0",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5651": {
+   "base": "945d902bef347d2e7e1d26897aa89a9c177fb535",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5652": {
+   "base": "b1c244db985218e4b643a37153870d059a3f1e21",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/black#5657": {
+   "base": "fcfcc92d2497f1a04536ecc6ce74e801ecf5e046",
+   "names": {},
+   "tally": {
+    "module: read": 3
+   }
+  },
+  "psf/requests#7427": {
+   "base": "3816cfa1abd42dca21b9e837f26c59b246016aaf",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/requests#7429": {
+   "base": "a4f9a5999bdb9bf2d6e7c8aa973b28cacb17134f",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "psf/requests#7436": {
+   "base": "2144213c307691710c9d665700860fc4993c3035",
+   "names": {},
+   "tally": {
+    "module: read": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 4
+   }
+  },
+  "psf/requests#7496": {
+   "base": "3be097d450ee4ca8a2f9c1a3a58eb61ed19936b0",
+   "names": {},
+   "tally": {
+    "module: read": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 6
+   }
+  },
+  "psf/requests#7497": {
+   "base": "fbd0eb37320376740a1010f52f2b9870e8210d88",
+   "names": {},
+   "tally": {
+    "module: no text before and after the PR": 1,
+    "module: read": 8,
+    "name: its line is removed, and the module still defines it: nothing to report": 10
+   }
+  },
+  "psf/requests#7505": {
+   "base": "6f205ff422bccd5e4c4fc0b64c5f3e7df5181db6",
+   "names": {
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 1,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "pydantic/pydantic#14163": {
+   "base": "49faa6ebb9bb2145c5c54d870f9eaad4498b8f5d",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: no text before and after the PR": 1,
+    "module: read": 2,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "pydantic/pydantic#14172": {
+   "base": "b0ddd2633b2126ea2f670fc970f8d5c60c1e9770",
+   "names": {},
+   "tally": {}
+  },
+  "pydantic/pydantic#14176": {
+   "base": "66d175c471f34404aabec5e223fb1791b3780ae9",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 3,
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1
+   },
+   "tally": {
+    "module: read": 2,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "name: no other file imports or reads a name like it: nothing to report": 3
+   }
+  },
+  "pydantic/pydantic#14195": {
+   "base": "a5a6daa207e4c224bb58a9ad93793e9e58d1cec6",
+   "names": {},
+   "tally": {
+    "module: read": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 5
+   }
+  },
+  "pydantic/pydantic#14196": {
+   "base": "ff6550685d6e13fcc5de3a5f661aabf7063cb8e7",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pydantic/pydantic#14199": {
+   "base": "a9f3f3fccc180c05190df0478a17487ec9908e4e",
+   "names": {},
+   "tally": {
+    "module: read": 5,
+    "name: its line is removed, and the module still defines it: nothing to report": 5
+   }
+  },
+  "pydantic/pydantic#14202": {
+   "base": "b4adbe01e4740d98518509181cc49f9dd3a79da5",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pydantic/pydantic#14213": {
+   "base": "5740091dcd08e4a92940ceae841434a83331cb09",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 2
+   },
+   "tally": {
+    "module: read": 2,
+    "name: no other file imports or reads a name like it: nothing to report": 3
+   }
+  },
+  "pydantic/pydantic#14244": {
+   "base": "c9b92900dc74802a04cc20519b753a7d8f3d2844",
+   "names": {},
+   "tally": {
+    "module: no text before and after the PR": 1
+   }
+  },
+  "pypa/pip#14347": {
+   "base": "e76262b871e8dda909b64d2266fd2d37d543edd0",
+   "names": {},
+   "tally": {
+    "module: no text before and after the PR": 1
+   }
+  },
+  "pypa/pip#14349": {
+   "base": "fb1d16609222a4a44c64bd8b12805a5e10d65a06",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 3,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 3,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "pypa/pip#14352": {
+   "base": "ed2dc7b925cefb3607ebf91e1e3e4b4fd6a7e342",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 5,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 8,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "pypa/pip#14395": {
+   "base": "0d09686649a97c2dd304322b191e44eb06ab4d44",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pypa/pip#14398": {
+   "base": "1901663abcf0a220fe9cad5ee36a656daaf9bf66",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "pypa/pip#14403": {
+   "base": "7eb531933a88291d78f859d6aa0957ab16ac2635",
+   "names": {},
+   "tally": {
+    "module: no text before and after the PR": 2,
+    "module: read": 4
+   }
+  },
+  "pypa/pip#14407": {
+   "base": "3549bb4fe15ff1a026e1ae0cc94b84b530155aab",
+   "names": {
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 3,
+    "name: its line is removed, and the module still defines it: nothing to report": 4,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "pypa/pip#14424": {
+   "base": "8e3414c2255324ad806fe83931009ea1b8dc4db9",
+   "names": {},
+   "tally": {
+    "module: read": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "python-attrs/attrs#1541": {
+   "base": "57b314c0dc8e0b80c0ed8f61c0be81965137ea41",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "python-attrs/attrs#1571": {
+   "base": "f616f732c6c5f87a8f7a762176422baed250a6be",
+   "names": {
+    "definitions: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 2,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "python-attrs/attrs#1592": {
+   "base": "d3a98cf05ab15769003dcca3eae91cdd6504b83b",
+   "names": {},
+   "tally": {
+    "module: read": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 2
+   }
+  },
+  "python-attrs/attrs#1600": {
+   "base": "ca0f04585d3fb132c6e2f6baa9d7d966d8036760",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 3,
+    "imports: the module's names can't be listed after the PR: left alone": 6
+   },
+   "tally": {
+    "module: read": 5,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 7,
+    "name: no other file imports or reads a name like it: nothing to report": 3,
+    "name: the module's names can't be listed after the PR: left alone": 6
+   }
+  },
+  "python-attrs/attrs#1606": {
+   "base": "f38b8a3f1625060aa4245930822c34c11c252f83",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "python-poetry/poetry#11042": {
+   "base": "628f7fcb4297299fcd74794fea0bc46c84f03645",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 4,
+    "imports: no other file imports or reads a name like it: nothing to report": 2
+   },
+   "tally": {
+    "module: read": 7,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 4,
+    "name: its line is removed, and the module still defines it: nothing to report": 2,
+    "name: no other file imports or reads a name like it: nothing to report": 2
+   }
+  },
+  "python-poetry/poetry#11072": {
+   "base": "52fd2873d26240db0ba68795b88d57d906d0a0b8",
+   "names": {
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 1,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "python-poetry/poetry#11073": {
+   "base": "8711c8380c044992e84276783b9e27b18573017d",
+   "names": {},
+   "tally": {}
+  },
+  "python-poetry/poetry#11074": {
+   "base": "e078ebfa5a01412bdf68d851c494ef483595af98",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "python-poetry/poetry#11077": {
+   "base": "165fb4b42e0138249abf58e3228d1f2d14cee826",
+   "names": {},
+   "tally": {
+    "module: read": 9
+   }
+  },
+  "python-poetry/poetry#11099": {
+   "base": "d4fd21e4711ae948f04e18a1736d9ee85b590e87",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "python-poetry/poetry#11131": {
+   "base": "906ba21dff6f08c0df7d381a5e7879e12f6102e0",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "python-poetry/poetry#11141": {
+   "base": "b1e370bf70a73545fd77066a4ee7fa83f760d161",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "python-poetry/poetry#11171": {
+   "base": "d59ff3b47c5d70b5e4934db874e94ea78b98feb8",
+   "names": {},
+   "tally": {
+    "module: read": 2
+   }
+  },
+  "python-poetry/poetry#11175": {
+   "base": "d4e6333b5577d1c13c0b3580dd6cfc3141a2faff",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "scrapy/scrapy#8382": {
+   "base": "33ac758244e0a544609276aa600da6aa4935530c",
+   "names": {},
+   "tally": {}
+  },
+  "scrapy/scrapy#8385": {
+   "base": "ca5f3c1acf430429563485997e207661d24b11da",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1
+   },
+   "tally": {
+    "module: read": 4,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1
+   }
+  },
+  "scrapy/scrapy#8386": {
+   "base": "4001c07fea040cbbaaac505412698ee91c7a1034",
+   "names": {},
+   "tally": {
+    "module: read": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 3
+   }
+  },
+  "scrapy/scrapy#8391": {
+   "base": "53998e2b656798d6240a24b1377af01d57a6d18f",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1
+   },
+   "tally": {
+    "module: read": 4,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 4
+   }
+  },
+  "scrapy/scrapy#8392": {
+   "base": "1e0ff6dd7c439b9c6de1d0b39704ec065af8cd18",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 4,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 6,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "scrapy/scrapy#8394": {
+   "base": "4d372f0275c315dd7b0eb2fc9c514951c0085e0a",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 2
+   },
+   "tally": {
+    "module: read": 2,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 5,
+    "name: no other file imports or reads a name like it: nothing to report": 2
+   }
+  },
+  "scrapy/scrapy#8413": {
+   "base": "62b57431e8d478a6c455ae814f8f5d64996545b3",
+   "names": {
+    "imports: no other file imports or reads a name like it: nothing to report": 1
+   },
+   "tally": {
+    "module: read": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 3,
+    "name: no other file imports or reads a name like it: nothing to report": 1
+   }
+  },
+  "scrapy/scrapy#8414": {
+   "base": "3e4d0faf0eefcaf3700c92bdb8973b7b9b82f996",
+   "names": {
+    "imports: no other file imports or reads a name like it: nothing to report": 2
+   },
+   "tally": {
+    "module: read": 3,
+    "name: its line is removed, and the module still defines it: nothing to report": 1,
+    "name: no other file imports or reads a name like it: nothing to report": 2
+   }
+  },
+  "scrapy/scrapy#8416": {
+   "base": "5c7886a3f27dbf8b66f557cc9945dbc4a6aceaac",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "scrapy/scrapy#8431": {
+   "base": "943e31d5d69f2c9802e6673b3478975795670c57",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "scrapy/scrapy#8440": {
+   "base": "2d22bf9ae9a2953bc55e017bc89f3ec469c820c8",
+   "names": {
+    "imports: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "imports: no other file imports or reads a name like it: nothing to report": 4
+   },
+   "tally": {
+    "module: read": 8,
+    "name: another file imports or reads a name like it, in no use that is certain: left alone": 1,
+    "name: its line is removed, and the module still defines it: nothing to report": 8,
+    "name: no other file imports or reads a name like it: nothing to report": 4
+   }
+  },
+  "scrapy/scrapy#8457": {
+   "base": "8810d37ba97c642cc15707fc0520131ca5714edd",
+   "names": {},
+   "tally": {
+    "module: read": 2,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "scrapy/scrapy#8460": {
+   "base": "60c218c2cf0673a544166e5c292bc2b256f0fdd2",
+   "names": {},
+   "tally": {
+    "module: read": 3,
+    "name: its line is removed, and the module still defines it: nothing to report": 1
+   }
+  },
+  "scrapy/scrapy#8461": {
+   "base": "20df334115ca4d8a3fe246ac644049ca18749026",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "scrapy/scrapy#8463": {
+   "base": "596523da9120f115042ecbfbccfc895a1d052b13",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "scrapy/scrapy#8464": {
+   "base": "a0e3b34479d272129b1710f6aabe0652ddb9939c",
+   "names": {},
+   "tally": {
+    "module: read": 1
+   }
+  },
+  "scrapy/scrapy#8466": {
+   "base": "ae4c0cee172630b4516ef793840336bac13c80d6",
+   "names": {},
+   "tally": {
+    "module: read": 3,
+    "name: its line is removed, and the module still defines it: nothing to report": 2
+   }
+  }
+ }
+}
