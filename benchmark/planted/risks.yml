@@ -1,5 +1,6 @@
 # Risks planted for the checks that need no model. Each case is a set of new
-# files a PR adds, and `rule` is what should catch it (any one of a list).
+# files a PR adds (the last section's cases change files instead), and `rule`
+# is what should catch it (any one of a list).
 # Shaped after real incidents where there was one (`seen`). Nothing here is
 # changed to make a case pass: a miss stays in as a miss. A case marked
 # `control: true` is files its rule must leave alone.
@@ -2079,3 +2080,896 @@
       import json
 
       SETTINGS = json.load_string("{}")
+
+# ── names a PR removes that are still used ───────────────────────────────
+# The rule is off by default: run with
+# --policy benchmark/planted/variants/removed-names.yml.
+# Here a case is a change, not new files: `repo` is the default branch, and a
+# file of `files` that `repo` has too is that file after the PR. The PR takes
+# a name out of a module, and a file it leaves alone (or doesn't fix) still
+# imports or uses it. The controls are PRs the rule must leave alone, one for
+# each reason it stays quiet.
+
+- id: removed-renamed-function
+  rule: code/removed-name
+  seen: a rename that updates the definition and misses a caller in another file
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          return dict(part.strip().split("=", 1) for part in header.split(";") if "=" in part)
+
+
+      def parse_accept(header):
+          return [part.strip() for part in header.split(",")]
+    app/request.py: |
+      from app.http import parse_cookie
+
+
+      class Request:
+          def __init__(self, headers):
+              self.cookies = parse_cookie(headers.get("Cookie", ""))
+  files:
+    app/http.py: |
+      def parse_cookies(header):
+          return dict(part.strip().split("=", 1) for part in header.split(";") if "=" in part)
+
+
+      def parse_accept(header):
+          return [part.strip() for part in header.split(",")]
+
+- id: removed-deleted-function-used-as-an-attribute
+  rule: code/removed-name
+  repo:
+    app/__init__.py: ""
+    app/storage.py: |
+      def upload(path, bucket):
+          ...
+
+
+      def upload_many(paths, bucket):
+          for path in paths:
+              upload(path, bucket)
+
+
+      def download(key, bucket):
+          ...
+    app/backup.py: |
+      from app import storage
+
+
+      def run(paths):
+          storage.upload_many(paths, bucket="backups")
+  files:
+    app/storage.py: |
+      def upload(path, bucket):
+          ...
+
+
+      def download(key, bucket):
+          ...
+
+- id: removed-class-behind-a-relative-import
+  rule: code/removed-name
+  repo:
+    shop/__init__.py: ""
+    shop/models.py: |
+      class Product:
+          def __init__(self, title, price):
+              self.title, self.price = title, price
+
+
+      class Order:
+          def __init__(self, products):
+              self.products = products
+    shop/cart.py: |
+      from .models import Order, Product
+
+
+      def checkout(items):
+          return Order([Product(title, price) for title, price in items])
+  files:
+    shop/models.py: |
+      class Item:
+          def __init__(self, title, price):
+              self.title, self.price = title, price
+
+
+      class Order:
+          def __init__(self, products):
+              self.products = products
+
+- id: removed-constant
+  rule: code/removed-name
+  repo:
+    client/__init__.py: ""
+    client/settings.py: |
+      BASE_URL = "https://api.example.com"
+      DEFAULT_TIMEOUT = 30
+      RETRIES = 3
+    client/session.py: |
+      from client.settings import BASE_URL, DEFAULT_TIMEOUT
+
+
+      def get(path, timeout=DEFAULT_TIMEOUT):
+          return fetch(BASE_URL + path, timeout=timeout)
+  files:
+    client/settings.py: |
+      BASE_URL = "https://api.example.com"
+      CONNECT_TIMEOUT = 5
+      READ_TIMEOUT = 30
+      RETRIES = 3
+
+- id: removed-from-the-package-init
+  rule: code/removed-name
+  seen: an import a linter calls unused, which was the package's public name
+  repo:
+    server/__init__.py: |
+      from server.app import make_app
+      from server.config import load_config
+    server/app.py: |
+      def make_app(config=None):
+          ...
+    server/config.py: |
+      def load_config(path):
+          ...
+    wsgi.py: |
+      from server import load_config, make_app
+
+      application = make_app(load_config("server.toml"))
+  files:
+    server/__init__.py: |
+      from server.app import make_app
+
+- id: removed-name-the-tests-import-from-src
+  rule: code/removed-name
+  repo:
+    src/app/__init__.py: ""
+    src/app/text.py: |
+      import re
+
+
+      def slugify(title):
+          return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    tests/test_text.py: |
+      from app.text import slugify
+
+
+      def test_slugify():
+          assert slugify("Hello, World") == "hello-world"
+  files:
+    src/app/text.py: |
+      import re
+
+
+      def to_slug(title):
+          return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+
+- id: removed-fixed-in-one-caller-and-not-the-other
+  rule: code/removed-name
+  repo:
+    jobs/__init__.py: ""
+    jobs/queue.py: |
+      def enqueue(job):
+          ...
+
+
+      def drain():
+          ...
+    jobs/api.py: |
+      from jobs.queue import enqueue
+
+
+      def submit(job):
+          enqueue(job)
+    jobs/cron.py: |
+      def nightly(jobs):
+          from jobs.queue import enqueue
+
+          for job in jobs:
+              enqueue(job)
+  files:
+    jobs/queue.py: |
+      def push(job):
+          ...
+
+
+      def drain():
+          ...
+    jobs/api.py: |
+      from jobs.queue import push
+
+
+      def submit(job):
+          push(job)
+
+- id: removed-still-used-in-a-file-the-pr-changes
+  rule: code/removed-name
+  repo:
+    billing/__init__.py: ""
+    billing/money.py: |
+      def to_cents(amount):
+          return round(amount * 100)
+
+
+      def from_cents(cents):
+          return cents / 100
+    billing/invoice.py: |
+      from billing import money
+
+
+      def total(lines):
+          return sum(money.to_cents(line.amount) for line in lines)
+
+
+      def show(cents):
+          return "%.2f" % money.from_cents(cents)
+  files:
+    billing/money.py: |
+      def cents(amount):
+          return round(amount * 100)
+
+
+      def dollars(cents):
+          return cents / 100
+    billing/invoice.py: |
+      from billing import money
+
+
+      def total(lines):
+          return sum(money.cents(line.amount) for line in lines)
+
+
+      def show(cents):
+          return "%.2f" % money.from_cents(cents)
+
+- id: removed-behind-a-dotted-chain
+  rule: code/removed-name
+  repo:
+    app/__init__.py: ""
+    app/db/__init__.py: ""
+    app/db/session.py: |
+      from contextlib import contextmanager
+
+
+      @contextmanager
+      def session_scope():
+          yield
+    app/reports.py: |
+      import app.db.session
+
+
+      def build():
+          with app.db.session.session_scope():
+              ...
+  files:
+    app/db/session.py: |
+      from contextlib import contextmanager
+
+
+      @contextmanager
+      def transaction():
+          yield
+
+- id: removed-moved-to-a-new-module
+  rule: code/removed-name
+  seen: a helper moved to its own module, with the old importers left behind
+  repo:
+    app/__init__.py: ""
+    app/utils.py: |
+      import os
+
+
+      def normalise_path(path):
+          return os.path.normpath(os.path.expanduser(path))
+
+
+      def read(path):
+          return open(path).read()
+    app/uploads.py: |
+      from app.utils import normalise_path, read
+
+
+      def load(name):
+          return read(normalise_path("~/uploads/" + name))
+  files:
+    app/utils.py: |
+      def read(path):
+          return open(path).read()
+    app/paths.py: |
+      import os
+
+
+      def normalise_path(path):
+          return os.path.normpath(os.path.expanduser(path))
+
+- id: removed-from-a-script-helper
+  rule: code/removed-name
+  repo:
+    scripts/helpers.py: |
+      def load_rows(path):
+          ...
+
+
+      def write_rows(path, rows):
+          ...
+    scripts/export.py: |
+      from helpers import load_rows, write_rows
+
+      write_rows("out.csv", load_rows("in.csv"))
+  files:
+    scripts/helpers.py: |
+      def read_rows(path):
+          ...
+
+
+      def write_rows(path, rows):
+          ...
+
+- id: removed-import-other-modules-took-from-here
+  rule: code/removed-name
+  seen: "`from app.compat import json` all over the code, and a PR tidying compat's imports"
+  repo:
+    app/__init__.py: ""
+    app/compat.py: |
+      import json
+      import pickle
+
+      dumps = pickle.dumps
+    app/cache.py: |
+      from app.compat import dumps, json
+
+
+      def key(value):
+          return json.dumps(value, sort_keys=True)
+  files:
+    app/compat.py: |
+      import pickle
+
+      dumps = pickle.dumps
+
+# Out of the rule's reach, and kept as the misses they are: a method is not a
+# name of its module, and a star import says nothing about which names the
+# file goes on to use.
+
+- id: removed-method-of-a-class
+  rule: code/removed-name
+  repo:
+    shop/__init__.py: ""
+    shop/models.py: |
+      class Cart:
+          def add(self, item):
+              ...
+
+          def total_price(self):
+              ...
+    shop/views.py: |
+      from shop.models import Cart
+
+
+      def show(cart: Cart):
+          return cart.total_price()
+  files:
+    shop/models.py: |
+      class Cart:
+          def add(self, item):
+              ...
+
+          def total(self):
+              ...
+
+- id: removed-used-through-a-star-import
+  rule: code/removed-name
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+
+
+      def parse_accept(header):
+          ...
+    app/request.py: |
+      from app.http import *
+
+
+      def cookies(headers):
+          return parse_cookie(headers.get("Cookie", ""))
+  files:
+    app/http.py: |
+      def parse_cookies(header):
+          ...
+
+
+      def parse_accept(header):
+          ...
+
+- id: removed-control-kept-as-an-alias
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+    app/request.py: |
+      from app.http import parse_cookie
+  files:
+    app/http.py: |
+      def parse_cookies(header):
+          ...
+
+
+      parse_cookie = parse_cookies  # the old name, until 2.0
+
+- id: removed-control-imported-back-from-where-it-moved
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/utils.py: |
+      import os
+
+
+      def normalise_path(path):
+          return os.path.normpath(path)
+
+
+      def read(path):
+          return open(path).read()
+    app/uploads.py: |
+      from app import utils
+      from app.utils import normalise_path
+
+      HOME = utils.normalise_path("~")
+  files:
+    app/utils.py: |
+      from app.paths import normalise_path
+
+
+      def read(path):
+          return open(path).read()
+    app/paths.py: |
+      import os
+
+
+      def normalise_path(path):
+          return os.path.normpath(path)
+
+- id: removed-control-still-defined-in-a-branch
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/fast.py: |
+      def encode(data):
+          return data.encode()
+    app/wire.py: |
+      from app.fast import encode
+  files:
+    app/fast.py: |
+      try:
+          from _speedups import encode
+      except ImportError:
+          encode = None
+
+      if encode is None:
+          def encode(data):
+              return data.encode()
+
+- id: removed-control-kept-alive-by-getattr
+  rule: code/removed-name
+  control: true
+  seen: a deprecated name answered for by the module's `__getattr__`, with a warning
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+    app/request.py: |
+      from app.http import parse_cookie
+  files:
+    app/http.py: |
+      import warnings
+
+
+      def parse_cookies(header):
+          ...
+
+
+      def __getattr__(name):
+          if name == "parse_cookie":
+              warnings.warn("parse_cookie is now parse_cookies", DeprecationWarning, stacklevel=2)
+              return parse_cookies
+          raise AttributeError(name)
+
+- id: removed-control-module-with-a-getattr-that-could-answer
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/lazy.py: |
+      import importlib
+
+      render = None
+
+
+      def __getattr__(name):
+          return getattr(importlib.import_module("app._impl"), name)
+    app/_impl.py: |
+      def render():
+          ...
+    app/pages.py: |
+      from app.lazy import render
+  files:
+    app/lazy.py: |
+      import importlib
+
+
+      def __getattr__(name):
+          return getattr(importlib.import_module("app._impl"), name)
+
+- id: removed-control-reexported-with-a-star
+  rule: code/removed-name
+  control: true
+  repo:
+    codec/__init__.py: |
+      def encode(data):
+          ...
+
+
+      def decode(data):
+          ...
+    main.py: |
+      import codec
+      from codec import decode
+
+      print(codec.encode(decode(b"")))
+  files:
+    codec/__init__.py: |
+      from codec._impl import *
+    codec/_impl.py: |
+      def encode(data):
+          ...
+
+
+      def decode(data):
+          ...
+
+- id: removed-control-module-fills-its-names-in
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/flags.py: |
+      BETA = False
+      VERBOSE = False
+    app/run.py: |
+      from app import flags
+      from app.flags import BETA
+
+      if BETA or flags.VERBOSE:
+          print("beta")
+  files:
+    app/flags.py: |
+      import os
+
+      for _name in ("BETA", "VERBOSE"):
+          globals()[_name] = os.environ.get(_name) == "1"
+
+- id: removed-control-set-from-another-file
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/hooks.py: |
+      def before():
+          ...
+
+
+      def after():
+          ...
+    app/plugins.py: |
+      from app import hooks
+
+      hooks.after = lambda: None
+    app/run.py: |
+      from app import hooks
+
+      hooks.before()
+      hooks.after()
+  files:
+    app/hooks.py: |
+      def before():
+          ...
+
+- id: removed-control-every-use-fixed
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+    app/request.py: |
+      from app.http import parse_cookie
+
+
+      def cookies(headers):
+          return parse_cookie(headers.get("Cookie", ""))
+    tests/test_http.py: |
+      from app import http
+
+
+      def test_parse():
+          assert http.parse_cookie("a=1") == {"a": "1"}
+  files:
+    app/http.py: |
+      def parse_cookies(header):
+          ...
+    app/request.py: |
+      from app.http import parse_cookies
+
+
+      def cookies(headers):
+          return parse_cookies(headers.get("Cookie", ""))
+    tests/test_http.py: |
+      from app import http
+
+
+      def test_parse():
+          assert http.parse_cookies("a=1") == {"a": "1"}
+
+- id: removed-control-the-use-is-removed-too
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/legacy.py: |
+      def old_export(rows):
+          ...
+
+
+      def export(rows):
+          ...
+    app/cli.py: |
+      from app.legacy import export, old_export
+
+
+      def main(rows, old=False):
+          return old_export(rows) if old else export(rows)
+  files:
+    app/legacy.py: |
+      def export(rows):
+          ...
+    app/cli.py: |
+      from app.legacy import export
+
+
+      def main(rows):
+          return export(rows)
+
+- id: removed-control-guarded-uses
+  rule: code/removed-name
+  control: true
+  seen: code written to run against the module before and after the rename
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+    app/request.py: |
+      from typing import TYPE_CHECKING
+
+      from app import http
+
+      try:
+          from app.http import parse_cookie
+      except ImportError:
+          from app.http import parse_cookies as parse_cookie
+
+      if TYPE_CHECKING:
+          from app.http import parse_cookie as Parser
+
+      if hasattr(http, "parse_cookie"):
+          legacy = http.parse_cookie
+
+
+      def parser() -> "Parser":
+          return getattr(http, "parse_cookie", None) or http.parse_cookies
+  files:
+    app/http.py: |
+      def parse_cookies(header):
+          ...
+
+- id: removed-control-a-test-that-it-is-gone
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+    tests/test_removed.py: |
+      import pytest
+
+      from app import http
+
+
+      def test_the_old_name_is_gone():
+          with pytest.raises(AttributeError):
+              http.parse_cookie
+
+
+      def test_importing_it_fails():
+          with pytest.raises(ImportError):
+              from app.http import parse_cookie  # noqa: F401
+  files:
+    app/http.py: |
+      def parse_cookies(header):
+          ...
+
+- id: removed-control-another-module-has-the-name
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse(header):
+          ...
+    app/dates.py: |
+      def parse(text):
+          ...
+    app/views.py: |
+      from app.dates import parse
+      from app import dates, http
+
+      WHEN = dates.parse("2024-01-01"), parse("2024-01-02")
+      ACCEPT = http.parse_header("text/html")
+  files:
+    app/http.py: |
+      def parse_header(header):
+          ...
+
+- id: removed-control-two-places-for-one-package
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+    legacy/app/__init__.py: ""
+    legacy/app/http.py: |
+      def parse_cookie(header):
+          ...
+    tools/check.py: |
+      from app.http import parse_cookie
+  files:
+    app/http.py: |
+      def parse_cookies(header):
+          ...
+
+- id: removed-control-compiled-module-beside-it
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/codec.py: |
+      def encode(data):
+          ...
+
+
+      def encode_fast(data):
+          ...
+    app/codec.pyx: |
+      def encode_fast(data):
+          return data
+    app/wire.py: |
+      from app.codec import encode_fast
+  files:
+    app/codec.py: |
+      def encode(data):
+          ...
+
+- id: removed-control-the-module-name-bound-again
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+    app/proxy.py: |
+      from app import http
+
+
+      def forward(http, header):
+          return http.parse_cookie(header)
+
+
+      class Client:
+          def cookies(self, header):
+              return self.http.parse_cookie(header)
+  files:
+    app/http.py: |
+      def parse_cookies(header):
+          ...
+
+- id: removed-control-not-a-name-of-the-module
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+
+
+      class Parser:
+          def parse_cookie(self, header):
+              ...
+
+
+      def make():
+          def parse_cookie(header):
+              ...
+          return parse_cookie
+    app/request.py: |
+      from app.http import parse_cookie
+  files:
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+
+
+      class Parser:
+          def parse(self, header):
+              ...
+
+
+      def make():
+          return parse_cookie
+
+- id: removed-control-moved-within-its-file
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+
+
+      def parse_accept(header):
+          ...
+    app/request.py: |
+      from app.http import parse_cookie
+  files:
+    app/http.py: |
+      def parse_accept(header):
+          ...
+
+
+      def parse_cookie(header, strict=False):
+          ...
+
+- id: removed-control-mentioned-not-used
+  rule: code/removed-name
+  control: true
+  repo:
+    app/__init__.py: ""
+    app/http.py: |
+      def parse_cookie(header):
+          ...
+    app/api.py: |
+      """The public names. `app.http.parse_cookie` reads a Cookie header."""
+      import app.http
+
+      __all__ = ["parse_cookie"]
+      # from app.http import parse_cookie
+      HANDLERS = {"parse_cookie": "app.http"}
+  files:
+    app/http.py: |
+      def parse_cookies(header):
+          ...

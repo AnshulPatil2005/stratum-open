@@ -1,0 +1,84 @@
+# Checks that need no model
+
+77 planted risks, each a small PR with one problem in it, and 184 real merged PRs as they are.
+
+| Planted risk | Caught by its rule |
+| --- | --- |
+| Secrets and risky code | 20 of 20 |
+| Bandit (optional extra) | 3 of 3 |
+| GitHub workflows | 7 of 7 |
+| Dependencies | 7 of 8 |
+| Coding-agent files | 3 of 3 |
+| Hidden Unicode | 3 of 3 |
+| Names their module doesn't define (off by default) | 17 of 19 |
+| Names a PR removes that are still used (off by default) | 12 of 14 |
+| **All** | **72 of 77** |
+
+Missed: `dep-jellyfish` (found: deps/missing, deps/new); `name-third-party` (found: nothing); `name-stdlib-unlisted-module` (found: nothing); `removed-method-of-a-class` (found: nothing); `removed-used-through-a-star-import` (found: nothing).
+
+Controls, files a rule must leave alone: 38 of 38 left alone.
+
+On the merged PRs: 6 finding(s) on 3 of 184 PRs. Marked: 6 right, 0 wrong (false alarms), 0 unsure.
+
+| PR | Rule | Finding | Verdict | Why |
+| --- | --- | --- | --- | --- |
+| encode/httpx#3670 | `code/await-sync-file` | `await self._fin.close()` on a plain file | right | In src/ahttpx/_streams.py the PR sets `self._fin = open(value, 'rb')`, the builtin, and then awaits its `read()` and `close()`, which raises TypeError: a real bug in the merged PR. Another rule's finding, the same as on its own earlier run. |
+| encode/httpx#3670 | `code/await-sync-file` | `await self._fin.read()` on a plain file | right | In src/ahttpx/_streams.py the PR sets `self._fin = open(value, 'rb')`, the builtin, and then awaits its `read()` and `close()`, which raises TypeError: a real bug in the merged PR. Another rule's finding, the same as on its own earlier run. |
+| encode/httpx#3670 | `code/await-sync-file` | `await self._fin.close()` on a plain file | right | In src/ahttpx/_streams.py the PR sets `self._fin = open(value, 'rb')`, the builtin, and then awaits its `read()` and `close()`, which raises TypeError: a real bug in the merged PR. Another rule's finding, the same as on its own earlier run. |
+| psf/requests#7496 | `deps/new` | New dependency: `cryptography` | right | The PR does add it, to the typing dependency group: accurate, for information. |
+| psf/requests#7496 | `deps/new` | New dependency: `PyOpenSSL` | right | The PR does add it, to the typing dependency group: accurate, for information. |
+| Textualize/rich#4075 | `paths/always-human` | Protected path changed | right | The PR does change a workflow file, which the default policy sends to a person: accurate. |
+
+Run on 2026-11-13 on a laptop (Windows, Python 3.11.14), with `--policy benchmark/planted/variants/removed-names.yml`, which turns on `checks.removed_names` and, beside it, `checks.unknown_names` (both off by default), and `--repos`, a folder with a clone of each of the 17 projects. Bandit 1.9.4 was installed. Package registries were asked about each new dependency's name, as the Action does. Nothing from the clones was run or imported.
+
+**Planted.** 14 new cases are PRs that take a name out of a module while another file still imports or uses it, and 12 were caught:
+
+- a renamed function another file imports (`parse_cookie` to `parse_cookies`); a deleted function used as `storage.upload_many(…)`; a renamed class behind a relative import; a constant; an import dropped from a package's `__init__.py` that was the package's public name; a name the tests import from a `src/` package; a rename fixed in one caller and not in the other; a use left in a file the PR also changes; a name at the end of `app.db.session.session_scope`; a helper moved to a new module with its importers left behind; a script importing the file beside it; and `import json` tidied out of a `compat.py` that other modules took it from.
+- The 2 misses are out of the rule's reach and kept as misses: a method of a class (not a name of its module), and a name used after `from app.http import *`.
+
+19 controls are PRs the rule must leave alone, one for each reason it gives, and all 19 were left alone: the old name kept as an alias; imported back from where it moved; still defined in a branch of an `if` or a `try`; kept alive by a `__getattr__` that answers for it; a module whose `__getattr__` could answer for anything; re-exported with a star import; a module that fills its names in through `globals()`; a name another file sets from outside; every use fixed; the use removed too; uses under `try`, `hasattr` and `TYPE_CHECKING`; a test that the name is gone (`pytest.raises`); another module with a function of the same name; a package that is in two places; a compiled module beside the file; the module's name bound again as an argument; a method and a nested function of that name removed while the module's own stays; a function moved within its file; and a name that is only in a string, a comment and `__all__`.
+
+The other rules' cases came out as before, the 19 unknown-names cases and controls among them (17 caught, 19 left alone). That check's own tally of the merged PRs (names.json) came out the same as on its run, and isn't kept here a second time.
+
+**The 184 merged PRs: no finding from this rule.** Each PR was read against its project as it was just before the PR merged, as on the unknown-names run (the same base commits).
+
+- 169 of the PRs take lines out of a Python file, 392 files in all. 372 were read before and after the PR. 20 were skipped because the PR's diff doesn't apply to that commit as it is.
+- 44 PRs remove a name from a module's top level: 35 definitions (a function, a class or an assignment) and 78 imports. Another 198 names had a line removed and are still defined by the file (a changed signature, a moved function).
+- Of the 35 definitions, 19 have no other file that imports or reads a name like them, so there was nothing to report. 14 are in modules whose names can't be listed after the PR (13 of them werkzeug's: `wsgi.py` and `sansio/http.py` had a `__getattr__` then, `utils.py` reaches for `sys.modules`), and for 2 another file has a name like it in no use the rule could pin on the module. The 78 imports: 38, 18 and 22.
+- So on PRs like these the rule says nothing, and with no use left behind in any of them, that says nothing about how often a finding is right.
+
+The six findings in the table above are other rules', the same six as on the unknown-names run, with the verdicts given there.
+
+**5,100 commits as they were merged: no finding.** Merged PRs remove few names anything used, so `removed_names.py commits` read the last 300 commits on each project's default branch (first parents only), each as a PR against its parent, checked out. Here a use on a line the commit adds counts too.
+
+- 2,490 of the commits take lines out of a Python file, and 619 remove a name from a module: 1,645 definitions and 2,325 imports. 150 more names, in pydantic commits that remove over 200 at once, weren't looked for.
+- As merged, none of them was reported. 1,491 of the definitions have no other file that imports or reads a name like them, 114 are in modules whose names can't be listed, and 40 are left alone because a file has a name like it in no use that is certain.
+- The authors ran their tests before merging, so this is what should happen. It shows the rule staying quiet on 619 commits that remove names, not that it finds anything.
+
+**The same commits, one file at a time.** To give the rule something to find, each of the 567 files that lose a definition was read again as its commit's only change: the author renamed or deleted something here and forgot everything else. Every line that used the name is then still there, and the real commit says which lines those were.
+
+- Of the 1,645 definitions, 1,324 still had nothing that imports or reads a name like them (most are test functions and private helpers). **144 were reported**, and 2 imports with them: 146 findings, in 65 commits of 14 projects.
+- The 146 findings name 307 lines. **The real commit changed or removed every one of the 307**, so none of them is a line that was fine. 12 findings picked at random were also read by hand: all 12 are an import or a module attribute of the removed name.
+- 177 more were not plainly unused, and were not reported:
+  - 114 are in modules whose names can't be listed after the change, so the rule never looks for their uses: a `globals()` (47), a `sys.modules` (31), a `__getattr__` that could answer for anything (24) or an `exec` (12) somewhere in the file. 61 of the 114 are werkzeug's, 20 jinja's.
+  - 18 had a use the rule found, and were left alone because something in the repository may set the name from outside. The guard comes with unknown_names.py and is wide: click's tests have `monkeypatch.setattr(click._compat, "isatty", …)`, and that silences every name removed from `_compat.py`.
+  - 45 have a name like them imported or read in another file, in no use that is certain. Read one by one: for 17 nothing used the name (a module-level `line`, `n`, `logger` or `TYPE_CHECKING`, and the word elsewhere is something else); 11 were used only where the rule doesn't read (annotations, `TYPE_CHECKING` blocks, a `mock.patch("…")` string, a test that sets the name); and 17 were real uses it couldn't be sure of: a namespace package (poetry's `src/poetry` has no `__init__.py`, so none of poetry's own imports resolve), `from . import json` where the package binds `json` itself, a source root that is neither the repository nor `src/` (`pydantic-core/python`), a package's name in a project with native sources (a build could add a submodule), `tests` importable from two places, a script import inside a folder that is a package, and a file that has the name as a string as well as the use.
+- Counted from the commits instead of from the rule: for 320 of the definitions the real commit also took the name out of a line of another Python file. The rule reported 144 of those (every definition it reported is one of them). The 320 include names that only share a word with something else (two test files each dropping a `test_type_repr`), so this is a floor, not a recall.
+- By project, of the definitions with that sign of use: httpx 22 of 28, marshmallow 18 of 25, scrapy 6 of 8, pydantic 19 of 35, jinja 9 of 17, werkzeug 36 of 91, pip 16 of 44, typer 5 of 12, flask 4 of 20, click 2 of 8, poetry 0 of 17, and 7 of 15 in the other six.
+
+[removed.csv](removed.csv) has a row for every definition that didn't come out as "nothing to report", and every import found still used, in the merged PRs (`merged`), the commits as merged (`commits`) and the files read alone (`alone`, with how many of the named lines the real commit left: 0 in every row). [removed.json](removed.json) has the counts by PR and by project, and the commits each project was read up to. commits.csv is where a finding on a commit as merged would be marked; it has no rows.
+
+**No false alarm came up, and two things changed on the way.** Neither changed a finding:
+
+- The first one-file-at-a-time run kept every file that lost any name as the commit left it. A file that used a removed function has usually dropped its import of it in the same commit, which made it one of those files, so its use was already fixed and the rule had nothing to find (33 reported, with 15 of the projects read). Keeping only the files that lost a definition gave 104. The run now changes one file at a time and reverts the rest (146).
+- A file was first parsed for uses when it had the removed name anywhere as a word. A module-level loop variable called `name` or `line` then meant parsing every file that has that word. It is now parsed when it has the name where an import or an attribute would: after a dot, on a line with `import`, or on a line of nothing but names. The commits were read both ways: nothing as merged either way, and one file at a time the same 146 findings on the same 307 lines.
+
+**Not measured.**
+
+- How often a finding is right on PRs that really leave a use behind. None of the 184 PRs and 5,100 commits did, as merged; the planted cases and the one-file-at-a-time run stand in for it. In that run the answer comes from the commit itself: a named line counts as right because its author changed it in the same commit.
+- Applications. These 17 projects are libraries with tests; settings modules, plugin systems and entry points named in a string (`pyproject.toml` scripts, Django settings, Celery task names) are where a removed name is used with nothing this rule reads.
+- A checkout older than the PR's base, or a PR whose diff GitHub cuts short. The rule takes the checkout to be the default branch as it is now, as the unknown-names check does, and says nothing for a file the diff doesn't apply to.
+- Both checks on at once, beyond the planted cases and the merged PRs: the commits were read with this rule alone.
+- A keyword argument still passed to a function whose signature dropped it. It was left out: it needs its own proof at every call site (the callee is that function and nothing wraps it) and its own measurement.
+
+**What the rule costs.** On pydantic (3,149 Python files): 0.1 s for a PR that removes no name (a walk of the checkout, and two parses of each changed file); about 1 s when it removes one that nothing uses (every Python file's text is read once); 2 to 4 s when there is a finding (every file is read a second time, to see that nothing sets the name from outside).
