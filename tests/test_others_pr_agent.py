@@ -1,7 +1,7 @@
 """The parts of benchmark/others/pr_agent.py that need neither PR-Agent nor a
 model: a case as a repository, PR-Agent's answers as findings, the planted
 line in a prompt, the recorder in front of the model server, and the check on
-the context window. tests/e2e/test_others_pr_agent.py runs the whole thing
+the context window. tests/e2e/test_k_others_pr_agent.py runs the whole thing
 with PR-Agent itself."""
 
 from __future__ import annotations

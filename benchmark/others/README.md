@@ -234,7 +234,7 @@ No model is needed to check that the cases reach PR-Agent and its answers
 come back as rows:
 
 ```sh
-PR_AGENT_PYTHON=~/pr-agent/bin/python python -m pytest tests/e2e/test_others_pr_agent.py
+PR_AGENT_PYTHON=~/pr-agent/bin/python python -m pytest tests/e2e/test_k_others_pr_agent.py
 ```
 
 It reviews three real cases with PR-Agent against a fake model server that

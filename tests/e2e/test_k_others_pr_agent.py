@@ -12,7 +12,7 @@ Skipped unless PR_AGENT_PYTHON names a Python that has PR-Agent installed
 rest of the suite it needs the network: git fetches the three PRs, and their
 data comes from benchmark/.cache, or from GitHub with GITHUB_TOKEN.
 
-    PR_AGENT_PYTHON=~/pr-agent/bin/python python -m pytest tests/e2e/test_others_pr_agent.py
+    PR_AGENT_PYTHON=~/pr-agent/bin/python python -m pytest tests/e2e/test_k_others_pr_agent.py
 
 PR_AGENT_TRACE=<folder> keeps the prompts PR-Agent sent in that folder.
 """
