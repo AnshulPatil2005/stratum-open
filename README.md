@@ -57,6 +57,7 @@ Every key, with its default, is in [policy.example.yml](policy.example.yml).
   - `review.rules` holds your project's own review rules, in plain words;
   - `review.min_severity` sets how serious a model finding must be to be shown (default `medium`; the checks' findings always show);
   - `review.quiet: true` posts less of what the model says, and keeps it apart from what the checks found;
+  - `review.learn_from_history: true` leaves out findings like ones your maintainers rejected on recent PRs (see [Commands](#commands));
   - `always_human.paths` lists paths that always need a maintainer;
   - `boundaries` holds module rules such as `api -> db`;
   - `track_record.affects_triage` lets an author's record move their PR's label.
@@ -78,10 +79,18 @@ Comment on a PR, with the command at the start of a line. One inside a code bloc
 
 Commands used to be written `@stratum review`. They aren't read any more: `stratum` is an unrelated GitHub organization, and GitHub turned each one into a mention of it.
 
+**Rejected comments stay rejected.** With `review.learn_from_history: true`, each review first reads the repo's latest 100 inline comments and 100 PR comments from GitHub (`review.learn_lookback` sets how many), and leaves out findings like ones people with write access rejected there. A 👎 on one of Stratum's inline comments, a `/stratum ignore` reply to it, or `/stratum ignore <rule>` on a PR counts against it; a 👍 counts for it.
+- A rule is muted once it has 5 or more such votes and at least 60% of them are against it, as in the GitHub App. That goes for every finding of the rule, the checks' included, whatever its severity.
+- A model finding is also left out when maintainers voted against that same finding (same kind of problem, same file, same code) more than for it, on this PR or another.
+- The summary says what was left out and where it was rejected (for example "Hidden: 2 comments like ones maintainers rejected on #123 and #130"), and the comment threads of findings left out are closed with that reason.
+- Nothing is stored: it costs at most 32 API calls a review with the default look-back (2 pages of comments, the reactions on up to 20 comments, and the access of up to 10 people). If GitHub refuses a read, such as at a rate limit, the review goes on and hides less, or nothing, and says why.
+- GitHub sends no event for a reaction, so a 👎 takes effect on the next push.
+- Only votes still among those latest comments count, so on a busy repo a muted rule can come back once its votes are older than that; a larger `review.learn_lookback` keeps them longer.
+
 ## Other ways to run it
 
 **GitHub App.** One container on your server, for projects that would rather install an App than add a workflow to every repo.
-- It's the only mode that stores anything: findings for 180 days, 👍/👎 votes from people with write access (which mute rules your maintainers keep rejecting), and a 14-day job log. Uninstalling deletes a repo's rows at once.
+- It's the only mode that stores anything: findings for 180 days, 👍/👎 votes from people with write access (which mute rules your maintainers keep rejecting), and a 14-day job log. Uninstalling deletes a repo's rows at once. The Action gets the same muting from GitHub itself with `review.learn_from_history`.
 - **Create the App:**
   - Permissions: contents read; pull requests, issues and checks read & write.
   - Events: pull request, issue comment, pull request review comment.

@@ -20,7 +20,9 @@ lines, the code they're on), of what a maintainer ignored, and of the paths
 of any files the model hasn't read yet. That's how the next push reviews
 only what changed, plus those files. It's the same text the PR's comments
 already show, it's deleted with the comment, and Stratum only reads it from a
-comment it wrote itself. With `ollama-model` set, GitHub's Actions cache also
+comment it wrote itself. With `review.learn_from_history` on, each review also
+reads the repo's latest comments, and the 👍/👎 and access of the people who
+reacted to Stratum's, from GitHub; it keeps none of it. With `ollama-model` set, GitHub's Actions cache also
 keeps Ollama and the model's weights (no project data); GitHub drops it after
 7 days unused.
 

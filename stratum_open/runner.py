@@ -16,7 +16,7 @@ from typing import Any, Callable
 from stratum_open.diff import FileDiff, parse_diff, sendable
 from stratum_open.engine import EngineResult, analyze, default_conclusion, effective_policy, snippet_of  # noqa: F401  (effective_policy: re-exported)
 from stratum_open.findings import Finding, placeable, risk_score
-from stratum_open.github import publish
+from stratum_open.github import feedback, publish
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
 from stratum_open.policy import Policy, load_policy, matches_any
@@ -133,6 +133,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     notes, hotspots, boundary, file_notes = _history(ctx, files, pull)
     record = _record(ctx, pull)
     muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []
+    learned = feedback.learn(gh, ctx.bot, lookback=ctx.policy.review.learn_lookback) if ctx.policy.review.learn_from_history else None
     # Whether the profile shows code around each hunk, so the files' text is worth fetching.
     around = ctx.model is not None and effective_policy(ctx.policy, ctx.model)[0].review.context_lines > 0
     contents = _contents(ctx, files, head, around=around)
@@ -141,16 +142,21 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         contents=contents, lookup=ctx.lookup, only_paths=changed if retry else set(), first=retried,
         previous=state.findings,
         notes=notes, hotspots=hotspots, file_notes=file_notes, extra_findings=boundary,
-        exclude_fingerprints=set(state.ignored), exclude_rules=set(state.ignored_rules) | set(muted),
+        exclude_fingerprints=set(state.ignored) | set(learned.fingerprints if learned else ()),
+        exclude_rules=set(state.ignored_rules) | set(muted) | set(learned.rules if learned else ()),
         log=(lambda prompt, reply: ctx.storage.record_job(gh.repo, number, "prompt", "logged", prompt_log=f"{prompt}\n\n---\n\n{reply}")),
     )
     policy, findings, result, gone = engine.policy, engine.findings, engine.review, dict(engine.gone)
     # Before the check sweep below, which would call an ignored check "fixed".
+    hidden: list[Finding] = []  # left out for being like comments maintainers rejected before (review.learn_from_history)
     for finding in engine.excluded:
         if finding.fingerprint in state.ignored or finding.rule in state.ignored_rules:
             gone.setdefault(finding.fingerprint, "Ignored on this PR.")
         elif finding.rule in muted:
             gone.setdefault(finding.fingerprint, "Muted in this repository.")
+        elif learned is not None and learned.rejected_on(finding) is not None:
+            hidden.append(finding)
+            gone.setdefault(finding.fingerprint, f"Hidden: maintainers rejected comments like this one {_on_prs(learned.rejected_on(finding), number)}.")
     for call in (result.calls if result else []):
         if call.get("traceback"):  # the model step raised: the summary gets the one-line error, the log the rest
             ctx.log(redact(f"model review failed: {call.get('error', '')}\n{call['traceback']}"))
@@ -238,12 +244,20 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
                                                  contents or {}, retried & read, engine.unread, policy=policy)
     if ctx.model is not None:
         coverage.append(f"Profile: `{engine.profile}` ({engine.profile_why}).")
+    if learned is not None:
+        coverage.append(learned.problem or f"Learned from the repo's last {count(learned.read, 'inline comment')}: what maintainers "
+                        "rejected with 👎 or `/stratum ignore` is left out (review.learn_from_history).")
+        if hidden:
+            coverage.append("Left out for that: " + "; ".join(
+                f"{f.title} (`{f.path}`" + (f" line {f.line_start}" if f.line_start else "") + ")" if f.path else f.title for f in hidden[:10])
+                + (f"; and {len(hidden) - 10} more." if len(hidden) > 10 else "."))
     summary = publish.Summary(
         findings=findings, inline=set(), policy=policy, model_name=ctx.model.name if ctx.model else None,
         model_summary=(large.summary if large and large.synthesized else result.summary if result and result.ran else ""),
         matches_description=result.matches_description if result else "", mismatch=result.mismatch if result else "",
-        triage=sorted_pr, notes=notes, coverage=coverage, problems=problems, muted=muted,
-        **_walkthrough(large, findings),
+        triage=sorted_pr, notes=notes, coverage=coverage, problems=problems,
+        muted=sorted(set(muted) | set(learned.rules)) if learned else muted,
+        **_walkthrough(large, findings), hidden=_hidden_line(hidden, learned, number),
     )
     # The next review reads what changed since this head, plus `unread`, so
     # it reads those again rather than calling a review it never finished
@@ -284,7 +298,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         if policy.review.quiet:  # the model's findings past its few places go in the summary; max_inline_comments still caps the total
             inline = publish.quiet_inline(inline, threads, bot=ctx.bot)
         posted = publish.publish_inline(gh, number, head, inline, threads, bot=ctx.bot,
-                                        limit=policy.review.max_inline_comments, feedback=ctx.feedback)
+                                        limit=policy.review.max_inline_comments, feedback=ctx.feedback or policy.review.learn_from_history)
     except GitHubError as exc:
         ctx.log(f"couldn't post inline comments: {exc}")
         problems.append(f"Couldn't post inline comments (GitHub answered {exc.status}), so every finding is listed here instead.")
@@ -568,6 +582,24 @@ def _large_coverage(large: LargeReview | None) -> list[str]:
     if failed:
         lines.append("Per-file review failed for: " + ", ".join(f"`{p}`" for p in failed[:10]))
     return lines
+
+
+def _hidden_line(hidden: list[Finding], learned: feedback.Learned | None, number: int) -> str:
+    """The summary's line on what `review.learn_from_history` left out, so
+    nothing disappears without a word."""
+    if not hidden or learned is None:
+        return ""
+    prs = sorted({pr for finding in hidden for pr in learned.rejected_on(finding) or ()})
+    return f"**Hidden:** {count(len(hidden), 'comment')} like ones maintainers rejected {_on_prs(prs, number)}."
+
+
+def _on_prs(prs: list[int], number: int) -> str:
+    """'on #12 and #30', with this PR named as such and at most five listed."""
+    names = (["this PR"] if number in prs else []) + [f"#{pr}" for pr in prs if pr != number]
+    if not names:
+        return "before"
+    shown = names[:5] + ([f"{len(names) - 5} more PRs"] if len(names) > 5 else [])
+    return "on " + _and(shown)
 
 
 def _and(words: list[str]) -> str:

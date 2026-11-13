@@ -64,6 +64,8 @@ class Review:
     skip_labels: tuple[str, ...] = ()  # PRs with any of these labels aren't reviewed
     skip_branches: tuple[str, ...] = ()  # globs; PRs from a matching branch aren't reviewed
     quiet: bool = False  # fewer of the model's comments, and a summary that keeps them apart from the checks' findings
+    learn_from_history: bool = False  # leave out findings like ones maintainers rejected (👎, `/stratum ignore`) on recent PRs
+    learn_lookback: int = 100  # how many of the repo's latest comments of each kind that reads (one API call per 100)
 
 
 @dataclass(frozen=True)
@@ -207,9 +209,10 @@ _MINIMUMS = {
     ("track_record", "followup_days"): 1,
     ("dependencies", "min_package_age_days"): 0,
     ("data", "findings_retention_days"): 1,
+    ("review", "learn_lookback"): 1,
 }
 # Day counts past a century would overflow the date arithmetic.
-_MAXIMUMS = {path: 36500 for path in _MINIMUMS if path[1].endswith("_days")}
+_MAXIMUMS = {path: 36500 for path in _MINIMUMS if path[1].endswith("_days")} | {("review", "learn_lookback"): 500}
 _MAPPINGS = {("boundaries", "modules")}  # name -> list of text values
 _META = {"source", "warnings", "errors", "explicit"}
 # Top-level sections that hosted Stratum reads from this file and this engine

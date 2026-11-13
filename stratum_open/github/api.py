@@ -9,6 +9,7 @@ from __future__ import annotations
 import base64
 import re
 import time
+from itertools import islice
 from typing import Any, Iterator
 
 import requests
@@ -231,6 +232,20 @@ class GitHub:
 
     def review_comment(self, comment_id: int) -> dict | None:
         return self.request("GET", f"{self._r}/pulls/comments/{comment_id}", ok404=True)
+
+    def recent_review_comments(self, limit: int) -> list[dict]:
+        """The repo's latest inline comments on any PR, newest first: at most
+        `limit`, in one call per 100."""
+        return self._latest(f"{self._r}/pulls/comments", limit)
+
+    def recent_issue_comments(self, limit: int) -> list[dict]:
+        """The repo's latest comments on its PRs and issues, newest first: at
+        most `limit`, in one call per 100."""
+        return self._latest(f"{self._r}/issues/comments", limit)
+
+    def _latest(self, path: str, limit: int) -> list[dict]:
+        # A page is fetched only when the one before it ran out, so this stops at `limit`.
+        return list(islice(self.paginate(path, per_page=min(100, max(1, limit)), sort="created", direction="desc"), max(0, limit)))
 
     def create_review(self, number: int, head_sha: str, comments: list[dict], body: str = "") -> dict:
         return self.request("POST", f"{self._r}/pulls/{number}/reviews", json={

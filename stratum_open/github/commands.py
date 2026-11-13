@@ -21,6 +21,13 @@ from stratum_open.github.api import WRITE, GitHubError
 from stratum_open.review import demention, parse  # parse() lives next to demention(), which keeps model text from matching it
 from stratum_open.runner import Context, excluded, record_for, review_pull
 
+# The Action's answer to `/stratum mute`, which it can't store.
+MUTE_NEEDS_APP = ("Muting a rule for the whole repo needs somewhere to store it, so it works with the Stratum GitHub App. "
+                  "With the Action, use `/stratum ignore <rule>` on this PR or list the paths in `review.ignore_paths`.")
+MUTE_LEARNS = ("The Action can't store a mute, but this repo has `review.learn_from_history` on: a rule is left out once people with "
+               "write access voted it down enough on recent PRs (5 votes or more, 60% of them 👎 or `/stratum ignore`). "
+               "For this PR alone, use `/stratum ignore <rule>`.")
+
 # Commands that can call the model: explain, and the ones that review again.
 NEEDS_MODEL = {"review", "re-review", "rereview", "ignore", "explain"}
 # Explanations per person and per PR in a day: enough to understand a review,
@@ -90,8 +97,7 @@ def handle(ctx: Context, event: str, payload: dict) -> str | None:
         return _ignore(ctx, number, arg, thread_root if inline else None, reply)
     if command == "mute":
         if not ctx.feedback:
-            reply("Muting a rule for the whole repo needs somewhere to store it, so it works with the Stratum GitHub App. "
-                  "With the Action, use `/stratum ignore <rule>` on this PR or list the paths in `review.ignore_paths`.")
+            reply(MUTE_LEARNS if ctx.policy.review.learn_from_history else MUTE_NEEDS_APP)
         elif not arg:
             reply(f"Which rule? For example `/stratum {name} workflow/unpinned-action`. Each inline comment names its rule.")
         else:

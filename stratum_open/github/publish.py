@@ -261,6 +261,7 @@ class Summary:
     muted: list[str] = field(default_factory=list)
     priorities: list[str] = field(default_factory=list)  # what to check first (the large profile's walkthrough call)
     walkthrough: str = ""
+    hidden: str = ""  # a line on the findings left out for being like ones maintainers rejected (review.learn_from_history)
 
 
 def render_summary(summary: Summary, state: State) -> str:
@@ -301,6 +302,8 @@ def render_summary(summary: Summary, state: State) -> str:
             lines += ["", "Not on a changed line:"] if shown else [""]
             lines += [_listed(f) for f in listed]
     lines.append("")
+    if summary.hidden:
+        lines += [summary.hidden, ""]
 
     notes, more_notes = _lead_notes(summary.notes) if quiet else (summary.notes, [])
     if notes:
