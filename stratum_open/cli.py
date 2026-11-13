@@ -53,6 +53,13 @@ def main(argv: list[str] | None = None) -> int:
     policy.add_argument("action", choices=["check"])
     policy.add_argument("file", nargs="?", default=POLICY_PATH)
 
+    replay = sub.add_parser("replay", help="what the checks and triage would have said on a repo's closed PRs; posts nothing")
+    replay.add_argument("repo", help="owner/name")
+    replay.add_argument("--last", type=int, default=50, metavar="N", help="how many closed PRs, newest first (default 50)")
+    replay.add_argument("--state", choices=["merged", "closed", "all"], default="all", help="only merged PRs, only those closed without merging, or all (default)")
+    replay.add_argument("--json", action="store_true", help="print the data as JSON instead of the report")
+    replay.add_argument("--out", metavar="FILE", help="also write the report to FILE, as Markdown")
+
     queue = sub.add_parser("triage", help="the sorted queue of a repo's open PRs")
     queue.add_argument("repo", help="owner/name")
     queue.add_argument("--post", action="store_true", help="update the queue issue on GitHub")
@@ -78,6 +85,7 @@ def main(argv: list[str] | None = None) -> int:
     command = {
         "review": _review, "record": _record, "policy": _policy, "triage": _triage,
         "data": _data, "serve": _serve, "action": _action, "needs-model": _needs_model,
+        "replay": _replay,
     }[args.command]
     # Exit codes: 0 done; 1 a usage problem, or `review --local` found something critical;
     # 2 GitHub or the network refused (the message says what); 130 stopped with Ctrl-C.
@@ -257,6 +265,12 @@ def _policy(args) -> int:
     if not policy.errors:
         print(f"{path} is usable." if path.exists() else "")
     return 1 if policy.errors else 0
+
+
+def _replay(args) -> int:
+    from stratum_open.replay import run
+
+    return run(args.repo, token=_token(), api=_api(), last=args.last, state=args.state, as_json=args.json, out=args.out)
 
 
 def _triage(args) -> int:

@@ -84,6 +84,7 @@ Comment on a PR:
 - `stratum-open review owner/repo#123`: a dry run on any PR; `--post` publishes it.
 - `stratum-open record <login>`: a record from a local clone's history.
 - `stratum-open policy check`: validate a policy file.
+- `stratum-open replay owner/repo`: the label each of your last 50 closed PRs would have got, beside whether it was merged. No model, and nothing is posted.
 - `stratum-open triage owner/repo`: the sorted queue.
 - `stratum-open data …`: see or delete what the App stored.
 

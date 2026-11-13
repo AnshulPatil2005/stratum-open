@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from stratum_open.diff import FileDiff, parse_diff, sendable
-from stratum_open.engine import analyze, default_conclusion, effective_policy, snippet_of  # noqa: F401  (effective_policy: re-exported)
+from stratum_open.engine import EngineResult, analyze, default_conclusion, effective_policy, snippet_of  # noqa: F401  (effective_policy: re-exported)
 from stratum_open.findings import Finding, placeable, risk_score
 from stratum_open.github import publish
 from stratum_open.github.api import GitHub, GitHubError
@@ -408,6 +408,17 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
         ctx.log(f"boundaries: {type(exc).__name__}: {exc}")
         boundary = []
     return notes, hot, boundary, file_notes
+
+
+def check_pull(ctx: Context, pull: dict, files: list[FileDiff]) -> EngineResult:
+    """The checks alone on a PR whose diff the caller has read: no model
+    call, nothing kept from an earlier review, nothing posted. They read the
+    same files in full as in `review_pull`, at the PR's head."""
+    boundary = _history(ctx, files, pull)[2]
+    return analyze(
+        title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=ctx.policy, model=None,
+        contents=_contents(ctx, files, pull["head"]["sha"]), lookup=ctx.lookup, extra_findings=boundary,
+    )
 
 
 def _record(ctx: Context, pull: dict) -> AuthorRecord | None:

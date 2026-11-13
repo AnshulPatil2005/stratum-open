@@ -71,6 +71,7 @@ class FakeGitHubServer:
         self._failures: list[dict[str, Any]] = []
         self._rate_limited: dict[str, Any] | None = None
         self.per_page_cap = 100
+        self.remaining = 4999  # what X-RateLimit-Remaining says
         self.on_request: Callable[[dict[str, Any]], None] | None = None  # a hook: move the head mid-run, etc.
         self._server = ThreadingHTTPServer((host, 0), _handler(self))
         self._server.daemon_threads = True
@@ -126,6 +127,7 @@ class FakeGitHubServer:
             "additions": additions, "deletions": deletions, "changed_files": len(parsed), "commits": commits,
             "labels": [{"name": n} for n in labels or []], "html_url": f"https://github.com/{self.repo}/pull/{number}",
             "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-02T00:00:00Z",
+            "closed_at": "2026-01-02T00:00:00Z" if state == "closed" else None, "merged_at": "2026-01-02T00:00:00Z" if merged else None,
         }
         with self._lock:
             self.pulls[number] = pull
@@ -323,7 +325,7 @@ def _handler(fake: FakeGitHubServer) -> type[BaseHTTPRequestHandler]:
             given = {name.lower() for name in (headers or {})}
             if "x-ratelimit-remaining" not in given:
                 self.send_header("X-RateLimit-Limit", "5000")
-                self.send_header("X-RateLimit-Remaining", "4999")
+                self.send_header("X-RateLimit-Remaining", str(fake.remaining))
             for name, value in (headers or {}).items():
                 if name.lower() != "content-type":
                     self.send_header(name, value)
@@ -388,6 +390,8 @@ def _handler(fake: FakeGitHubServer) -> type[BaseHTTPRequestHandler]:
             if re.fullmatch(f"{r}/pulls", path):
                 state = query.get("state", "open")
                 pulls = [p for p in fake.pulls.values() if state == "all" or p["state"] == state]
+                if query.get("direction") == "desc":  # newest first; here a higher number is a newer PR
+                    pulls.sort(key=lambda p: -p["number"])
                 listed = [{k: v for k, v in p.items() if k not in ("additions", "deletions", "changed_files", "commits", "merged")} for p in pulls]
                 return self._page(listed, query, path)
             if m := re.fullmatch(f"{r}/pulls/(\\d+)", path):
@@ -441,6 +445,8 @@ def _handler(fake: FakeGitHubServer) -> type[BaseHTTPRequestHandler]:
                 return 200, {"total_count": len(runs), "check_runs": runs}, {}
             if m := re.fullmatch(f"{r}/commits/([^/]+)/status", path):
                 return 200, fake.statuses.get(m.group(1), {"state": "pending", "statuses": []}), {}
+            if m := re.fullmatch(f"{r}/commits/([^/]+)/statuses", path):  # every status reported, newest first
+                return self._page(fake.statuses.get(m.group(1), {}).get("statuses", []), query, path)
             if m := re.fullmatch(f"{r}/labels/(.+)", path):
                 label = fake.labels.get(urllib.parse.unquote(m.group(1)))
                 return (200, label, {}) if label else None
