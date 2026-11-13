@@ -109,7 +109,9 @@ Commands used to be written `@stratum review`. They aren't read any more: `strat
 
 ## GitLab
 
-Stratum reviews merge requests from a GitLab CI job, on gitlab.com or a self-hosted GitLab:
+Experimental: Stratum reviews merge requests from a GitLab CI job, on gitlab.com or a self-hosted GitLab. It has been tested against a faked GitLab API, not a live GitLab yet, so please open an issue for anything that breaks.
+
+To set it up:
 
 1. Create a project access token with the Developer role and the `api` scope, and add it as a masked, hidden CI/CD variable named `STRATUM_GITLAB_TOKEN`. The job token can't post MR notes.
 2. Add the job in [examples/gitlab-ci.yml](examples/gitlab-ci.yml) to your `.gitlab-ci.yml`. It runs `qwen2.5-coder:7b` with Ollama in the job, like the GitHub Action, and runs `stratum-open gitlab`.
