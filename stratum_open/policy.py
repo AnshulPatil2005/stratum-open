@@ -69,6 +69,7 @@ class Checks:
     bandit_low: bool = False  # keep Bandit's low-severity and low-confidence results
     heuristics: bool = False  # a finding per file in a risky area (auth, migrations, CI...), and for weakened tests
     ruff: bool = False  # errors Ruff finds on added Python lines (an undefined name, a format string that raises), when it's installed
+    floating_promises: bool = False  # JavaScript and TypeScript: a call whose promise is dropped; needs the `js` extra
 
 
 @dataclass(frozen=True)

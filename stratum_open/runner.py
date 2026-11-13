@@ -29,6 +29,7 @@ from stratum_open.util import count, redact
 
 MAX_BANDIT_FILES = 20
 MAX_CONTEXT_FILES = 20
+MAX_PROMISE_FILES = 20  # JavaScript and TypeScript files read in full for checks.floating_promises
 MAX_MOVED_FILES = 20  # files moved into a check's scope, which the checks read in full
 MAX_MOVED_BYTES = 1_000_000  # the contents API's own limit for a file's text
 MAX_REVIEW_TEXT_FILES = 20  # files whose text is fetched for review.context_lines
@@ -319,12 +320,14 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
     workflows and manifests always (they're small), Python files for Bandit
     when it's installed (and for Ruff, when `checks.ruff` is on), and
     otherwise the Python files whose change touches async code, for the
-    missing-await check. Files moved to where a check does more than where
-    they were, since the diff shows none of their lines as added (at most
-    MAX_MOVED_BYTES each; a bigger one is named as unread).
-    With `around` (the profile shows code around each hunk), the biggest
-    changes the model will read too."""
-    from stratum_open.checks import bandit, moved_in, ruff
+    missing-await check. With `checks.floating_promises` on and its parser
+    installed, the JavaScript and TypeScript files that add a line starting
+    with a call. Files moved to where a check does more than where they were,
+    since the diff shows none of their lines as added (at most
+    MAX_MOVED_BYTES each; a bigger one is named as unread). With `around`
+    (the profile shows code around each hunk), the biggest changes the model
+    will read too."""
+    from stratum_open.checks import bandit, moved_in, promises, ruff
     from stratum_open.checks.awaits import touches_async
     from stratum_open.checks.common import looks_binary
     from stratum_open.checks.dependencies import manifest_kind
@@ -340,6 +343,8 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
     python = sorted((f for f in live if f.path.endswith(".py")), key=lambda f: (not bandit.scope(f.path), -f.additions))
     whole = bandit.available() or (ctx.policy.checks.ruff and ruff.available())
     fetch += (python if whole else [f for f in python if touches_async(f)])[:MAX_BANDIT_FILES]
+    if ctx.policy.checks.floating_promises and promises.available():
+        fetch += [f for f in live if promises.worth_reading(f)][:MAX_PROMISE_FILES]
     moved = [f for f in live if moved_in(f)]  # the size cap and the binary test apply however they're fetched
     fetch += [f for f in moved if f not in fetch][:MAX_MOVED_FILES]
     if around:
