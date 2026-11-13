@@ -1,0 +1,108 @@
+[
+ {
+  "id": "tests-skip-pytest",
+  "rule": "tests/skipped",
+  "caught": true,
+  "found": [
+   "tests/skipped"
+  ]
+ },
+ {
+  "id": "tests-skip-go",
+  "rule": "tests/skipped",
+  "caught": true,
+  "found": [
+   "tests/skipped"
+  ]
+ },
+ {
+  "id": "tests-only-jest",
+  "rule": "tests/only",
+  "caught": true,
+  "found": [
+   "tests/only"
+  ]
+ },
+ {
+  "id": "tests-assertion-removed-pytest",
+  "rule": "tests/assertions-removed",
+  "caught": true,
+  "found": [
+   "tests/assertions-removed"
+  ]
+ },
+ {
+  "id": "tests-assertion-commented-jest",
+  "rule": "tests/assertions-removed",
+  "caught": true,
+  "found": [
+   "tests/assertions-removed"
+  ]
+ },
+ {
+  "id": "tests-tolerance-approx",
+  "rule": "tests/tolerance-loosened",
+  "caught": true,
+  "found": [
+   "tests/tolerance-loosened"
+  ]
+ },
+ {
+  "id": "tests-tolerance-closeto",
+  "rule": "tests/tolerance-loosened",
+  "caught": true,
+  "found": [
+   "tests/tolerance-loosened"
+  ]
+ },
+ {
+  "id": "tests-deleted-pytest",
+  "rule": "tests/deleted",
+  "caught": true,
+  "found": [
+   "tests/deleted"
+  ]
+ },
+ {
+  "id": "tests-control-rewritten-assertion",
+  "rule": "tests/assertions-removed",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "tests-control-platform-skip",
+  "rule": "tests/skipped",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "tests-control-renamed-test",
+  "rule": "tests/assertions-removed or tests/deleted",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "tests-control-new-skipped-test",
+  "rule": "tests/skipped",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "tests-control-tighter-tolerance",
+  "rule": "tests/tolerance-loosened",
+  "caught": false,
+  "found": [],
+  "control": true
+ },
+ {
+  "id": "tests-control-moved-test",
+  "rule": "tests/assertions-removed or tests/deleted",
+  "caught": false,
+  "found": [],
+  "control": true
+ }
+]

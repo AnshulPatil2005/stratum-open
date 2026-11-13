@@ -1,0 +1,38 @@
+list,case,path,line,text,reported,kind,note
+clean,psf/black#5510,tests/test_action.py,13,pytestmark = pytest.mark.skipif(,,conditional,"A platform, a version or a missing program decides."
+clean,pallets/click#3781,tests/test_termui.py,424,"@pytest.mark.skipif(WIN, reason=""No sed on Windows."")",,conditional,"A platform, a version or a missing program decides."
+clean,pallets/click#3781,tests/test_termui.py,430,"@pytest.mark.skipif(WIN, reason=""No sed on Windows."")",,conditional,"A platform, a version or a missing program decides."
+clean,pallets/click#3781,tests/test_termui.py,451,"@pytest.mark.skipif(WIN, reason=""No sed on Windows."")",,conditional,"A platform, a version or a missing program decides."
+clean,pallets/click#3777,tests/test_termui.py,764,"@pytest.mark.skipif(WIN, reason=""The fake pager is a shell script."")",,conditional,"A platform, a version or a missing program decides."
+clean,pallets/click#3777,tests/test_termui.py,793,"@pytest.mark.skipif(WIN, reason=""The fake pager is a shell script."")",,conditional,"A platform, a version or a missing program decides."
+clean,pallets/click#3777,tests/test_termui.py,1232,"@pytest.mark.skipif(shutil.which(""head"") is None, reason=""head not available"")",,conditional,"A platform, a version or a missing program decides."
+clean,scrapy/scrapy#8382,tests/test_downloader_handler_aiohttp.py,57,"@pytest.mark.skipif(sys.platform != ""win32"", reason=""Windows-only workaround"")",,conditional,"A platform, a version or a missing program decides."
+clean,python-poetry/poetry#11099,tests/installation/test_wheel_installer.py,266,"pytest.skip(""symlinks are not available"")",,conditional,"Inside `except (OSError, NotImplementedError):`, where symlinks can't be made. In a test the PR adds."
+clean-js,expressjs/express#7366,test/req.fresh.js,53,this.skip(),,conditional,Inside `if (shouldSkipQuery(process.versions.node))`.
+clean-js,expressjs/express#7366,test/req.fresh.js,72,this.skip(),,conditional,Inside `if (shouldSkipQuery(process.versions.node))`.
+clean-go,go-gorm/gorm#7768,tests/create_test.go,814,"t.Skip(""RETURNING is only supported on SQLite >= 3.35.0 and PostgreSQL"")",,conditional,Inside an `if` on the database in use.
+clean-go,go-gorm/gorm#7728,tests/migrate_test.go,1607,t.Skip(),,conditional,Inside an `if` on the database in use.
+clean-go,caddyserver/caddy#8388,internal/filesystems/map_test.go,54,"t.Skip(""needs a file that cannot be opened"")",,conditional,"Inside an `if` on the operating system, in a test the PR adds."
+clean-go,caddyserver/caddy#8387,modules/caddyhttp/fileserver/matcher_test.go,726,"t.Skip(""backslash is a path separator only on Windows"")",,conditional,"Inside an `if` on the operating system, in a test the PR adds."
+clean-rust,tokio-rs/tokio#8752,tokio/tests/rt_threaded.rs,38,"#[cfg_attr(miri, ignore)]",,conditional,Ignored only under Miri.
+clean-tests,expressjs/express#5695,test/app.router.js,45,this.skip(),,conditional,Inside `if (shouldSkipQuery(process.versions.node))`.
+clean-tests,expressjs/express#5695,test/res.send.js,415,this.skip(),,conditional,Inside `if (shouldSkipQuery(process.versions.node))`.
+clean-tests,vitejs/vite#24057,playground/dynamic-import-inline/__tests__/dynamic-import-inline.spec.ts,4,"test.runIf(isBuild)(""don't warn when codeSplitting is set to false"", () => {",,conditional,Runs only in one of the two modes the suite is run in.
+clean-tests,go-gorm/gorm#6879,tests/create_test.go,622,"t.Skipf(""This test case skipped, because of only supporting for mysql"")",,conditional,Inside `if !isMysql()`; the PR only fixes a typo in its message.
+clean-tests,prometheus/prometheus#20237,compliance/main_test.go,32,"if existing := flag.Lookup(""test.skip"").Value.String(); existing != """" {",,not a marker,"Go's own `-test.skip` flag, read and set in TestMain."
+clean-tests,prometheus/prometheus#20237,compliance/main_test.go,35,"_ = flag.Set(""test.skip"", strings.Join(skips, ""|""))",,not a marker,"Go's own `-test.skip` flag, read and set in TestMain."
+clean-flaky,fastify/fastify#6428,test/server.test.js,87,"test('Test for IPV6 port', { skip: isIPv6Missing }, async (t) => {",,conditional,`{ skip: isIPv6Missing }`: skipped where there is no IPv6.
+clean-flaky,vitejs/vite#23742,playground/fs-serve/__tests__/commonTests.ts,67,"describe.runIf(isServe)('matrix', projectFileServingUnsupported, () => {",,conditional,Runs only in one of the two modes the suite is run in.
+clean-flaky,vitejs/vite#23707,playground/css/__tests__/tests.ts,44,"test.runIf(isServe)('linked css HMR', droppedEditTodo, async () => {",,conditional,Runs only in one of the two modes the suite is run in.
+clean-flaky,vitejs/vite#23707,playground/css/__tests__/tests.ts,65,"test.runIf(isServe)('css import from js HMR', droppedEditTodo, async () => {",,conditional,Runs only in one of the two modes the suite is run in.
+clean-flaky,vitejs/vite#23707,playground/css/__tests__/tests.ts,89,"test.runIf(isServe)('postcss config HMR', droppedEditTodo, async () => {",,conditional,Runs only in one of the two modes the suite is run in.
+clean-flaky,vitejs/vite#23707,playground/css/__tests__/tests.ts,443,test.runIf(isServe)(,,conditional,Runs only in one of the two modes the suite is run in.
+clean-flaky,vitejs/vite#23321,playground/hmr/__tests__/hmr.spec.ts,307,test.skipIf(isBundledDev)(,,conditional,Skipped only in one of the modes the suite is run in.
+clean-flaky,go-gorm/gorm#7727,tests/multi_primary_keys_test.go,143,"t.Skip(""skip mysql 8.4+ due to stricter foreign key requirements for non-unique referenced keys"")",,conditional,Inside an `if` on the database in use.
+clean-flaky,tokio-rs/tokio#8404,tokio/tests/rt_handle_block_on.rs,286,"#[cfg_attr(miri, ignore)] // No UDP sockets in miri.",,conditional,Ignored only under Miri.
+clean-flaky,tokio-rs/tokio#8404,tokio/tests/rt_handle_block_on.rs,301,"#[cfg_attr(miri, ignore)] // No UDP sockets in miri.",,conditional,Ignored only under Miri.
+clean-flaky,tokio-rs/tokio#8404,tokio/tests/rt_handle_block_on.rs,316,"#[cfg_attr(miri, ignore)] // No Unix domain sockets in miri.",,conditional,Ignored only under Miri.
+clean-flaky,tokio-rs/tokio#8404,tokio/tests/rt_handle_block_on.rs,333,"#[cfg_attr(miri, ignore)] // No Unix domain sockets in miri.",,conditional,Ignored only under Miri.
+clean-flaky,tokio-rs/tokio#8404,tokio/tests/rt_handle_block_on.rs,353,"#[cfg_attr(miri, ignore)] // No Unix domain sockets in miri.",,conditional,Ignored only under Miri.
+clean-flaky,tokio-rs/tokio#8205,tokio/tests/io_copy_bidirectional.rs,92,"#[cfg_attr(miri, ignore)] // Miri sometimes fails to establish the tcp connection",,conditional,Ignored only under Miri.
+clean-flaky,tokio-rs/tokio#8205,tokio/tests/rt_common.rs,1158,"#[cfg_attr(miri, ignore)] // Miri sometimes fails to establish the tcp connection",,conditional,Ignored only under Miri.

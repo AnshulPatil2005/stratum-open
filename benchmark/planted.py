@@ -506,7 +506,7 @@ def _checks(args) -> int:
     lookup = PackageLookup()
     rows, results = [], []
     for case in yaml.safe_load(Path(args.risks).read_text(encoding="utf-8")):
-        files, contents = _added_files({path: _fill(text, case["id"]) for path, text in case["files"].items()})
+        files, contents = _case_files(case)
         found = run_checks(files, policy, lookup=lookup, contents=contents, pr_text=case.get("title", ""))
         rules = case["rule"] if isinstance(case["rule"], list) else [case["rule"]]
         control = bool(case.get("control"))
@@ -533,6 +533,8 @@ def _checks(args) -> int:
     _write(out / "checks.csv", CHECK_COLUMNS, rows)
     (out / "planted.json").write_text(json.dumps(results, indent=1) + "\n", encoding="utf-8")
     (out / "prs.json").write_text(json.dumps(prs, indent=1) + "\n", encoding="utf-8")
+    if not policy.checks.weakened_tests:
+        print("checks.weakened_tests is off, so its cases are missed: --policy benchmark/planted/variants/weakened-tests.yml.")
     if not bandit_available():
         print("Bandit isn't installed, so its cases are missed: pip install bandit.")
     if not policy.dependencies.known_vulnerabilities:
@@ -553,7 +555,7 @@ def _checks_summary(out: Path) -> str:
         groups[case["rule"].split("/")[0].split(" ")[0]].append(case)
     names = {"code": "Secrets and risky code", "bandit": "Bandit (optional extra)", "ruff": "Ruff (optional extra, off by default)",
              "workflow": "GitHub workflows",
-             "deps": "Dependencies", "agents": "Coding-agent files", "unicode": "Hidden Unicode"}
+             "deps": "Dependencies", "agents": "Coding-agent files", "unicode": "Hidden Unicode", "tests": "Weakened tests"}
     lines = [
         "# Checks that need no model",
         "",
@@ -609,6 +611,14 @@ def _fill(text: str, seed: str) -> str:
     rng = random.Random(seed)
     text = re.sub(r"<<fake:([a-z-]+)>>", lambda m: _FAKES[m.group(1)](rng), text)
     return re.sub(r"<<U\+([0-9A-F]{4,6})>>", lambda m: chr(int(m.group(1), 16)), text)
+
+
+def _case_files(case: dict) -> tuple[list[FileDiff], dict[str, str]]:
+    """A planted case's PR: the new files it adds, or its `diff` as written,
+    for a rule that reads what a PR removes."""
+    if "diff" in case:
+        return parse_diff(case["diff"]), {}
+    return _added_files({path: _fill(text, case["id"]) for path, text in case["files"].items()})
 
 
 def _added_files(spec: dict[str, str]) -> tuple[list[FileDiff], dict[str, str]]:

@@ -1,0 +1,3 @@
+# The line-level rules for weakened tests: a test switched off, assertions removed, a tolerance widened.
+checks:
+  weakened_tests: true

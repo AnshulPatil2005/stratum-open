@@ -1,0 +1,58 @@
+[
+ {
+  "list": "clean",
+  "prs": 184,
+  "touch_tests": 131,
+  "trim_tests": 57,
+  "assertions_removed": 105,
+  "tolerance_lines": 0
+ },
+ {
+  "list": "clean-js",
+  "prs": 60,
+  "touch_tests": 39,
+  "trim_tests": 15,
+  "assertions_removed": 346,
+  "tolerance_lines": 0
+ },
+ {
+  "list": "clean-go",
+  "prs": 60,
+  "touch_tests": 45,
+  "trim_tests": 15,
+  "assertions_removed": 21,
+  "tolerance_lines": 0
+ },
+ {
+  "list": "clean-rust",
+  "prs": 60,
+  "touch_tests": 29,
+  "trim_tests": 9,
+  "assertions_removed": 1,
+  "tolerance_lines": 0
+ },
+ {
+  "list": "clean-infra",
+  "prs": 53,
+  "touch_tests": 6,
+  "trim_tests": 4,
+  "assertions_removed": 8,
+  "tolerance_lines": 0
+ },
+ {
+  "list": "clean-tests",
+  "prs": 343,
+  "touch_tests": 343,
+  "trim_tests": 338,
+  "assertions_removed": 527,
+  "tolerance_lines": 0
+ },
+ {
+  "list": "clean-flaky",
+  "prs": 22,
+  "touch_tests": 22,
+  "trim_tests": 15,
+  "assertions_removed": 56,
+  "tolerance_lines": 0
+ }
+]

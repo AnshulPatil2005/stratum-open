@@ -80,6 +80,17 @@ python benchmark/planted.py run --bugs benchmark/planted/bugs.json --out benchma
 python benchmark/planted.py score benchmark/results/<name>   # after marking the verdict columns
 ```
 
+**Weakened tests.** The check for tests a PR weakens is off unless `checks.weakened_tests` is on, and
+[weakened_tests.py](weakened_tests.py) measures it alone:
+- **Planted.** risks.yml also holds its cases and its controls (a rewritten assertion, a skip a platform decides, a renamed test), which the check must leave alone. Each is the PR's diff, not a set of new files, because the rules read what a PR removes. `planted.py checks` counts them as missed without `--policy benchmark/planted/variants/weakened-tests.yml`.
+- **Merged PRs.** Every list above, and two more that [corpus.py](corpus.py) picks from the same JavaScript, Go and Rust projects: `clean-tests.json`, PRs that remove a line from a test file, and `clean-flaky.json`, PRs whose title is about a flaky test or about skipping one.
+- **Marking.** Each finding is right or wrong, and a right one is either plainly fine (the PR says it, or it follows from what the PR says it does) or worth pointing out.
+
+```sh
+python benchmark/weakened_tests.py run --out benchmark/results/<name>
+python benchmark/weakened_tests.py score benchmark/results/<name>   # after marking checks.csv and markers.csv
+```
+
 **Trying a change.** Each case is in the `dev` or the `test` set (in bugs.json, stratified by kind):
 - **Tune on dev only.** Use `--set dev`, and run `test` once at the end, so the result isn't tuned to its cases.
 - **Add the clean control.** `--clean` reviews the PRs as merged, without the bug. A method that comments on every changed condition flags the planted line in both, so the summary counts **near only with the bug**: the cases whose clean version got no finding on that line.
