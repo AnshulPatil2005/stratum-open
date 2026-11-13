@@ -25,6 +25,9 @@ on:
       hosted-endpoint:
         description: Its OpenAI-compatible endpoint
         default: https://openrouter.ai/api/v1
+      bugs:
+        description: The case file, e.g. benchmark/planted/bugs-2.json for the second set of bug kinds
+        default: benchmark/planted/bugs.json
       set:
         description: Which cases (all | dev | test); tune on dev, report test
         default: all
@@ -71,7 +74,8 @@ jobs:
       - name: Fetch the PRs once, for every job
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: python benchmark/planted.py fetch --bugs benchmark/planted/bugs.json
+          BUGS: ${{ inputs.bugs }}
+        run: python benchmark/planted.py fetch --bugs "$BUGS"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: planted-cache
@@ -108,11 +112,12 @@ jobs:
           MODEL: ${{ matrix.model }}
           SHARD: ${{ matrix.shard }}/${{ matrix.of }}
           VERSION: ${{ matrix.version }}
+          BUGS: ${{ inputs.bugs }}
           SET: ${{ inputs.set }}
           POLICY: ${{ inputs.policy }}
           OUT: raw/${{ matrix.safe }}-${{ matrix.version }}-${{ matrix.shard }}
         run: |
-          args=(--bugs benchmark/planted/bugs.json --model "$MODEL@http://localhost:11434/v1" --shard "$SHARD" --set "$SET" --out "$OUT")
+          args=(--bugs "$BUGS" --model "$MODEL@http://localhost:11434/v1" --shard "$SHARD" --set "$SET" --out "$OUT")
           if [ "$VERSION" = clean ]; then args+=(--clean); fi
           if [ -n "$POLICY" ]; then args+=(--policy "$POLICY" --variant "$(basename "$POLICY" .yml)"); fi
           python benchmark/planted.py run "${args[@]}"
@@ -146,11 +151,12 @@ jobs:
           MODEL: ${{ inputs.hosted-model }}
           ENDPOINT: ${{ inputs.hosted-endpoint }}
           CLEAN: ${{ inputs.clean }}
+          BUGS: ${{ inputs.bugs }}
           SET: ${{ inputs.set }}
           POLICY: ${{ inputs.policy }}
         run: |
           if [ -z "$STRATUM_MODEL_API_KEY" ]; then echo "::error::Add the STRATUM_EVAL_API_KEY secret first."; exit 1; fi
-          args=(--bugs benchmark/planted/bugs.json --model "$MODEL@$ENDPOINT" --set "$SET")
+          args=(--bugs "$BUGS" --model "$MODEL@$ENDPOINT" --set "$SET")
           if [ -n "$POLICY" ]; then args+=(--policy "$POLICY" --variant "$(basename "$POLICY" .yml)"); fi
           python benchmark/planted.py run "${args[@]}" --out raw/hosted/planted
           if [ "$CLEAN" = true ]; then python benchmark/planted.py run "${args[@]}" --clean --out raw/hosted/clean; fi
