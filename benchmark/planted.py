@@ -421,7 +421,10 @@ def _cases_of(reviews: list[dict]) -> list[dict]:
     return [bug for bugs in files if any(f"{b['repo']}#{b['pr']}" in ran for b in bugs) for bug in bugs]
 
 
-def _model_summary(out: Path) -> str:
+def model_scores(out: Path) -> dict:
+    """What the model reviews under a run folder add up to, a row per model
+    and variant. The run's summary and the results page (results_page.py)
+    both take their numbers from here, so the two can't disagree."""
     reviews = [row for path in sorted(out.rglob("reviews.csv")) for row in _read(path)]
     every = _cases_of(reviews)
     sets = {f"{b['repo']}#{b['pr']}": b.get("set", "") for b in every}
@@ -439,11 +442,56 @@ def _model_summary(out: Path) -> str:
     marks: dict[tuple[str, str, str, str], list[dict]] = defaultdict(list)
     for row in findings:
         marks[(row["model"], row["variant"], row["version"], row["case"])].append(row)
-    cases = {row["case"] for row in reviews}
+    kinds = sorted({r["kind"] for r in reviews})
+    rows = []
+    for model, variant in sorted(runs, key=lambda key: (_size(key[0]), key[0], key[1])):
+        planted, clean = runs[(model, variant)]["planted"], runs[(model, variant)]["clean"]
+        if not planted:
+            continue
+        on = {r["case"]: marks[(model, variant, "planted", r["case"])] for r in planted}
+        seen = [r for r in planted if r["shown"] == "yes"]
+        near = {r["case"] for r in seen if int(r["near"])}
+        near_clean = {r["case"] for r in clean if int(r["near"])}
+        found = [r for r in seen if _near_marked(on[r["case"]], "right")]
+        hit = {r["case"] for r in found}
+        mine = [m for r in planted for m in on[r["case"]]]
+        other = [m for m in mine if m["near"] != "yes"]
+        both = planted + clean
+        rows.append({
+            "model": model, "variant": variant, "planted": len(planted), "shown": len(seen), "near": len(near),
+            "clean": len(clean), "near_clean": len(near_clean), "near_only": len(near - near_clean),
+            "found": len(found), "found_dev": sum(r["set"] == "dev" for r in found),
+            "other": len(other), "other_right": sum(m["verdict"] == "right" for m in other),
+            "other_marked": sum(m["verdict"] in ("right", "wrong") for m in other),
+            "on_clean": sum(int(r["findings"]) for r in clean),
+            "failed_calls": sum(int(r["failed_calls"]) for r in both), "calls": sum(int(r["calls"]) for r in both),
+            "seconds": statistics.median(float(r["seconds"]) for r in both),
+            "by_kind": {kind: (sum(r["case"] in hit for r in seen if r["kind"] == kind), sum(r["kind"] == kind for r in seen)) for kind in kinds},
+            # What marking has still to settle: a case with a finding near
+            # its bug that nobody has marked may yet turn out found.
+            "sets": sorted({r["set"] for r in planted}),
+            "unmarked": sum(not m["verdict"] for m in mine),
+            "unmarked_near": sum(not m["verdict"] and m["near"] == "yes" for m in mine),
+            "open": sum(r["case"] not in hit and _near_marked(on[r["case"]], "") for r in seen),
+        })
+    return {
+        "cases": len({row["case"] for row in reviews}), "rows": rows, "kinds": kinds, "invalid": invalid,
+        "unmarked": sum(1 for m in findings if m["version"] == "planted" and not m["verdict"]),
+        "reviews": reviews, "findings": findings,
+    }
+
+
+def _near_marked(findings: list[dict], verdict: str) -> bool:
+    """Whether one of a review's findings is near the bug and has this verdict."""
+    return any(m["near"] == "yes" and m["verdict"] == verdict for m in findings)
+
+
+def _model_summary(out: Path) -> str:
+    scores = model_scores(out)
     lines = [
         "# Planted-bug benchmark",
         "",
-        f"{len(cases)} real merged PRs, each with one bug planted on a line it adds. Each model reviewed",
+        f"{scores['cases']} real merged PRs, each with one bug planted on a line it adds. Each model reviewed",
         "them as the Action does: the `small` profile and an 8,192-token window, unless a variant says",
         "otherwise. Only the model's own findings count. A finding is near the bug when it's on that file",
         f"within {LINES_NEAR} lines; found means it was read and it describes the bug. Where the PRs were also",
@@ -454,45 +502,24 @@ def _model_summary(out: Path) -> str:
         "| Other findings | Other findings marked right | Findings on the clean PRs | Failed calls | Median time |",
         "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |",
     ]
-    order = sorted(runs, key=lambda key: (_size(key[0]), key[0], key[1]))
-    for model, variant in order:
-        planted, clean = runs[(model, variant)]["planted"], runs[(model, variant)]["clean"]
-        if not planted:
-            continue
-        seen = [r for r in planted if r["shown"] == "yes"]
-        near = {r["case"] for r in seen if int(r["near"])}
-        near_clean = {r["case"] for r in clean if int(r["near"])}
-        found = [r for r in seen if any(m["near"] == "yes" and m["verdict"] == "right" for m in marks[(model, variant, "planted", r["case"])])]
-        dev = sum(r["set"] == "dev" for r in found)
-        other = [m for r in planted for m in marks[(model, variant, "planted", r["case"])] if m["near"] != "yes"]
-        other_marked = sum(m["verdict"] in ("right", "wrong") for m in other)
-        on_clean = sum(int(r["findings"]) for r in clean)
-        rows = planted + clean
+    for row in scores["rows"]:
+        shown, clean = row["shown"], row["clean"]
+        near_clean = f"{row['near_clean']} of {clean}" if clean else "-"
+        near_only = f"{row['near_only']} of {shown}" if clean else "-"
         lines.append(
-            f"| `{model}` | {variant or '-'} | {len(planted)} | {len(near)} of {len(seen)} "
-            f"| {f'{len(near_clean)} of {len(clean)}' if clean else '-'} "
-            f"| {f'{len(near - near_clean)} of {len(seen)}' if clean else '-'} "
-            f"| {len(found)} of {len(seen)} ({dev} + {len(found) - dev}) "
-            f"| {len(other)} | {sum(m['verdict'] == 'right' for m in other)} of {other_marked} marked "
-            f"| {on_clean if clean else '-'} | {sum(int(r['failed_calls']) for r in rows)} of {sum(int(r['calls']) for r in rows)} "
-            f"| {statistics.median(float(r['seconds']) for r in rows):.0f}s |"
+            f"| `{row['model']}` | {row['variant'] or '-'} | {row['planted']} | {row['near']} of {shown} | {near_clean} | {near_only} "
+            f"| {row['found']} of {shown} ({row['found_dev']} + {row['found'] - row['found_dev']}) "
+            f"| {row['other']} | {row['other_right']} of {row['other_marked']} marked "
+            f"| {row['on_clean'] if clean else '-'} | {row['failed_calls']} of {row['calls']} | {row['seconds']:.0f}s |"
         )
-    kinds = sorted({r["kind"] for r in reviews})
+    kinds = scores["kinds"]
     lines += ["", "Found, by kind of bug:", "", "| Model | Variant | " + " | ".join(kinds) + " |", "| --- | --- |" + " --- |" * len(kinds)]
-    for model, variant in order:
-        planted = runs[(model, variant)]["planted"]
-        if not planted:
-            continue
-        cells = []
-        for kind in kinds:
-            mine = [r for r in planted if r["kind"] == kind and r["shown"] == "yes"]
-            hit = sum(any(m["near"] == "yes" and m["verdict"] == "right" for m in marks[(model, variant, "planted", r["case"])]) for r in mine)
-            cells.append(f"{hit} of {len(mine)}")
-        lines.append(f"| `{model}` | {variant or '-'} | " + " | ".join(cells) + " |")
-    unmarked = sum(1 for m in findings if m["version"] == "planted" and not m["verdict"])
-    if unmarked:
-        lines += ["", f"**{unmarked} finding(s) not marked yet**, so Found and the marked counts are incomplete."]
-    for case, why in sorted(invalid.items()):
+    for row in scores["rows"]:
+        cells = [f"{hit} of {total}" for hit, total in (row["by_kind"][kind] for kind in kinds)]
+        lines.append(f"| `{row['model']}` | {row['variant'] or '-'} | " + " | ".join(cells) + " |")
+    if scores["unmarked"]:
+        lines += ["", f"**{scores['unmarked']} finding(s) not marked yet**, so Found and the marked counts are incomplete."]
+    for case, why in sorted(scores["invalid"].items()):
         lines += ["", f"Left out: {case}. {why}"]
     return "\n".join(lines)
 
@@ -569,12 +596,23 @@ def _checks(args) -> int:
     return _score(out)
 
 
-def _checks_summary(out: Path) -> str:
+def checks_scores(out: Path) -> dict:
+    """What a checks run adds up to, for its summary and the results page alike."""
     cases = json.loads((out / "planted.json").read_text(encoding="utf-8"))
     planted, controls = [c for c in cases if not c.get("control")], [c for c in cases if c.get("control")]
-    rows = _read(out / "checks.csv")
-    merged = [r for r in rows if r["set"] == "merged"]
-    prs = json.loads((out / "prs.json").read_text(encoding="utf-8"))
+    merged = [r for r in _read(out / "checks.csv") if r["set"] == "merged"]
+    return {
+        "planted": planted, "controls": controls,
+        "caught": sum(c["caught"] for c in planted), "missed": [c for c in planted if not c["caught"]],
+        "prs": json.loads((out / "prs.json").read_text(encoding="utf-8")),
+        "merged": merged, "flagged": len({r["case"] for r in merged}),
+        "marked": {v: sum(r["verdict"] == v for r in merged) for v in ("right", "wrong", "unsure", "")},
+    }
+
+
+def _checks_summary(out: Path) -> str:
+    scores = checks_scores(out)
+    planted, controls, merged, prs, marked = scores["planted"], scores["controls"], scores["merged"], scores["prs"], scores["marked"]
     groups: dict[str, list[dict]] = defaultdict(list)
     for case in planted:
         groups[case["rule"].split("/")[0].split(" ")[0]].append(case)
@@ -598,18 +636,16 @@ def _checks_summary(out: Path) -> str:
     ]
     for group, cases in groups.items():
         lines.append(f"| {names.get(group, group)} | {sum(c['caught'] for c in cases)} of {len(cases)} |")
-    lines.append(f"| **All** | **{sum(c['caught'] for c in planted)} of {len(planted)}** |")
-    missed = [c for c in planted if not c["caught"]]
-    if missed:
-        lines += ["", "Missed: " + "; ".join(f"`{c['id']}` (found: {', '.join(c['found']) or 'nothing'})" for c in missed) + "."]
+    lines.append(f"| **All** | **{scores['caught']} of {len(planted)}** |")
+    if scores["missed"]:
+        lines += ["", "Missed: " + "; ".join(f"`{c['id']}` (found: {', '.join(c['found']) or 'nothing'})" for c in scores["missed"]) + "."]
     if controls:
         flagged = [c for c in controls if c["caught"]]
         lines += ["", f"Controls, files a rule must leave alone: {len(controls) - len(flagged)} of {len(controls)} left alone."
                   + (" Flagged: " + "; ".join(f"`{c['id']}`" for c in flagged) + "." if flagged else "")]
-    marked = {v: sum(r["verdict"] == v for r in merged) for v in ("right", "wrong", "unsure", "")}
     lines += [
         "",
-        f"On the merged PRs: {len(merged)} finding(s) on {len({r['case'] for r in merged})} of {len(prs)} PRs. "
+        f"On the merged PRs: {len(merged)} finding(s) on {scores['flagged']} of {len(prs)} PRs. "
         f"Marked: {marked['right']} right, {marked['wrong']} wrong (false alarms), {marked['unsure']} unsure"
         + (f", {marked['']} not marked yet." if marked[""] else "."),
     ]

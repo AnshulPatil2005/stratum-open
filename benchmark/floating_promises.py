@@ -267,9 +267,33 @@ def table(rows: list[dict]) -> list[str]:
     ]
 
 
+def load(out: Path) -> tuple[list[dict], list[dict], dict, list[dict]]:
+    """A run's dropped awaits, its findings, and what it read, from the files it wrote."""
+    with (out / "findings.csv").open(encoding="utf-8", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    read = json.loads((out / "read.json").read_text(encoding="utf-8"))
+    return json.loads((out / "cases.json").read_text(encoding="utf-8")), rows, read["touched"], read["repos"]
+
+
+def scores(cases: list[dict], rows: list[dict], touched: dict, repos: list[dict]) -> dict:
+    """What a run adds up to, for its summary and the results page alike. `read`
+    is the merged code read as if it were new: the files the PRs touch, then
+    the whole repositories of each set."""
+    read = [{"read": "The files the PRs touch", "files": touched["files"] - touched["unparsed"], "lines": touched["lines"],
+             "statements": touched["statements"], "findings": [r for r in rows if r["set"] == "whole"]}]
+    for group in sorted({r.get("set", "") for r in repos}):
+        mine = [r for r in repos if r.get("set", "") == group]
+        read.append({"read": f"{len(mine)} whole repositories, `{group}`", "files": sum(m["files"] - m["unparsed"] for m in mine),
+                     "lines": sum(m["lines"] for m in mine), "statements": sum(m["statements"] for m in mine),
+                     "findings": [r for r in rows if r["set"] == "repos" and r["case"] in {m["repo"] for m in mine}]})
+    return {"caught": sum(c["caught"] for c in cases), "cases": len(cases), "prs": touched["prs"],
+            "merged": [r for r in rows if r["set"] == "merged"], "read": read}
+
+
 def summarize(cases: list[dict], rows: list[dict], touched: dict, repos: list[dict]) -> tuple[str, str]:
     """The run's numbers, and the list of every finding with its verdict."""
-    caught =sum(c["caught"] for c in cases)
+    numbers = scores(cases, rows, touched, repos)
+    caught = numbers["caught"]
     tests = [c for c in cases if c["test"]]
     lines = [
         "# The floating-promise check on merged JavaScript and TypeScript",
@@ -288,7 +312,7 @@ def summarize(cases: list[dict], rows: list[dict], touched: dict, repos: list[di
     lines += ["", f"{len(tests)} of the {len(cases)} are in test files ({sum(c['caught'] for c in tests)} caught), "
               f"{len(cases) - len(tests)} in other code ({caught - sum(c['caught'] for c in tests)} caught)."]
 
-    merged = [r for r in rows if r["set"] == "merged"]
+    merged = numbers["merged"]
     lines += ["", f"## {SETS['merged']}", "",
               f"**{len(merged)} finding(s) on the {touched['prs']} PRs** (95% interval for a PR getting one: "
               f"{interval(len({r['case'] for r in merged}), touched['prs'])})."] + table(merged)
@@ -301,13 +325,8 @@ def summarize(cases: list[dict], rows: list[dict], touched: dict, repos: list[di
         "",
         "| Read | Files | Lines | Whole-statement calls in async functions | Findings | Right | Wrong | Unsure |",
         "| --- | --- | --- | --- | --- | --- | --- | --- |",
-        f"| The files the PRs touch | {touched['files'] - touched['unparsed']} | {touched['lines']:,} | {touched['statements']:,} | {counts(whole)} |",
     ]
-    for group in sorted({r.get("set", "") for r in repos}):
-        mine = [r for r in repos if r.get("set", "") == group]
-        found = [r for r in rows if r["set"] == "repos" and r["case"] in {m["repo"] for m in mine}]
-        lines.append(f"| {len(mine)} whole repositories, `{group}` | {sum(m['files'] - m['unparsed'] for m in mine):,} | "
-                     f"{sum(m['lines'] for m in mine):,} | {sum(m['statements'] for m in mine):,} | {counts(found)} |")
+    lines += [f"| {r['read']} | {r['files']:,} | {r['lines']:,} | {r['statements']:,} | {counts(r['findings'])} |" for r in numbers["read"]]
     unparsed = touched["unparsed"] + sum(m["unparsed"] for m in repos)
     lines += ["", f"{unparsed} more file(s) didn't parse cleanly or were over the size limit, and were skipped as the check skips them."]
     every = [r for r in rows if r["set"] in ("whole", "repos")]
