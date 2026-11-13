@@ -12,7 +12,7 @@ from __future__ import annotations
 import base64
 import json
 import re
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from typing import Any
 
 from stratum_open.engine import default_conclusion
@@ -36,6 +36,50 @@ LABEL = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low
 # The hint under each inline comment, and the one 0.1 and 0.2 posted.
 HINT = "Reply `/stratum ignore` to hide it on this PR, or `/stratum explain` for more."
 OLD_HINT = "Reply `@stratum ignore` to hide it on this PR, or `@stratum explain` for more."
+# `review.early_checks`: the summary's line while the model reads the PR, and once it's clear it won't finish.
+EARLY_PENDING = "still running. This comment becomes the full review when it's done."
+EARLY_STOPPED = "didn't finish, so this review has only the checks. Comment `/stratum review` to run it again."
+_EARLY = re.compile(r"\n?<!-- stratum:early (\S+) (\d+) (success|neutral|failure) ([0-9a-f,]*) -->")
+
+
+@dataclass
+class Early:
+    """`review.early_checks`: what the checks posted before the model ran, kept
+    in the summary so the full review can finish it. `check_run` is the run
+    left in progress (0: none could be started), `conclusion` what it says if
+    the model never finishes, `inline` the fingerprints posted on the lines."""
+    head: str
+    check_run: int = 0
+    conclusion: str = "neutral"
+    inline: list[str] = field(default_factory=list)
+
+    def encode(self) -> str:
+        return f"<!-- stratum:early {self.head} {self.check_run} {self.conclusion} {','.join(self.inline)} -->"
+
+    @classmethod
+    def decode(cls, body: str, head: str) -> Early | None:
+        """The early post for `head` in a summary, if it's still waiting for the model."""
+        match = _EARLY.search(body or "")
+        if not match or match.group(1) != head:
+            return None
+        return cls(head, int(match.group(2)), match.group(3), [fp for fp in match.group(4).split(",") if fp])
+
+
+def render_early(summary: Summary, state: State, raw_state: str, early: Early) -> str:
+    """The summary the checks post before the model has run. It carries the
+    last review's state as it was, byte for byte, so the full review reads
+    the same state as it would without this post."""
+    body = render_summary(summary, replace(state))
+    return body[: body.rfind("\n<!-- stratum:state ")] + "\n" + early.encode() + "\n" + (raw_state or State().encode())
+
+
+def stopped_body(body: str) -> str | None:
+    """An early summary whose model review won't come: the line that said it was
+    running says it didn't finish. None when the body isn't one."""
+    pending = f"**The model's review:** {EARLY_PENDING}"
+    if pending not in body or not _EARLY.search(body):
+        return None
+    return _EARLY.sub("", body.replace(pending, f"**The model's review:** {EARLY_STOPPED}"), count=1)
 
 
 @dataclass
@@ -70,6 +114,12 @@ class State:
             )
         except (ValueError, TypeError, AttributeError):
             return cls()
+
+
+def state_text(body: str) -> str:
+    """The state as it's written in a summary, or "" when there's none."""
+    match = _STATE.search(body or "")
+    return match.group(0) if match else ""
 
 
 def replace_state(body: str, state: State) -> str:
@@ -156,9 +206,16 @@ def closed_body(body: str, reason: str) -> str:
     )
 
 
-def publish_inline(gh: GitHub, number: int, head_sha: str, findings: list[Finding], threads: list[dict], *, bot: str, limit: int, feedback: bool) -> list[str]:
+def publish_inline(gh: GitHub, number: int, head_sha: str, findings: list[Finding], threads: list[dict], *, bot: str, limit: int, feedback: bool,
+                   early: dict[str, dict] | None = None) -> list[str]:
     """Post the anchored findings that don't have a thread yet. A thread a
-    person resolved stays resolved: the finding isn't posted again."""
+    person resolved stays resolved: the finding isn't posted again.
+
+    `early`: the threads `review.early_checks` started on this head, by
+    fingerprint, left out of `threads`. The choice is made as if they weren't
+    there; a chosen one is kept (its text made the same as this review's) and
+    one not chosen is deleted, unless someone has replied to it. So the lines
+    end up as they would without the early post."""
     existing: dict[str, dict] = {}
     for thread in threads:
         fp = thread_fingerprint(thread, bot)
@@ -170,16 +227,18 @@ def publish_inline(gh: GitHub, number: int, head_sha: str, findings: list[Findin
 
     fresh = [f for f in findings if f.anchored and (f.fingerprint not in existing or returned(f.fingerprint))]
     fresh = fresh[: max(0, limit - still_open)]
+    kept = _settle_early(gh, early, fresh, feedback) if early else []
+    fresh = [f for f in fresh if f.fingerprint not in kept]
     if not fresh:
-        return []
+        return kept
     comments = [_inline(f, feedback) for f in fresh]
     try:
         gh.create_review(number, head_sha, comments)
-        return [f.fingerprint for f in fresh]
+        return kept + [f.fingerprint for f in fresh]
     except GitHubError as exc:
         if exc.status != 422:
             raise
-    posted = []  # one comment GitHub won't place shouldn't sink the rest
+    posted = list(kept)  # one comment GitHub won't place shouldn't sink the rest
     for finding, comment in zip(fresh, comments):
         try:
             gh.create_review(number, head_sha, [comment])
@@ -188,6 +247,27 @@ def publish_inline(gh: GitHub, number: int, head_sha: str, findings: list[Findin
             if exc.status != 422:
                 raise
     return posted
+
+
+def _settle_early(gh: GitHub, early: dict[str, dict], chosen: list[Finding], feedback: bool) -> list[str]:
+    """The early threads this review keeps, by fingerprint; the others are
+    deleted. A thread someone replied to is never deleted, and one GitHub
+    won't delete or edit stays as it is."""
+    wanted = {f.fingerprint: f for f in chosen}
+    kept = []
+    for fp, thread in early.items():
+        root = thread["comments"][0]
+        try:
+            if fp in wanted:
+                kept.append(fp)
+                body = comment_body(wanted[fp], feedback=feedback)
+                if root.get("body") != body:
+                    gh.edit_review_comment(root["id"], body)
+            elif len(thread["comments"]) == 1:
+                gh.delete_review_comment(root["id"])
+        except GitHubError:
+            pass
+    return kept
 
 
 def _inline(finding: Finding, feedback: bool) -> dict[str, Any]:
@@ -262,6 +342,7 @@ class Summary:
     priorities: list[str] = field(default_factory=list)  # what to check first (the large profile's walkthrough call)
     walkthrough: str = ""
     hidden: str = ""  # a line on the findings left out for being like ones maintainers rejected (review.learn_from_history)
+    pending: str = ""  # `review.early_checks`: the checks alone, posted before the model has run; this says where the model is
 
 
 def render_summary(summary: Summary, state: State) -> str:
@@ -287,7 +368,10 @@ def render_summary(summary: Summary, state: State) -> str:
 
     quiet = summary.policy.review.quiet
     folded: list[Finding] = []  # `review.quiet`: the model's findings past QUIET_SHOWN, for a block of their own further down
-    if quiet:
+    if summary.pending:  # the checks' list only: the model hasn't said anything yet
+        _checks_list(summary, lines)
+        lines += ["", f"**The model's review:** {summary.pending}"]
+    elif quiet:
         folded = _two_lists(summary, lines)
     else:
         tally = counts(summary.findings)
@@ -349,18 +433,8 @@ def _two_lists(summary: Summary, lines: list[str]) -> list[Finding]:
     model's reading. Of the model's, QUIET_SHOWN at most are in view: the
     ones on the lines, then the ones it's surest of. Returns the rest, which
     go in a folded block."""
-    checks = [f for f in summary.findings if f.source != "model"]
+    _checks_list(summary, lines)
     model = [f for f in summary.findings if f.source == "model"]
-    on_lines = sum(1 for f in checks if f.fingerprint in summary.inline)
-    if checks:
-        lines.append(f"**Found by the checks:** {_tally(checks)}." + (f" {on_lines} on the changed lines below." if on_lines else "")
-                     + " These need no model: each is a rule that matched the diff.")
-    else:
-        lines.append("**Found by the checks:** nothing.")
-    listed = [f for f in checks if f.fingerprint not in summary.inline]
-    if listed:
-        lines += ["", "Listed here instead:"] if on_lines else [""]
-        lines += _capped(listed)
     if not model:
         if summary.model_name is not None:  # with no model there is nobody to have suggested nothing
             lines += ["", "**Suggested by the model:** nothing."]
@@ -378,6 +452,21 @@ def _two_lists(summary: Summary, lines: list[str]) -> list[Finding]:
         lines += ["", "Listed here instead:"] if on_lines else [""]
         lines += [_listed(f) for f in listed]
     return folded
+
+
+def _checks_list(summary: Summary, lines: list[str]) -> None:
+    """The checks' findings, with their own count: the first of the two lists."""
+    checks = [f for f in summary.findings if f.source != "model"]
+    on_lines = sum(1 for f in checks if f.fingerprint in summary.inline)
+    if checks:
+        lines.append(f"**Found by the checks:** {_tally(checks)}." + (f" {on_lines} on the changed lines below." if on_lines else "")
+                     + " These need no model: each is a rule that matched the diff.")
+    else:
+        lines.append("**Found by the checks:** nothing.")
+    listed = [f for f in checks if f.fingerprint not in summary.inline]
+    if listed:
+        lines += ["", "Listed here instead:"] if on_lines else [""]
+        lines += _capped(listed)
 
 
 def _lead_notes(notes: list[str]) -> tuple[list[str], list[str]]:
@@ -458,12 +547,13 @@ conclusion = default_conclusion
 
 
 def publish_check(gh: GitHub, head_sha: str, findings: list[Finding], summary_text: str, *, conclusion: str,
-                  name: str = CHECK_NAME, quiet_inline: set[str] | None = None) -> None:
+                  name: str = CHECK_NAME, quiet_inline: set[str] | None = None, run_id: int | None = None) -> None:
     """`quiet_inline`: with `review.quiet`, the fingerprints that have an
     inline comment. The title then counts the checks' findings and the
     model's apart, as the summary does, and of the model's findings only
     those are annotated: GitHub shows an annotation on its line too, so one
-    for each folded finding would unfold them all."""
+    for each folded finding would unfold them all. `run_id`: the run
+    `review.early_checks` left in progress, which this completes."""
     tally = counts(findings)
     title = ", ".join(f"{n} {s}" for s, n in tally.items() if n) or "No findings"
     if quiet_inline is not None and findings:
@@ -477,7 +567,12 @@ def publish_check(gh: GitHub, head_sha: str, findings: list[Finding], summary_te
         }
         for f in findings if f.anchored
     ]
-    gh.check_run(head_sha, name, conclusion, title, summary_text[:2000], "", annotations)
+    gh.check_run(head_sha, name, conclusion, title, summary_text[:2000], "", annotations, **({"run_id": run_id} if run_id else {}))
+
+
+def early_check_title(findings: list[Finding]) -> str:
+    """The title of the check run `review.early_checks` leaves in progress."""
+    return f"Checks: {_tally(findings) or 'nothing'}. Model: still running."
 
 
 def apply_label(gh: GitHub, number: int, policy: Policy, key: str, current: list[str]) -> None:

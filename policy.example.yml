@@ -26,6 +26,10 @@ review:
                                #   a claim it repeats on three or more files is one finding; comments that name no defect are left out
                                #   (missing docs, style, praise, a "Potential ..." guess unless it's about security); at most 5 of its findings are in view, the rest folded;
                                #   the summary counts the checks' findings and the model's apart, and shows 3 of the history notes
+  early_checks: false          # the Action: true posts the checks' findings (inline, in the summary, and a check run in progress)
+                               #   before it starts the model, usually within a minute, and edits them into the full review when
+                               #   the model is done; the end result is the same as with false. If the model never finishes,
+                               #   the summary says so and the check run is completed with what the checks found
   min_severity: medium         # the model's findings below this aren't shown (low | medium | high | critical); the checks' always are
   verify: none                 # none | strict | lenient: one more short call per model finding, asking the model whether it's a real defect.
                                #   strict: for models up to about 8B, which can't tell (cuts their wrong comments by ~60%);

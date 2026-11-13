@@ -255,6 +255,9 @@ class GitHub:
     def edit_review_comment(self, comment_id: int, body: str) -> dict:
         return self.request("PATCH", f"{self._r}/pulls/comments/{comment_id}", json={"body": body})
 
+    def delete_review_comment(self, comment_id: int) -> None:
+        self.request("DELETE", f"{self._r}/pulls/comments/{comment_id}")
+
     def reply(self, number: int, comment_id: int, body: str) -> dict:
         return self.request("POST", f"{self._r}/pulls/{number}/comments/{comment_id}/replies", json={"body": body})
 
@@ -303,17 +306,39 @@ class GitHub:
 
     # ── checks, labels, issues ───────────────────────────────────────────
 
-    def check_run(self, head_sha: str, name: str, conclusion: str, title: str, summary: str, text: str, annotations: list[dict]) -> dict:
-        """GitHub takes 50 annotations per request; the rest follow in updates."""
+    def check_run(self, head_sha: str, name: str, conclusion: str, title: str, summary: str, text: str, annotations: list[dict],
+                  run_id: int | None = None) -> dict:
+        """GitHub takes 50 annotations per request; the rest follow in updates.
+        `run_id`: complete that run, one `start_check_run` began, instead of
+        posting a new one (a new one when it's gone)."""
         output = {"title": title[:255], "summary": summary[:65000], "text": text[:65000], "annotations": annotations[:50]}
-        run = self.request("POST", f"{self._r}/check-runs", json={
-            "name": name, "head_sha": head_sha, "status": "completed", "conclusion": conclusion, "output": output,
-        })
+        run = None
+        if run_id:
+            try:
+                run = self.request("PATCH", f"{self._r}/check-runs/{run_id}", json={
+                    "status": "completed", "conclusion": conclusion, "output": output,
+                })
+            except GitHubError as exc:
+                if exc.status != 404:
+                    raise
+        if run is None:
+            run = self.request("POST", f"{self._r}/check-runs", json={
+                "name": name, "head_sha": head_sha, "status": "completed", "conclusion": conclusion, "output": output,
+            })
         for start in range(50, len(annotations), 50):
             self.request("PATCH", f"{self._r}/check-runs/{run['id']}", json={
                 "output": {**output, "annotations": annotations[start:start + 50]},
             })
         return run
+
+    def start_check_run(self, head_sha: str, name: str, title: str, summary: str) -> dict:
+        """A check run in progress, which `check_run(..., run_id=)` completes."""
+        return self.request("POST", f"{self._r}/check-runs", json={
+            "name": name, "head_sha": head_sha, "status": "in_progress", "output": {"title": title[:255], "summary": summary[:65000]},
+        })
+
+    def check_run_output(self, run_id: int) -> dict:
+        return (self.request("GET", f"{self._r}/check-runs/{run_id}", ok404=True) or {}).get("output") or {}
 
     def ensure_label(self, name: str, color: str, description: str) -> None:
         if self.request("GET", f"{self._r}/labels/{requests.utils.quote(name, safe='')}", ok404=True) is None:

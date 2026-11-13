@@ -62,6 +62,7 @@ class Outcome:
     review: ReviewResult | None = None
     summary: str = ""
     note: str = ""
+    early: publish.Early | None = None  # what `post_early` left for the full review to complete
 
 
 def load_context_policy(gh: GitHub, default_branch: str) -> Policy:
@@ -107,6 +108,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     comments = gh.issue_comments(number)
     existing = publish.find_summary(comments, ctx.bot)
     state = publish.State.decode(existing["body"]) if existing else publish.State()
+    early = publish.Early.decode(existing["body"], head) if existing else None  # `review.early_checks` posted the checks first
     problems: list[str] = []
 
     # What the model reads this time: everything, or only what changed since
@@ -287,6 +289,9 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     posted: list[str] = []
     try:
         threads = gh.review_threads(number)
+        # The early post's threads are left out, so what's chosen below is what it would be without them.
+        posted_early = _early_threads(threads, early, ctx.bot) if early else {}
+        threads = [t for t in threads if not any(t is e for e in posted_early.values())]
         current = {f.fingerprint for f in findings}
         for thread in threads:  # checks run on every push, so a check's finding that's gone is fixed
             marker = publish.thread_marker(thread, ctx.bot)
@@ -298,7 +303,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         if policy.review.quiet:  # the model's findings past its few places go in the summary; max_inline_comments still caps the total
             inline = publish.quiet_inline(inline, threads, bot=ctx.bot)
         posted = publish.publish_inline(gh, number, head, inline, threads, bot=ctx.bot,
-                                        limit=policy.review.max_inline_comments, feedback=ctx.feedback or policy.review.learn_from_history)
+                                        limit=policy.review.max_inline_comments, feedback=ctx.feedback or policy.review.learn_from_history,
+                                        **({"early": posted_early} if posted_early else {}))
     except GitHubError as exc:
         ctx.log(f"couldn't post inline comments: {exc}")
         problems.append(f"Couldn't post inline comments (GitHub answered {exc.status}), so every finding is listed here instead.")
@@ -311,7 +317,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         ctx.log(f"couldn't post the summary comment: {exc}")
     try:
         publish.publish_check(gh, head, findings, body.split("<details>")[0], conclusion=conclusion, name=policy.review.check_name,
-                              quiet_inline=summary.inline if policy.review.quiet else None)
+                              quiet_inline=summary.inline if policy.review.quiet else None,
+                              **({"run_id": early.check_run} if early and early.check_run else {}))
     except GitHubError as exc:
         ctx.log(f"couldn't publish the check run: {exc}")
 
@@ -331,6 +338,107 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     except Exception as exc:  # the review is on GitHub already; a broken database loses only the App's copy
         ctx.log(redact(f"couldn't store the review: {type(exc).__name__}: {exc}"))
     return Outcome(number, "published", findings, sorted_pr, result, body)
+
+
+def _early_threads(threads: list[dict], early: publish.Early, bot: str) -> dict[str, dict]:
+    """The open threads the early post started, by fingerprint. It started
+    none where Stratum had an open thread already, so for each of its
+    fingerprints the open thread is its own."""
+    found = {}
+    for thread in threads:
+        fp = publish.thread_fingerprint(thread, bot)
+        if fp in early.inline and publish.is_open(thread, bot):
+            found[fp] = thread
+    return found
+
+
+def post_early(ctx: Context, number: int) -> Outcome:
+    """`review.early_checks`: the checks' findings, posted before the model
+    has started, so a PR hears from Stratum within a minute. They go inline,
+    in a summary that says the model is still running, and in a check run
+    left in progress. `review_pull` then completes all three: the summary is
+    edited into the full review, an early comment the full review wouldn't
+    have posted is deleted, and the check run gets its conclusion, so the
+    end state is the one it posts without this step. Nothing of the last
+    review's is changed here: its state is carried byte for byte, and no
+    thread is closed."""
+    gh = ctx.gh
+    pull = gh.pull(number)
+    if pull.get("state") != "open":
+        return Outcome(number, "skipped", note="the PR isn't open")
+    head = pull["head"]["sha"]
+    files = parse_diff(gh.pull_diff(number))
+    existing = publish.find_summary(gh.issue_comments(number), ctx.bot)
+    state = publish.State.decode(existing["body"]) if existing else publish.State()
+    if state.head == head and not state.unread:  # a re-run: the summary is this commit's full review already
+        return Outcome(number, "skipped", note="this commit has been reviewed")
+    muted = sorted(ctx.storage.muted_rules(gh.repo)) if ctx.feedback else []
+    # What the full review will leave out, so nothing goes up here only to be taken down.
+    learned = feedback.learn(gh, ctx.bot, lookback=ctx.policy.review.learn_lookback) if ctx.policy.review.learn_from_history else None
+    contents = _contents(ctx, files, head)
+    engine = analyze(
+        title=pull.get("title") or "", description=pull.get("body") or "", files=files, policy=ctx.policy, model=None,
+        contents=contents, lookup=ctx.lookup, extra_findings=_repo_findings(ctx, files),
+        exclude_fingerprints=set(state.ignored) | set(learned.fingerprints if learned else ()),
+        exclude_rules=set(state.ignored_rules) | set(muted) | set(learned.rules if learned else ()),
+    )
+    policy, findings = engine.policy, engine.findings
+    if gh.pull(number)["head"]["sha"] != head:
+        return Outcome(number, "superseded", findings, note="a newer commit arrived")
+
+    threads: list[dict] = []
+    posted: list[str] = []
+    try:
+        threads = gh.review_threads(number)
+        posted = publish.publish_inline(gh, number, head, placeable(findings, files), threads, bot=ctx.bot,
+                                        limit=policy.review.max_inline_comments, feedback=ctx.feedback or policy.review.learn_from_history)
+    except GitHubError as exc:
+        ctx.log(f"couldn't post the checks' inline comments: {exc}")
+    on_lines = {publish.thread_fingerprint(t, ctx.bot) for t in threads if publish.is_open(t, ctx.bot)}
+    summary = publish.Summary(
+        findings=findings, inline=(on_lines | set(posted)) & {f.fingerprint for f in findings}, policy=policy,
+        model_name=ctx.model.name if ctx.model else None, muted=sorted(set(muted) | set(learned.rules)) if learned else muted,
+        coverage=_coverage(None, False, None, "", files, contents or {}, policy=policy), pending=publish.EARLY_PENDING,
+    )
+    # What the check run says if the model never finishes: a review with only the checks, which isn't complete.
+    early = publish.Early(head, 0, default_conclusion(findings, False, policy, engine.score), posted)
+    # Read the summary again just before writing it, as `review_pull` does, so an `ignore` that landed meanwhile is kept.
+    latest = publish.find_summary(gh.issue_comments(number), ctx.bot) or existing
+    raw_state = publish.state_text(latest["body"]) if latest else ""
+    text = publish.render_early(summary, state, raw_state, early).split("<details>")[0]
+    try:
+        early.check_run = int(gh.start_check_run(head, policy.review.check_name, publish.early_check_title(findings), text[:2000])["id"])
+    except (GitHubError, KeyError, TypeError, ValueError) as exc:
+        ctx.log(f"couldn't start the check run: {exc}")
+    body = publish.render_early(summary, state, raw_state, early)
+    try:
+        publish.upsert_summary(gh, number, latest, body)
+    except GitHubError as exc:
+        ctx.log(f"couldn't post the summary comment: {exc}")
+    return Outcome(number, "early", findings, summary=body, early=early)
+
+
+def stop_early(gh: GitHub, number: int, head: str, *, bot: str, name: str, run_id: int = 0, conclusion: str = "") -> bool:
+    """The model's review of `head` won't come: its step failed, timed out or
+    was cancelled, or the PR moved on. The early summary says the review
+    didn't finish (unless a newer one has replaced it), and the check run it
+    left in progress is completed with what the checks found. `run_id` and
+    `conclusion` are the early step's, for when the summary no longer says
+    them. Returns whether the summary was changed."""
+    latest = publish.find_summary(gh.issue_comments(number), bot)
+    early = publish.Early.decode(latest["body"], head) if latest else None
+    body = publish.stopped_body(latest["body"]) if latest and early else None
+    if body is not None:
+        gh.edit_comment(latest["id"], body)
+    run_id = (early.check_run if early else 0) or run_id
+    conclusion = (early.conclusion if early else "") or conclusion or "neutral"
+    if run_id:
+        title = (gh.check_run_output(run_id).get("title") or "").replace("Model: still running.", "Model: didn't finish.")
+        if "Model: didn't finish." not in title:
+            title = "Checks only: the model's review didn't finish."
+        text = body.split("<details>")[0] if body is not None else "The model's review didn't finish, so this has only the checks."
+        gh.check_run(head, name, conclusion, title, text[:2000], "", [], run_id=run_id)
+    return body is not None
 
 
 def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = False) -> dict[str, str] | None:
@@ -385,10 +493,6 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
     """Notes, hotspot paths, boundary findings and per-file notes from the
     default branch's checkout. Without one (the CLI on a PR URL), boundaries
     still work from the diff alone."""
-    from stratum_open.repo.boundaries import boundary_findings
-    from stratum_open.repo.removed_names import removed_name_findings
-    from stratum_open.repo.unknown_names import unknown_name_findings
-
     notes: list[str] = []
     hot: set[str] = set()
     file_notes: dict[str, str] = {}
@@ -429,6 +533,16 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
             notes.extend(hotspot_note(found, changed))
         except Exception as exc:
             ctx.log(f"hotspots: {type(exc).__name__}: {exc}")
+    return notes, hot, _repo_findings(ctx, files), file_notes
+
+
+def _repo_findings(ctx: Context, files: list[FileDiff]) -> list[Finding]:
+    """The checks that read the default branch's checkout, or the diff alone
+    without one: module boundaries, unknown names, removed names."""
+    from stratum_open.repo.boundaries import boundary_findings
+    from stratum_open.repo.removed_names import removed_name_findings
+    from stratum_open.repo.unknown_names import unknown_name_findings
+
     try:
         boundary = boundary_findings(files, ctx.policy, ctx.checkout)
     except Exception as exc:
@@ -436,7 +550,7 @@ def _history(ctx: Context, files: list[FileDiff], pull: dict) -> tuple[list[str]
         boundary = []
     boundary += unknown_name_findings(files, ctx.policy, ctx.checkout)
     boundary += removed_name_findings(files, ctx.policy, ctx.checkout)
-    return notes, hot, boundary, file_notes
+    return boundary
 
 
 def check_pull(ctx: Context, pull: dict, files: list[FileDiff]) -> EngineResult:

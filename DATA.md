@@ -18,7 +18,10 @@ test fails when a stored field isn't listed here.
 carries a hidden copy of the last review's findings (title, detail, file,
 lines, the code they're on), of what a maintainer ignored, and of the paths
 of any files the model hasn't read yet. That's how the next push reviews
-only what changed, plus those files. It's the same text the PR's comments
+only what changed, plus those files. With `review.early_checks`, while the
+model runs it also holds the commit, the check run's ID and the fingerprints
+of the comments the checks posted first, so the full review can complete
+them; the full review removes it. It's the same text the PR's comments
 already show, it's deleted with the comment, and Stratum only reads it from a
 comment it wrote itself. With `review.learn_from_history` on, each review also
 reads the repo's latest comments, and the 👍/👎 and access of the people who

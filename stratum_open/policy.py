@@ -66,6 +66,7 @@ class Review:
     quiet: bool = False  # fewer of the model's comments, and a summary that keeps them apart from the checks' findings
     learn_from_history: bool = False  # leave out findings like ones maintainers rejected (👎, `/stratum ignore`) on recent PRs
     learn_lookback: int = 100  # how many of the repo's latest comments of each kind that reads (one API call per 100)
+    early_checks: bool = False  # the Action posts the checks' findings before starting the model, then completes that comment
 
 
 @dataclass(frozen=True)

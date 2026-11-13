@@ -77,7 +77,10 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--host", default="0.0.0.0")
     serve.add_argument("--port", type=int, default=int(os.environ.get("PORT", "8080")))
 
-    sub.add_parser("action", help="the GitHub Action's entry point")
+    action = sub.add_parser("action", help="the GitHub Action's entry point")
+    step = action.add_mutually_exclusive_group()
+    step.add_argument("--early", action="store_true", help="post the checks' findings before the model starts, with review.early_checks on")
+    step.add_argument("--stopped", action="store_true", help="after --early, when the review step didn't finish: say so on the PR")
     sub.add_parser("needs-model", help="the GitHub Action: print whether this event can call the model")
 
     args = parser.parse_args(argv)
@@ -346,9 +349,13 @@ def _serve(args) -> int:
 
 
 def _action(args) -> int:
-    from stratum_open.action import main as action_main
+    from stratum_open import action
 
-    return action_main()
+    if getattr(args, "early", False):
+        return action.early()
+    if getattr(args, "stopped", False):
+        return action.stopped()
+    return action.main()
 
 
 def _needs_model(args) -> int:
