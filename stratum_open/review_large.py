@@ -20,6 +20,7 @@ model quotes; one it can't place stays a finding about the whole file.
 from __future__ import annotations
 
 import json
+import math
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any, Callable, Sequence
@@ -398,12 +399,16 @@ def _mode(policy: Policy) -> str:
 
 
 def _score(value: Any) -> int:
-    if isinstance(value, bool):
-        return 50
-    if isinstance(value, (int, float)):
+    """The model's 0-100 risk score, clamped; anything that isn't a number is 50."""
+    if isinstance(value, str) and value.strip().isdecimal():  # not isdigit: "²" is a digit int() can't read
+        try:
+            value = int(value)
+        except ValueError:  # past Python's 4300-digit limit
+            return 50
+    if isinstance(value, int) and not isinstance(value, bool):
+        return max(0, min(100, value))  # an int too big for a float has no isfinite
+    if isinstance(value, float) and math.isfinite(value):
         return max(0, min(100, int(value)))
-    if isinstance(value, str) and value.strip().isdigit():
-        return max(0, min(100, int(value.strip())))
     return 50
 
 

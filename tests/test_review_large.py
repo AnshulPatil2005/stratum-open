@@ -3,6 +3,7 @@ import re
 import threading
 import time
 
+import pytest
 from fakes import FakeModel
 
 from stratum_open import areas
@@ -12,7 +13,7 @@ from stratum_open.github import publish
 from stratum_open.model import Reply
 from stratum_open.policy import parse_policy
 from stratum_open.profiles import apply
-from stratum_open.review_large import LENSES, review_files
+from stratum_open.review_large import LENSES, _score, review_files
 
 DIFF = """diff --git a/app/users.py b/app/users.py
 --- a/app/users.py
@@ -142,6 +143,22 @@ def test_a_failed_call_and_a_model_that_raises():
 
     result = run(FakeModel(Reply("", "m", 0, error="timed out")), "  file_reviews: 1\n  lens_files: 0\n")
     assert result.failed_calls == 1 and result.files[0].reason == "the model didn't answer for this file"
+
+
+@pytest.mark.parametrize("risk, score", [
+    (10**400, 100), (-10**400, 0), (1e400, 50), (float("nan"), 50), (float("inf"), 50), (float("-inf"), 50),
+    (True, 50), (False, 50), ("75", 75), (" 75 ", 75), ("250", 100), (75.9, 75), (-3, 0),
+    ("²", 50), ("nan", 50), ("7" * 5000, 50), (None, 50), ([75], 50),
+])
+def test_risk_scores_are_clamped_and_anything_else_is_the_default(risk, score):
+    assert _score(risk) == score
+
+
+def test_a_risk_score_that_isnt_a_finite_number_is_the_default():
+    code = '    return jwt.decode(token, options={"verify_signature": False})'
+    for risk in (float("nan"), float("inf"), float("-inf")):
+        result = run(FakeModel(file_answer([finding("app/auth/session.py", code)], risk=risk)), "  file_reviews: 1\n  lens_files: 0\n")
+        assert result.files[0].risk_score == 50 and [f.title for f in result.findings] == ["Signature not verified"]
 
 
 def test_parallel_calls_keep_each_answer_with_its_file():
