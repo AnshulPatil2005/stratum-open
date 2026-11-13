@@ -68,6 +68,7 @@ class Review:
 class Checks:
     bandit_low: bool = False  # keep Bandit's low-severity and low-confidence results
     heuristics: bool = False  # a finding per file in a risky area (auth, migrations, CI...), and for weakened tests
+    ruff: bool = False  # errors Ruff finds on added Python lines (an undefined name, a format string that raises), when it's installed
 
 
 @dataclass(frozen=True)

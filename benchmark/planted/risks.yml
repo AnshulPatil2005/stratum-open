@@ -231,6 +231,491 @@
       def send(url, payload):
           return requests.post(url, json=payload, verify=False, timeout=10)
 
+# ── Ruff (only when the `ruff` extra is installed; the benchmark turns `checks.ruff` on) ──
+# One case for each rule the check runs, in the order of its table.
+
+- id: ruff-late-future-import
+  rule: ruff/F404
+  files:
+    app/types.py: |
+      import os
+      from __future__ import annotations
+
+- id: ruff-future-feature
+  rule: ruff/F407
+  files:
+    app/types.py: |
+      from __future__ import annotation
+
+- id: ruff-percent-invalid
+  rule: ruff/F501
+  files:
+    app/report.py: |
+      def progress(done, total):
+          return "%(done)d of %(total" % {"done": done, "total": total}
+
+- id: ruff-percent-expected-mapping
+  rule: ruff/F502
+  files:
+    app/greeting.py: |
+      def greeting(name, age):
+          return "%(name)s is %(age)d" % (name, age)
+
+- id: ruff-percent-expected-sequence
+  rule: ruff/F503
+  files:
+    app/greeting.py: |
+      def greeting(name, age):
+          return "%s is %d" % {"name": name, "age": age}
+
+- id: ruff-percent-missing-argument
+  rule: ruff/F505
+  files:
+    app/greeting.py: |
+      def greeting(name):
+          return "%(name)s is %(age)d" % {"name": name}
+
+- id: ruff-percent-mixed
+  rule: ruff/F506
+  files:
+    app/greeting.py: |
+      def greeting(name, age):
+          return "%s is %(age)d" % {"age": age}
+
+- id: ruff-percent-count
+  rule: ruff/F507
+  files:
+    app/greeting.py: |
+      def greeting(name, age):
+          return "%s is %d years old" % (name,)
+
+- id: ruff-percent-star
+  rule: ruff/F508
+  files:
+    app/table.py: |
+      def cell(width, text):
+          return "%*s" % {"width": width, "text": text}
+
+- id: ruff-percent-character
+  rule: ruff/F509
+  files:
+    app/table.py: |
+      def percent(value):
+          return "%y done" % value
+
+- id: ruff-format-invalid
+  rule: ruff/F521
+  files:
+    app/paths.py: |
+      def cache_key(user, page):
+          return "{user}:{page".format(user=user, page=page)
+
+- id: ruff-format-missing
+  rule: ruff/F524
+  files:
+    app/paths.py: |
+      def cache_key(user, page):
+          return "{}:{}:{}".format(user, page)
+
+- id: ruff-format-mixed
+  rule: ruff/F525
+  files:
+    app/paths.py: |
+      def cache_key(user, page):
+          return "{}:{1}".format(user, page)
+
+- id: ruff-repeated-key
+  rule: ruff/F601
+  files:
+    app/defaults.py: |
+      DEFAULTS = {
+          "host": "localhost",
+          "port": 5432,
+          "host": "db.internal",
+      }
+
+- id: ruff-repeated-key-variable
+  rule: ruff/F602
+  files:
+    app/labels.py: |
+      def labels(primary, fallback):
+          return {primary: "primary", primary: "fallback"}
+
+- id: ruff-two-starred
+  rule: ruff/F622
+  files:
+    app/pairs.py: |
+      def split(row):
+          *head, *tail = row
+          return head, tail
+
+- id: ruff-assert-tuple
+  rule: ruff/F631
+  files:
+    app/validate.py: |
+      def validate(age):
+          assert (age >= 0, "age can't be negative")
+          return age
+
+- id: ruff-is-literal
+  rule: ruff/F632
+  files:
+    app/status.py: |
+      def is_active(user):
+          return user.status is "active"
+
+- id: ruff-print-redirect
+  rule: ruff/F633
+  files:
+    app/log.py: |
+      import sys
+
+
+      def warn(text):
+          print >> sys.stderr, text
+
+- id: ruff-if-tuple
+  rule: ruff/F634
+  files:
+    app/validate.py: |
+      def validate(age, name):
+          if (age >= 0, name):
+              return True
+          return False
+
+- id: ruff-break-outside-loop
+  rule: ruff/F701
+  files:
+    app/search.py: |
+      def first_match(rows, wanted):
+          if rows and rows[0] == wanted:
+              break
+          return None
+
+- id: ruff-continue-outside-loop
+  rule: ruff/F702
+  files:
+    app/search.py: |
+      def skip_blank(row):
+          if not row:
+              continue
+          return row
+
+- id: ruff-yield-outside-function
+  rule: ruff/F704
+  files:
+    app/stream.py: |
+      import sys
+
+      for line in sys.stdin:
+          yield line.strip()
+
+- id: ruff-return-outside-function
+  rule: ruff/F706
+  files:
+    app/stream.py: |
+      import sys
+
+      if not sys.stdin.isatty():
+          return
+
+- id: ruff-bare-except-first
+  rule: ruff/F707
+  files:
+    app/load.py: |
+      import json
+
+
+      def load(text):
+          try:
+              return json.loads(text)
+          except:
+              return None
+          except ValueError:
+              return {}
+
+- id: ruff-redefined-function
+  rule: ruff/F811
+  files:
+    app/parsing.py: |
+      def parse_row(line):
+          return line.split(",")
+
+
+      def parse_row(line):
+          return line.split(";")
+
+- id: ruff-undefined-name
+  rule: ruff/F821
+  files:
+    app/orders.py: |
+      def order_total(items):
+          total = 0
+          for item in items:
+              total += item.price * item.quantity
+          return totl
+
+- id: ruff-undefined-export
+  rule: ruff/F822
+  files:
+    app/shapes.py: |
+      __all__ = ["Circle", "Square"]
+
+
+      class Circle:
+          sides = 0
+
+- id: ruff-local-before-assignment
+  rule: ruff/F823
+  files:
+    app/retry.py: |
+      attempts = 0
+
+
+      def record_attempt():
+          attempts += 1
+          return attempts
+
+- id: ruff-raise-not-implemented
+  rule: ruff/F901
+  files:
+    app/storage.py: |
+      class Storage:
+          def save(self, record):
+              raise NotImplemented
+
+- id: ruff-yield-in-init
+  rule: ruff/PLE0100
+  files:
+    app/batch.py: |
+      class Batch:
+          def __init__(self, rows):
+              for row in rows:
+                  yield row
+
+- id: ruff-return-in-init
+  rule: ruff/PLE0101
+  files:
+    app/batch.py: |
+      class Batch:
+          def __init__(self, rows):
+              self.rows = list(rows)
+              return len(self.rows)
+
+- id: ruff-nonlocal-and-global
+  rule: ruff/PLE0115
+  files:
+    app/state.py: |
+      counter = 0
+
+
+      def outer():
+          counter = 1
+
+          def bump():
+              global counter
+              nonlocal counter
+              counter += 1
+
+          return bump
+
+- id: ruff-nonlocal-without-binding
+  rule: ruff/PLE0117
+  files:
+    app/state.py: |
+      def bump():
+          nonlocal counter
+          counter += 1
+
+- id: ruff-global-after-use
+  rule: ruff/PLE0118
+  files:
+    app/state.py: |
+      counter = 0
+
+
+      def bump():
+          print(counter)
+          global counter
+          counter += 1
+
+- id: ruff-non-slot-assignment
+  rule: ruff/PLE0237
+  files:
+    app/point.py: |
+      class Point:
+          __slots__ = ("x", "y")
+
+          def __init__(self, x, y):
+              self.x = x
+              self.y = y
+              self.label = ""
+
+- id: ruff-duplicate-bases
+  rule: ruff/PLE0241
+  files:
+    app/models.py: |
+      class Base:
+          pass
+
+
+      class User(Base, Base):
+          pass
+
+- id: ruff-special-method-signature
+  rule: ruff/PLE0302
+  files:
+    app/money.py: |
+      class Money:
+          def __init__(self, cents):
+              self.cents = cents
+
+          def __eq__(self):
+              return self.cents == 0
+
+- id: ruff-len-return
+  rule: ruff/PLE0303
+  files:
+    app/queue.py: |
+      class Queue:
+          def __len__(self):
+              return -1
+
+- id: ruff-bool-return
+  rule: ruff/PLE0304
+  files:
+    app/queue.py: |
+      class Queue:
+          def __bool__(self):
+              return "yes"
+
+- id: ruff-index-return
+  rule: ruff/PLE0305
+  files:
+    app/queue.py: |
+      class Position:
+          def __index__(self):
+              return "3"
+
+- id: ruff-str-return
+  rule: ruff/PLE0307
+  files:
+    app/queue.py: |
+      class Queue:
+          def __str__(self):
+              return 5
+
+- id: ruff-bytes-return
+  rule: ruff/PLE0308
+  files:
+    app/queue.py: |
+      class Packet:
+          def __bytes__(self):
+              return "data"
+
+- id: ruff-hash-return
+  rule: ruff/PLE0309
+  files:
+    app/queue.py: |
+      class Key:
+          def __hash__(self):
+              return "key"
+
+- id: ruff-index-error
+  rule: ruff/PLE0643
+  files:
+    app/version.py: |
+      def minor():
+          return [3, 12][2]
+
+- id: ruff-repeated-keyword
+  rule: ruff/PLE1132
+  files:
+    app/client.py: |
+      def connect(open_socket, host):
+          return open_socket(host, timeout=5, **{"timeout": 30})
+
+- id: ruff-await-outside-async
+  rule: ruff/PLE1142
+  files:
+    app/fetch.py: |
+      def fetch(session, url):
+          response = await session.get(url)
+          return response.text
+
+- id: ruff-logging-too-many
+  rule: ruff/PLE1205
+  files:
+    app/audit.py: |
+      import logging
+
+
+      def audit(user, action):
+          logging.info("%s did something", user, action)
+
+- id: ruff-logging-too-few
+  rule: ruff/PLE1206
+  files:
+    app/audit.py: |
+      import logging
+
+
+      def audit(user, action):
+          logging.info("%s did %s at %s", user, action)
+
+- id: ruff-format-type
+  rule: ruff/PLE1307
+  files:
+    app/table.py: |
+      def row(name):
+          return "%d rows for %s" % ("many", name)
+
+- id: ruff-getenv-type
+  rule: ruff/PLE1507
+  files:
+    app/env.py: |
+      import os
+
+
+      def port():
+          return os.getenv(8080)
+
+- id: ruff-singledispatchmethod-function
+  rule: ruff/PLE1520
+  files:
+    app/render.py: |
+      from functools import singledispatchmethod
+
+
+      @singledispatchmethod
+      def render(value):
+          return str(value)
+
+- id: ruff-yield-from-async
+  rule: ruff/PLE1700
+  files:
+    app/stream.py: |
+      async def lines(reader):
+          yield from reader
+
+- id: ruff-useless-comparison
+  rule: ruff/B015
+  files:
+    app/settings.py: |
+      def enable(settings):
+          settings.debug == True
+          return settings
+
+- id: ruff-except-non-exception
+  rule: ruff/B030
+  files:
+    app/load.py: |
+      def load(path):
+          try:
+              return open(path).read()
+          except (OSError, "missing"):
+              return ""
+
 # ── GitHub workflows ─────────────────────────────────────────────────────
 
 - id: wf-pwn-request

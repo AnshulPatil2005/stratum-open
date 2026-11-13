@@ -1,0 +1,829 @@
+[
+ {
+  "id": "secret-github-token",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-aws-key",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-stripe-live",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-slack-bot",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-google-api",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-openai",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-private-key",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-db-password",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "secret-yaml-config",
+  "rule": "code/secret",
+  "caught": true,
+  "found": [
+   "code/secret"
+  ]
+ },
+ {
+  "id": "eval-request",
+  "rule": "code/eval",
+  "caught": true,
+  "found": [
+   "bandit/B307",
+   "code/eval"
+  ]
+ },
+ {
+  "id": "exec-download",
+  "rule": "code/eval",
+  "caught": true,
+  "found": [
+   "bandit/B102",
+   "code/eval"
+  ]
+ },
+ {
+  "id": "js-new-function",
+  "rule": "code/eval",
+  "caught": true,
+  "found": [
+   "code/eval"
+  ]
+ },
+ {
+  "id": "shell-true",
+  "rule": "code/shell",
+  "caught": true,
+  "found": [
+   "bandit/B602",
+   "code/shell"
+  ]
+ },
+ {
+  "id": "os-system",
+  "rule": "code/shell",
+  "caught": true,
+  "found": [
+   "bandit/B605",
+   "code/shell"
+  ]
+ },
+ {
+  "id": "js-child-process",
+  "rule": "code/shell",
+  "caught": true,
+  "found": [
+   "code/shell"
+  ]
+ },
+ {
+  "id": "sql-fstring",
+  "rule": "code/sql",
+  "caught": true,
+  "found": [
+   "bandit/B608",
+   "code/sql"
+  ]
+ },
+ {
+  "id": "sql-percent",
+  "rule": "code/sql",
+  "caught": true,
+  "found": [
+   "bandit/B608",
+   "code/sql"
+  ]
+ },
+ {
+  "id": "sql-concat-js",
+  "rule": "code/sql",
+  "caught": true,
+  "found": [
+   "code/sql"
+  ]
+ },
+ {
+  "id": "cors-credentials",
+  "rule": "code/cors-any",
+  "caught": true,
+  "found": [
+   "code/cors-any"
+  ]
+ },
+ {
+  "id": "cors-header",
+  "rule": "code/cors-any",
+  "caught": true,
+  "found": [
+   "code/cors-any"
+  ]
+ },
+ {
+  "id": "bandit-pickle",
+  "rule": "bandit/B301",
+  "caught": true,
+  "found": [
+   "bandit/B301"
+  ]
+ },
+ {
+  "id": "bandit-yaml-load",
+  "rule": "bandit/B506",
+  "caught": true,
+  "found": [
+   "bandit/B506"
+  ]
+ },
+ {
+  "id": "bandit-verify-false",
+  "rule": "bandit/B501",
+  "caught": true,
+  "found": [
+   "bandit/B501"
+  ]
+ },
+ {
+  "id": "ruff-late-future-import",
+  "rule": "ruff/F404",
+  "caught": true,
+  "found": [
+   "ruff/F404"
+  ]
+ },
+ {
+  "id": "ruff-future-feature",
+  "rule": "ruff/F407",
+  "caught": true,
+  "found": [
+   "ruff/F407"
+  ]
+ },
+ {
+  "id": "ruff-percent-invalid",
+  "rule": "ruff/F501",
+  "caught": true,
+  "found": [
+   "ruff/F501"
+  ]
+ },
+ {
+  "id": "ruff-percent-expected-mapping",
+  "rule": "ruff/F502",
+  "caught": true,
+  "found": [
+   "ruff/F502"
+  ]
+ },
+ {
+  "id": "ruff-percent-expected-sequence",
+  "rule": "ruff/F503",
+  "caught": true,
+  "found": [
+   "ruff/F503",
+   "ruff/F507"
+  ]
+ },
+ {
+  "id": "ruff-percent-missing-argument",
+  "rule": "ruff/F505",
+  "caught": true,
+  "found": [
+   "ruff/F505"
+  ]
+ },
+ {
+  "id": "ruff-percent-mixed",
+  "rule": "ruff/F506",
+  "caught": true,
+  "found": [
+   "ruff/F506"
+  ]
+ },
+ {
+  "id": "ruff-percent-count",
+  "rule": "ruff/F507",
+  "caught": true,
+  "found": [
+   "ruff/F507"
+  ]
+ },
+ {
+  "id": "ruff-percent-star",
+  "rule": "ruff/F508",
+  "caught": true,
+  "found": [
+   "ruff/F503",
+   "ruff/F507",
+   "ruff/F508"
+  ]
+ },
+ {
+  "id": "ruff-percent-character",
+  "rule": "ruff/F509",
+  "caught": true,
+  "found": [
+   "ruff/F509"
+  ]
+ },
+ {
+  "id": "ruff-format-invalid",
+  "rule": "ruff/F521",
+  "caught": true,
+  "found": [
+   "ruff/F521"
+  ]
+ },
+ {
+  "id": "ruff-format-missing",
+  "rule": "ruff/F524",
+  "caught": true,
+  "found": [
+   "ruff/F524"
+  ]
+ },
+ {
+  "id": "ruff-format-mixed",
+  "rule": "ruff/F525",
+  "caught": true,
+  "found": [
+   "ruff/F525"
+  ]
+ },
+ {
+  "id": "ruff-repeated-key",
+  "rule": "ruff/F601",
+  "caught": true,
+  "found": [
+   "ruff/F601"
+  ]
+ },
+ {
+  "id": "ruff-repeated-key-variable",
+  "rule": "ruff/F602",
+  "caught": true,
+  "found": [
+   "ruff/F602"
+  ]
+ },
+ {
+  "id": "ruff-two-starred",
+  "rule": "ruff/F622",
+  "caught": true,
+  "found": [
+   "ruff/F622"
+  ]
+ },
+ {
+  "id": "ruff-assert-tuple",
+  "rule": "ruff/F631",
+  "caught": true,
+  "found": [
+   "ruff/F631"
+  ]
+ },
+ {
+  "id": "ruff-is-literal",
+  "rule": "ruff/F632",
+  "caught": true,
+  "found": [
+   "ruff/F632"
+  ]
+ },
+ {
+  "id": "ruff-print-redirect",
+  "rule": "ruff/F633",
+  "caught": true,
+  "found": [
+   "ruff/F633"
+  ]
+ },
+ {
+  "id": "ruff-if-tuple",
+  "rule": "ruff/F634",
+  "caught": true,
+  "found": [
+   "ruff/F634"
+  ]
+ },
+ {
+  "id": "ruff-break-outside-loop",
+  "rule": "ruff/F701",
+  "caught": true,
+  "found": [
+   "ruff/F701"
+  ]
+ },
+ {
+  "id": "ruff-continue-outside-loop",
+  "rule": "ruff/F702",
+  "caught": true,
+  "found": [
+   "ruff/F702"
+  ]
+ },
+ {
+  "id": "ruff-yield-outside-function",
+  "rule": "ruff/F704",
+  "caught": true,
+  "found": [
+   "ruff/F704"
+  ]
+ },
+ {
+  "id": "ruff-return-outside-function",
+  "rule": "ruff/F706",
+  "caught": true,
+  "found": [
+   "ruff/F706"
+  ]
+ },
+ {
+  "id": "ruff-bare-except-first",
+  "rule": "ruff/F707",
+  "caught": true,
+  "found": [
+   "ruff/F707"
+  ]
+ },
+ {
+  "id": "ruff-redefined-function",
+  "rule": "ruff/F811",
+  "caught": true,
+  "found": [
+   "ruff/F811"
+  ]
+ },
+ {
+  "id": "ruff-undefined-name",
+  "rule": "ruff/F821",
+  "caught": true,
+  "found": [
+   "ruff/F821"
+  ]
+ },
+ {
+  "id": "ruff-undefined-export",
+  "rule": "ruff/F822",
+  "caught": true,
+  "found": [
+   "ruff/F822"
+  ]
+ },
+ {
+  "id": "ruff-local-before-assignment",
+  "rule": "ruff/F823",
+  "caught": true,
+  "found": [
+   "ruff/F823"
+  ]
+ },
+ {
+  "id": "ruff-raise-not-implemented",
+  "rule": "ruff/F901",
+  "caught": true,
+  "found": [
+   "ruff/F901"
+  ]
+ },
+ {
+  "id": "ruff-yield-in-init",
+  "rule": "ruff/PLE0100",
+  "caught": true,
+  "found": [
+   "ruff/PLE0100"
+  ]
+ },
+ {
+  "id": "ruff-return-in-init",
+  "rule": "ruff/PLE0101",
+  "caught": true,
+  "found": [
+   "ruff/PLE0101"
+  ]
+ },
+ {
+  "id": "ruff-nonlocal-and-global",
+  "rule": "ruff/PLE0115",
+  "caught": true,
+  "found": [
+   "ruff/PLE0115"
+  ]
+ },
+ {
+  "id": "ruff-nonlocal-without-binding",
+  "rule": "ruff/PLE0117",
+  "caught": true,
+  "found": [
+   "ruff/F821",
+   "ruff/PLE0117"
+  ]
+ },
+ {
+  "id": "ruff-global-after-use",
+  "rule": "ruff/PLE0118",
+  "caught": true,
+  "found": [
+   "ruff/PLE0118"
+  ]
+ },
+ {
+  "id": "ruff-non-slot-assignment",
+  "rule": "ruff/PLE0237",
+  "caught": true,
+  "found": [
+   "ruff/PLE0237"
+  ]
+ },
+ {
+  "id": "ruff-duplicate-bases",
+  "rule": "ruff/PLE0241",
+  "caught": true,
+  "found": [
+   "ruff/PLE0241"
+  ]
+ },
+ {
+  "id": "ruff-special-method-signature",
+  "rule": "ruff/PLE0302",
+  "caught": true,
+  "found": [
+   "ruff/PLE0302"
+  ]
+ },
+ {
+  "id": "ruff-len-return",
+  "rule": "ruff/PLE0303",
+  "caught": true,
+  "found": [
+   "ruff/PLE0303"
+  ]
+ },
+ {
+  "id": "ruff-bool-return",
+  "rule": "ruff/PLE0304",
+  "caught": true,
+  "found": [
+   "ruff/PLE0304"
+  ]
+ },
+ {
+  "id": "ruff-index-return",
+  "rule": "ruff/PLE0305",
+  "caught": true,
+  "found": [
+   "ruff/PLE0305"
+  ]
+ },
+ {
+  "id": "ruff-str-return",
+  "rule": "ruff/PLE0307",
+  "caught": true,
+  "found": [
+   "ruff/PLE0307"
+  ]
+ },
+ {
+  "id": "ruff-bytes-return",
+  "rule": "ruff/PLE0308",
+  "caught": true,
+  "found": [
+   "ruff/PLE0308"
+  ]
+ },
+ {
+  "id": "ruff-hash-return",
+  "rule": "ruff/PLE0309",
+  "caught": true,
+  "found": [
+   "ruff/PLE0309"
+  ]
+ },
+ {
+  "id": "ruff-index-error",
+  "rule": "ruff/PLE0643",
+  "caught": true,
+  "found": [
+   "ruff/PLE0643"
+  ]
+ },
+ {
+  "id": "ruff-repeated-keyword",
+  "rule": "ruff/PLE1132",
+  "caught": true,
+  "found": [
+   "ruff/PLE1132"
+  ]
+ },
+ {
+  "id": "ruff-await-outside-async",
+  "rule": "ruff/PLE1142",
+  "caught": true,
+  "found": [
+   "ruff/PLE1142"
+  ]
+ },
+ {
+  "id": "ruff-logging-too-many",
+  "rule": "ruff/PLE1205",
+  "caught": true,
+  "found": [
+   "ruff/PLE1205"
+  ]
+ },
+ {
+  "id": "ruff-logging-too-few",
+  "rule": "ruff/PLE1206",
+  "caught": true,
+  "found": [
+   "ruff/PLE1206"
+  ]
+ },
+ {
+  "id": "ruff-format-type",
+  "rule": "ruff/PLE1307",
+  "caught": true,
+  "found": [
+   "ruff/PLE1307"
+  ]
+ },
+ {
+  "id": "ruff-getenv-type",
+  "rule": "ruff/PLE1507",
+  "caught": true,
+  "found": [
+   "ruff/PLE1507"
+  ]
+ },
+ {
+  "id": "ruff-singledispatchmethod-function",
+  "rule": "ruff/PLE1520",
+  "caught": true,
+  "found": [
+   "ruff/PLE1520"
+  ]
+ },
+ {
+  "id": "ruff-yield-from-async",
+  "rule": "ruff/PLE1700",
+  "caught": true,
+  "found": [
+   "ruff/PLE1700"
+  ]
+ },
+ {
+  "id": "ruff-useless-comparison",
+  "rule": "ruff/B015",
+  "caught": true,
+  "found": [
+   "ruff/B015"
+  ]
+ },
+ {
+  "id": "ruff-except-non-exception",
+  "rule": "ruff/B030",
+  "caught": true,
+  "found": [
+   "ruff/B030"
+  ]
+ },
+ {
+  "id": "wf-pwn-request",
+  "rule": "workflow/pwn-request",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/pwn-request",
+   "workflow/unpinned-action"
+  ]
+ },
+ {
+  "id": "wf-branch-name-injection",
+  "rule": "workflow/script-injection or workflow/pwn-request",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/pwn-request",
+   "workflow/script-injection"
+  ]
+ },
+ {
+  "id": "wf-issue-title-injection",
+  "rule": "workflow/script-injection",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/script-injection"
+  ]
+ },
+ {
+  "id": "wf-write-all",
+  "rule": "workflow/write-all",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/unpinned-action",
+   "workflow/write-all"
+  ]
+ },
+ {
+  "id": "wf-unpinned-third-party",
+  "rule": "workflow/unpinned-action",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/unpinned-action"
+  ]
+ },
+ {
+  "id": "wf-self-hosted-pr",
+  "rule": "workflow/self-hosted-pr",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/self-hosted-pr",
+   "workflow/unpinned-action"
+  ]
+ },
+ {
+  "id": "wf-write-on-target",
+  "rule": "workflow/write-permission or workflow/pull-request-target",
+  "caught": true,
+  "found": [
+   "paths/always-human",
+   "workflow/pull-request-target",
+   "workflow/unpinned-action",
+   "workflow/write-permission"
+  ]
+ },
+ {
+  "id": "dep-typo-requests",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-colourama",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-python3-dateutil",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-jellyfish",
+  "rule": "deps/lookalike",
+  "caught": false,
+  "found": [
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-crossenv",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-electorn",
+  "rule": "deps/lookalike",
+  "caught": true,
+  "found": [
+   "deps/lookalike",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-made-up-pypi",
+  "rule": "deps/missing",
+  "caught": true,
+  "found": [
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "dep-made-up-npm",
+  "rule": "deps/missing",
+  "caught": true,
+  "found": [
+   "deps/missing",
+   "deps/new"
+  ]
+ },
+ {
+  "id": "agents-md",
+  "rule": "agents/instructions",
+  "caught": true,
+  "found": [
+   "agents/instructions"
+  ]
+ },
+ {
+  "id": "cursorrules",
+  "rule": "agents/instructions",
+  "caught": true,
+  "found": [
+   "agents/instructions"
+  ]
+ },
+ {
+  "id": "copilot-instructions",
+  "rule": "agents/instructions",
+  "caught": true,
+  "found": [
+   "agents/instructions"
+  ]
+ },
+ {
+  "id": "trojan-source",
+  "rule": "unicode/hidden",
+  "caught": true,
+  "found": [
+   "bandit/B613",
+   "unicode/hidden"
+  ]
+ },
+ {
+  "id": "zero-width-name",
+  "rule": "unicode/hidden",
+  "caught": true,
+  "found": [
+   "unicode/hidden"
+  ]
+ },
+ {
+  "id": "unicode-tags",
+  "rule": "unicode/hidden",
+  "caught": true,
+  "found": [
+   "unicode/hidden"
+  ]
+ }
+]

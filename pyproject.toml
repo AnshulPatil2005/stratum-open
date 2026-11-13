@@ -27,6 +27,7 @@ stratum-open = "stratum_open.cli:main"
 test = ["pytest>=8"]
 app = ["PyJWT[crypto]>=2.8"]
 bandit = ["bandit>=1.7"]
+ruff = ["ruff>=0.16"]
 
 [tool.setuptools]
 packages = ["stratum_open", "stratum_open.checks", "stratum_open.repo", "stratum_open.github"]

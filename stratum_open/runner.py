@@ -234,7 +234,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     )
 
     coverage = _large_coverage(large) + _coverage(result, incremental, changed - retried if changed is not None else None, state.head, files,
-                                                 contents or {}, retried & read, engine.unread)
+                                                 contents or {}, retried & read, engine.unread, policy=policy)
     if ctx.model is not None:
         coverage.append(f"Profile: `{engine.profile}` ({engine.profile_why}).")
     summary = publish.Summary(
@@ -317,13 +317,14 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
 def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = False) -> dict[str, str] | None:
     """The full new text of the files where the checks need context:
     workflows and manifests always (they're small), Python files for Bandit
-    when it's installed, and otherwise the Python files whose change touches
-    async code, for the missing-await check. Files moved to where a check
-    does more than where they were, since the diff shows none of their lines
-    as added (at most MAX_MOVED_BYTES each; a bigger one is named as unread).
+    when it's installed (and for Ruff, when `checks.ruff` is on), and
+    otherwise the Python files whose change touches async code, for the
+    missing-await check. Files moved to where a check does more than where
+    they were, since the diff shows none of their lines as added (at most
+    MAX_MOVED_BYTES each; a bigger one is named as unread).
     With `around` (the profile shows code around each hunk), the biggest
     changes the model will read too."""
-    from stratum_open.checks import bandit, moved_in
+    from stratum_open.checks import bandit, moved_in, ruff
     from stratum_open.checks.awaits import touches_async
     from stratum_open.checks.common import looks_binary
     from stratum_open.checks.dependencies import manifest_kind
@@ -337,7 +338,8 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
     fetch = [f for f in live if wanted(f)][:MAX_CONTEXT_FILES]
     # The files Bandit reads first: a PR full of edited tests mustn't push the code out.
     python = sorted((f for f in live if f.path.endswith(".py")), key=lambda f: (not bandit.scope(f.path), -f.additions))
-    fetch += (python if bandit.available() else [f for f in python if touches_async(f)])[:MAX_BANDIT_FILES]
+    whole = bandit.available() or (ctx.policy.checks.ruff and ruff.available())
+    fetch += (python if whole else [f for f in python if touches_async(f)])[:MAX_BANDIT_FILES]
     moved = [f for f in live if moved_in(f)]  # the size cap and the binary test apply however they're fetched
     fetch += [f for f in moved if f not in fetch][:MAX_MOVED_FILES]
     if around:
@@ -469,12 +471,14 @@ def excluded(ctx: Context, login: str) -> bool:
 
 
 def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] | None, previous_head: str, files: list[FileDiff],
-              contents: dict[str, str], read_again: set[str] = frozenset(), unread: set[str] = frozenset()) -> list[str]:
+              contents: dict[str, str], read_again: set[str] = frozenset(), unread: set[str] = frozenset(),
+              policy: Policy | None = None) -> list[str]:
     """`changed`: the files changed since `previous_head`; `contents`: the
     files' text, for what the checks couldn't read; `read_again`: the ones the
     last review couldn't read that the model read this time; `unread`: the
-    ones whose call failed or was cut off this time."""
-    from stratum_open.checks import bandit, moved_in
+    ones whose call failed or was cut off this time; `policy`: for the checks
+    that run only when it says so."""
+    from stratum_open.checks import bandit, moved_in, ruff
 
     lines = []
     if incremental and previous_head:
@@ -513,6 +517,11 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
         _, left_out = bandit.plan(files, contents)
         if left_out:
             lines.append(f"Not read by Bandit ({_files(len(left_out))} past its limit of {bandit.MAX_FILES}, or without their text): "
+                         + ", ".join(f"`{p}`" for p in left_out[:10]))
+    if policy is not None and policy.checks.ruff and ruff.available():
+        _, left_out = ruff.plan(files, contents)
+        if left_out:
+            lines.append(f"Not read by Ruff ({_files(len(left_out))} past its limit of {ruff.MAX_FILES}, too long, or without their text): "
                          + ", ".join(f"`{p}`" for p in left_out[:10]))
     return lines
 
