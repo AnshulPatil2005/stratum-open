@@ -65,3 +65,29 @@ def test_the_logic_pass_prompt():
     review(title="Query users", description="Small refactor.", files=parse_diff(DIFF), policy=policy, model=model)
     system, user = model.prompts[1]
     snapshots.check("prompt_logic.txt", f"{system}\n\n===== user =====\n\n{user}\n")
+
+
+@pytest.mark.parametrize("inline", [False, True], ids=["top-level", "inline"])
+def test_the_ask_prompt(inline):
+    from fakes import FakeGitHub
+
+    from stratum_open.github import publish
+    from stratum_open.github.commands import handle
+    from stratum_open.runner import Context
+
+    gh = FakeGitHub(diff=DIFF, files={("app/users.py", "a" * 40): "".join(f"line {n}\n" for n in range(1, 30))})
+    state = publish.State(findings=[{"title": "SQL built from strings", "detail": "user_id goes straight into the query.", "severity": "high",
+                                     "path": "app/users.py", "line_start": 6, "suggestion": "Pass it as a parameter.", "fingerprint": "0123456789ab"}])
+    gh.issue_comments_[7].append({"id": 1, "body": f"{publish.SUMMARY_MARKER}\n{state.encode()}", "user": {"login": "stratum[bot]"}})
+    gh.review_comments_.append({"id": 2, "path": "app/users.py", "line": 6, "user": {"login": "stratum[bot]"},
+                                "body": "**High · bug:** SQL built from strings\n\n<!-- stratum:finding 0123456789ab model:sql -->"})
+    comment = {"id": 3, "body": "/stratum ask can user_id be a string here?", "user": {"login": "carol", "type": "User"}}
+    if inline:
+        payload = {"action": "created", "comment": {**comment, "in_reply_to_id": 2}, "pull_request": {"number": 7}}
+    else:
+        payload = {"action": "created", "comment": comment, "issue": {"number": 7, "pull_request": {}}}
+    model = FakeModel("Yes.")
+    ctx = Context(gh=gh, policy=parse_policy(None), model=model, bot="stratum[bot]", log=lambda line: None)
+    assert handle(ctx, "pull_request_review_comment" if inline else "issue_comment", payload) == "ask"
+    [(system, user)] = model.prompts
+    snapshots.check(f"prompt_ask{'_inline' if inline else ''}.txt", f"{system}\n\n===== user =====\n\n{user}\n")

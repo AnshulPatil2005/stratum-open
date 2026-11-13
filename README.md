@@ -77,6 +77,7 @@ Comment on a PR, with the command at the start of a line. One inside a code bloc
 | `/stratum ignore <rule>` | write access | Hide a rule on this PR |
 | `/stratum mute <rule>` / `unmute` | write access | Hide a rule on every PR (GitHub App only, since it stores it) |
 | `/stratum explain` | the PR's author or write access, a few a day | As a reply to an inline comment: explain that finding in more detail |
+| `/stratum ask <question>` | the same people as `explain`, sharing its daily limit | Answer a question about the PR from its diff and review; as a reply to an inline comment, about that comment and its code |
 | `/stratum triage` | anyone | Why the PR got its label |
 | `/stratum record` | anyone | Your own track record in this repo |
 

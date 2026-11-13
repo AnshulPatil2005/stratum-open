@@ -68,6 +68,8 @@ def test_schedule_builds_the_queue(tmp_path, monkeypatch):
         ("issue_comment", "/stratum triage", False),
         ("issue_comment", "/stratum review", True),
         ("pull_request_review_comment", "/Stratum explain", True),
+        ("issue_comment", "/stratum ask why is this here?", True),
+        ("pull_request_review_comment", "/stratum ask\nwhy?", True),
         ("issue_comment", "thanks!", False),
     ],
 )
@@ -91,7 +93,7 @@ def starts_the_job(needles: list[str], body: str) -> bool:
 def test_the_workflow_starts_a_job_for_every_comment_the_parser_reads_as_a_command(path, needles):
     assert comment_filter(path) == needles
     commands = ["/stratum review", "/Stratum REVIEW", "thanks!\n/stratum review", "/stratum review\n", "ok\r\n/stratum  ignore code/sql\r\n",
-                "  /stratum record"]
+                "  /stratum record", "/stratum ask why is this here?", "/stratum ask\nwhy?"]
     for body in commands:
         assert parse(body) is not None and starts_the_job(needles, body), body
     # A slash command needs the space after it, the same text the filter looks for.
