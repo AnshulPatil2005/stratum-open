@@ -70,6 +70,31 @@ python benchmark/planted.py run --bugs benchmark/planted/bugs.json --set dev --c
     --model qwen2.5-coder:7b@http://localhost:11434/v1 --policy change.yml --variant change
 ```
 
+### A second set, with other kinds of bug
+
+The first set's bugs are all one-line logic flips, and a review tuned on seven kinds of flip can look better than it is. [bugs-2.json](planted/bugs-2.json) is 32 more cases in the same format: eight of each of four kinds, half `dev` and half `test`.
+
+- **`swapped-arguments`:** two arguments of a call exchanged, where both are of the same type, like `urljoin(target, url)`.
+- **`wrong-variable`:** a neighbouring variable or attribute of a fitting type where the right one should be.
+- **`wrong-constant`:** an index, a key, a limit or a mask changed to another plausible one.
+- **`dropped-statement`:** a statement the PR wrote, left out. Its `replace` is `null`. The diff is then numbered as if the line was never written, and a finding is near within 3 lines of the gap.
+
+How the cases were chosen:
+- **The PRs:** merged PRs from 11 of the first set's 12 projects (requests had too few that fit). Each changes Python outside the tests, adds at most 300 lines and touches at most 10 files. None is in the first set or in clean.json.
+- **The bugs:** each is on a line the PR adds and changes what the code does, while the file still parses and every name on the line is defined and of a fitting type. Where there was a choice, the bug goes against a test, a docstring or a comment of the same PR, which is how a careful reviewer would catch it.
+- **What a diff can show:** the planted line is never one the PR's diff already holds. A dropped line has the code that needs it right beside it, and another added line in its hunk: a hunk that only held the dropped line wouldn't be in the diff at all.
+
+`validate` checks every case against its PR: the line is one the PR adds and reads `find`, and the file parses with the bug in it. With `--strict` it also refuses what it otherwise only notes, such as a `find` that several added lines match (three cases of the first set).
+
+```sh
+python benchmark/planted.py fetch --bugs benchmark/planted/bugs-2.json     # cache the PRs
+python benchmark/planted.py validate --bugs benchmark/planted/bugs-2.json --strict
+python benchmark/planted.py run --bugs benchmark/planted/bugs-2.json --set dev --out benchmark/results/<name>/raw/7b \
+    --model qwen2.5-coder:7b@http://localhost:11434/v1
+```
+
+On GitHub's runners, give the **Planted-bug benchmark** workflow the file as its `bugs` input. Results on the second set are reported separately from the first set's, in a run folder of their own, so every "of 39" stays comparable.
+
 ## Results
 
 Each run is a folder in [results/](results/), holding its `summary.md`, every
