@@ -174,6 +174,24 @@ def test_stored_review_in_app_mode(gh, tmp_path):
     assert {f["title"] for f in storage.latest_findings("acme/widget", 7)} >= {"Unknown id"}
 
 
+def test_the_stored_summary_is_the_posted_one(gh, tmp_path):
+    from stratum_open.profiles import ModelInfo
+
+    class Large(FakeModel):  # the large profile posts the synthesis call's summary
+        def describe(self):
+            return ModelInfo(billions=70, context=128_000, local=False)
+
+        def complete(self, system, user, **kwargs):
+            if system.startswith("You summarize the results"):
+                self.replies.insert(0, json.dumps({"summary": "The synthesis summary.", "top_priorities": [], "walkthrough": "w"}))
+            return super().complete(system, user, **kwargs)
+
+    storage = SQLiteStorage(str(tmp_path / "s.db"))
+    review_pull(context(gh, Large(model_answer()), storage=storage), 7)
+    assert "The synthesis summary." in gh.issue_comments_[7][0]["body"]
+    assert storage._db.execute("SELECT summary FROM reviews").fetchone()[0] == "The synthesis summary."
+
+
 def test_a_muted_rule_closes_its_threads(gh, tmp_path):
     storage = SQLiteStorage(str(tmp_path / "s.db"))
     ctx = context(gh, FakeModel(model_answer(), model_answer()), storage=storage, feedback=True)

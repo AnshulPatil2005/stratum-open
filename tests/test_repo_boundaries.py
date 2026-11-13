@@ -60,6 +60,14 @@ def test_forbidden_import_is_a_finding_and_an_allowed_one_is_not(tmp_path):
     assert finding.confidence == 0.9
 
 
+def test_a_module_can_be_named_by_its_folder(tmp_path):
+    repo = write(tmp_path, CHECKOUT)
+    diff = change("server/api/views.py", " import os", "+from server.db.models import User")
+    policy = parse_policy('boundaries:\n  modules: {api: ["server/api/"], db: ["server/db/"]}\n  forbid: ["api -> db"]\n')
+    [finding] = boundary_findings([diff], policy, repo)
+    assert finding.title == "`api` must not import `db`"
+
+
 def test_relative_and_multiline_imports(tmp_path):
     repo = write(tmp_path, CHECKOUT)
     python = change("server/api/jobs.py", "+import os", "+from ..db import session, models", new=True)

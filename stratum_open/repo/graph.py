@@ -207,14 +207,15 @@ class Resolver:
         heads = [posixpath.join(base, module) if module else base for base in bases]
 
         def own(head: str) -> list[str]:
-            return [f"{head}.py", f"{head}/__init__.py"] if module else [posixpath.join(head, "__init__.py")]
+            return [f"{head}/__init__.py", f"{head}.py"] if module else [posixpath.join(head, "__init__.py")]
 
         if not imp.names:
             return [[path for head in heads for path in own(head)]]
         # `from m import n` loads submodule m/n when there is one, else m itself;
-        # roots are tried in turn, as Python walks sys.path.
+        # roots are tried in turn, as Python walks sys.path. A package beats a
+        # module of the same name, as it does for Python.
         return [
-            [path for head in heads for path in (posixpath.join(head, f"{name}.py"), posixpath.join(head, name, "__init__.py"), *own(head))]
+            [path for head in heads for path in (posixpath.join(head, name, "__init__.py"), posixpath.join(head, f"{name}.py"), *own(head))]
             for name in imp.names
         ]
 

@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 
 from stratum_open.findings import Finding
 from stratum_open.policy import Policy
+from stratum_open.review import demention
 from stratum_open.track_record import AuthorRecord
 
 KEYS = ("needs_human", "needs_work", "low_effort", "ready")
@@ -190,9 +191,10 @@ def render_queue(rows: list[tuple[PRFacts, Triage | None]], policy: Policy) -> s
         lines += [f"### {label_for(policy, key)} ({len(group)})", ""]
         for facts, result in group:
             why = "; ".join(result.reasons or result.evidence)[:180]
-            lines.append(f"- #{facts.number} {facts.title[:80]} · +{facts.additions}/−{facts.deletions}" + (f" · {why}" if why else ""))
+            # Titles and finding titles (model text) alike: nobody named in them is pinged.
+            lines.append(demention(f"- #{facts.number} {facts.title[:80]} · +{facts.additions}/−{facts.deletions}" + (f" · {why}" if why else "")))
         lines.append("")
     waiting = [f for f, t in rows if t is None]
     if waiting:
-        lines += [f"### Not reviewed yet ({len(waiting)})", ""] + [f"- #{f.number} {f.title[:80]}" for f in waiting] + [""]
+        lines += [f"### Not reviewed yet ({len(waiting)})", ""] + [demention(f"- #{f.number} {f.title[:80]}") for f in waiting] + [""]
     return "\n".join(lines)

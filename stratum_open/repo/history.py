@@ -37,9 +37,9 @@ def recent_commits(repo_dir: str, ref: str = "HEAD", *, window_days: int = 180, 
     if not has_commit(repo_dir, ref):
         return []
     since = (now or datetime.now(timezone.utc)) - timedelta(days=window_days)
-    out = git(
+    out = git(  # the --since form is explained in track_record._history
         repo_dir, "log", "--no-merges", "-M", "--name-status", "-z",
-        f"--since={int(since.timestamp())}", "--format=%x1e%H%x1f%P%x1f%aE%x1f%s", ref,
+        f"--since=@{max(0, int(since.timestamp()))} +0000", "--format=%x1e%H%x1f%P%x1f%aE%x1f%s", ref,
     )
     commits = []
     for record in out.split("\x1e"):

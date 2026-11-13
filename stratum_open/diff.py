@@ -126,6 +126,8 @@ def parse_diff(text: str) -> list[FileDiff]:
 
 
 def _header_line(current: FileDiff, raw: str) -> None:
+    if raw.startswith(("new file mode", "new mode", "index ")) and raw.rstrip().endswith(" 160000"):
+        current.binary = True  # a submodule: the "Subproject commit" line is not code anyone can comment on
     if raw.startswith("new file mode"):
         current.status = "added"
     elif raw.startswith("deleted file mode"):
@@ -138,8 +140,6 @@ def _header_line(current: FileDiff, raw: str) -> None:
         current.status = "renamed"
     elif raw.startswith("Binary files ") or raw.startswith("GIT binary patch"):
         current.binary = True
-    elif raw.startswith("index ") and raw.rstrip().endswith(" 160000"):
-        current.binary = True  # a submodule: the "Subproject commit" line is not code anyone can comment on
     elif raw.startswith("--- "):
         old = _strip_prefix(_unquote(raw[4:].split("\t")[0]), "a/")
         if old != "/dev/null" and current.old_path is None:

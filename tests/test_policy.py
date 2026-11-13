@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from stratum_open.policy import POLICY_PATH, Policy, forbidden_pairs, load_policy, parse_policy
+from stratum_open.policy import POLICY_PATH, Policy, forbidden_pairs, load_policy, matches_any, parse_policy
 
 
 def test_no_file_means_defaults():
@@ -158,6 +158,18 @@ def test_glob_rules():
     assert not policy.needs_human("docs/README.md")
     assert policy.needs_human("docs/a.txt")
     assert not policy.needs_human("docs/ab.txt")
+
+
+def test_a_day_count_past_the_cap_is_read_as_the_cap_and_the_rest_still_applies():
+    policy = parse_policy("data:\n  findings_retention_days: 99999\nreview:\n  ignore_paths: [vendor/**]\n")
+    assert (policy.source, policy.errors) == ("file", ())
+    assert policy.data.findings_retention_days == 36500 and policy.review.ignore_paths == ("vendor/**",)
+    assert policy.warnings == ("data.findings_retention_days is read as 36500, the most it can be.",)
+
+
+def test_a_pattern_ending_in_a_slash_is_a_folder():
+    assert matches_any("docs/a.md", ("docs/",)) and matches_any("docs/x/a.md", ("/docs/",))
+    assert not matches_any("docs.md", ("docs/",)) and not matches_any("src/docs/a.md", ("docs/",))
 
 
 def test_profiles_fill_in_only_what_the_file_left_out():

@@ -333,6 +333,9 @@ def test_the_verifier_is_shown_the_flagged_line_even_in_a_long_hunk():
     ("a_@alice_b", "a_@alice_b"),
     ("1_@alice", "1_@alice"),
     ("x `@alice` y", "x `@alice` y"),
+    ("x ` @alice ` y", "x ` @alice ` y"),
+    # A backtick with no closing one opens no code span, so GitHub links what follows.
+    ("Fix ` thing @octocat", "Fix ` thing `@octocat`"),
 ])
 def test_demention_escapes_every_mention_github_would_link(text, escaped):
     assert demention(text) == escaped

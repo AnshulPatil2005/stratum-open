@@ -284,7 +284,7 @@ class GitHub:
         return run
 
     def ensure_label(self, name: str, color: str, description: str) -> None:
-        if self.request("GET", f"{self._r}/labels/{requests.utils.quote(name)}", ok404=True) is None:
+        if self.request("GET", f"{self._r}/labels/{requests.utils.quote(name, safe='')}", ok404=True) is None:
             try:
                 self.request("POST", f"{self._r}/labels", json={"name": name, "color": color, "description": description[:100]})
             except GitHubError as exc:
@@ -296,7 +296,7 @@ class GitHub:
             self.request("POST", f"{self._r}/issues/{number}/labels", json={"labels": labels})
 
     def remove_label(self, number: int, label: str) -> None:
-        self.request("DELETE", f"{self._r}/issues/{number}/labels/{requests.utils.quote(label)}", ok404=True)
+        self.request("DELETE", f"{self._r}/issues/{number}/labels/{requests.utils.quote(label, safe='')}", ok404=True)
 
     def close(self, number: int) -> None:
         self.request("PATCH", f"{self._r}/pulls/{number}", json={"state": "closed"})

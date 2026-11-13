@@ -556,7 +556,9 @@ def demention(text: str) -> str:
     command. The bot's own comments are skipped by the command parser too;
     this covers people."""
     def swap(match: re.Match) -> str:
-        if text.count("`", 0, match.start()) % 2:  # already inside a code span: GitHub won't link it, and more backticks would break the span
+        # Already inside a code span: GitHub won't link it, and more backticks
+        # would break the span. A backtick with none after it opens no span.
+        if text.count("`", 0, match.start()) % 2 and "`" in text[match.end():]:
             return match.group(0)
         return f"`@{match.group(1)}`"
 

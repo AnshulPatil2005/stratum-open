@@ -66,6 +66,14 @@ def test_can_comment_only_inside_one_hunk():
     assert not users.can_comment(15)  # between hunks
 
 
+def test_a_submodule_is_binary_added_or_updated():
+    commit = "+Subproject commit 769b12c6371165c97ca06837aa68da2e2c971e0c\n"
+    added = parse_diff("diff --git a/lib b/lib\nnew file mode 160000\nindex 0000000..769b12c\n--- /dev/null\n+++ b/lib\n@@ -0,0 +1 @@\n" + commit)
+    updated = parse_diff("diff --git a/lib b/lib\nindex 1234567..769b12c 160000\n--- a/lib\n+++ b/lib\n@@ -1 +1 @@\n-Subproject commit 1234567\n" + commit)
+    assert added[0].status == "added" and added[0].binary and updated[0].binary
+    assert pack(added, budget_tokens=10_000, max_chunks=3).chunks == []
+
+
 def test_render_numbers_new_lines_only():
     text = render(parse_diff(DIFF)[0])
     assert "     6 +      cur = conn.execute(f\"SELECT" in text
