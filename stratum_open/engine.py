@@ -251,7 +251,7 @@ def carry(prior: list[dict], files: list[FileDiff], current: set[str], reviewed_
             if located is None:
                 gone[fp] = "Resolved: the code this was about has changed."
                 continue
-            finding.line_start, finding.line_end = located
+            finding.line_start, finding.line_end, _ = located
         elif file.path in reviewed_now:
             gone[fp] = "Resolved: the model no longer finds this after the latest changes."
             continue

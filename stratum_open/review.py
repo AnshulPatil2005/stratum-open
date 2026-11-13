@@ -414,7 +414,7 @@ def _to_finding(raw: Any, by_path: dict[str, FileDiff]) -> Finding | None:
     located = _locate(_text(raw.get("code"), 2000), file, near=start)
     quoted = located is not None
     if quoted:
-        start, end = located
+        start, end, exact = located
     elif start is not None and not file.can_comment(start, end):
         if file.can_comment(start):
             end = start
@@ -423,8 +423,10 @@ def _to_finding(raw: Any, by_path: dict[str, FileDiff]) -> Finding | None:
     replacement = raw.get("replacement")
     replacement = replacement if isinstance(replacement, str) and replacement.strip() else None
     # A suggestion replaces the lines it sits on, so it's only offered where
-    # the model showed which lines it meant.
-    if replacement is not None and (not quoted or "..." in replacement or _norm(replacement) == _norm(file.snippet(start, end))):
+    # the model showed which lines it meant: a quote that left out or added a
+    # blank line would have its replacement drop or add one too.
+    if replacement is not None and (not quoted or not exact or "..." in replacement
+                                    or _norm(replacement) == _norm(file.snippet(start, end))):
         replacement = None
     if replacement is not None:
         replacement = _reindent(replacement, file, start, end)
@@ -479,9 +481,10 @@ def _reindent(replacement: str, file: FileDiff, start: int, end: int) -> str:
     return "\n".join(lines)
 
 
-def _locate(code: str, file: FileDiff, near: int | None) -> tuple[int, int] | None:
+def _locate(code: str, file: FileDiff, near: int | None) -> tuple[int, int, bool] | None:
     """Where the quoted code sits on the new side of the diff, preferring
-    added lines and the match nearest the line number the model gave."""
+    added lines and the match nearest the line number the model gave, and
+    whether it matched blank lines included."""
     wanted = [_norm(_NUMBERED.sub("", line).removeprefix("+")) for line in code.splitlines()]
     while wanted and not wanted[0]:
         wanted.pop(0)
@@ -491,12 +494,13 @@ def _locate(code: str, file: FileDiff, near: int | None) -> tuple[int, int] | No
         return None
     side = sorted(file.new_side().items())
     matches = _matches(wanted, side, file, near)
+    exact = bool(matches)
     if not matches:  # the quote dropped or added a blank line: match the lines with code only
         matches = _matches([want for want in wanted if want], [(n, text) for n, text in side if text.strip()], file, near)
     if not matches:
         return None
     _, _, start, end = min(matches)
-    return start, end
+    return start, end, exact
 
 
 def _matches(wanted: list[str], side: list[tuple[int, str]], file: FileDiff, near: int | None) -> list[tuple[bool, int, int, int]]:

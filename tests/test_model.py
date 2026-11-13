@@ -1,3 +1,4 @@
+import pytest
 import requests
 
 from stratum_open.model import Model, _billions
@@ -67,6 +68,12 @@ def test_an_unreachable_model_error_leaves_out_credentials_in_the_endpoint():
                             ("https://gpu.example.org/v1?key=AIzaSyD-abcdef0123456789", "https://gpu.example.org/v1")):
         reply = Model(endpoint, "m", session=Down()).complete("s", "u")
         assert reply.error == f"couldn't reach the model at {shown}: ConnectionError"
+
+
+@pytest.mark.parametrize("endpoint", ["bob:s3cretpass@gpu.example.org/v1", "localhost:11434/v1", "http://[::1/v1"])
+def test_an_endpoint_without_a_scheme_is_named_by_a_fixed_phrase(endpoint):
+    reply = Model(endpoint, "m", session=Down()).complete("s", "u")
+    assert reply.error == "couldn't reach the model at an endpoint that isn't a valid http:// or https:// URL: ConnectionError"
 
 
 def test_parameter_sizes():

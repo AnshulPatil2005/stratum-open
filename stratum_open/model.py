@@ -239,7 +239,13 @@ def _excerpt(text: str, limit: int = 160) -> str:
 
 def _shown(endpoint: str) -> str:
     """The endpoint without a user:password or query string, which can hold a key."""
-    url = urlparse(endpoint)
+    try:
+        url = urlparse(endpoint)
+    except ValueError:  # an unclosed [IPv6 address
+        url = None
+    # Without a scheme, urlparse reads `user:pass@host` as scheme `user` and a path holding the password.
+    if url is None or url.scheme not in ("http", "https") or not url.netloc:
+        return "an endpoint that isn't a valid http:// or https:// URL"
     return f"{url.scheme}://{url.netloc.rpartition('@')[2]}{url.path}"
 
 
