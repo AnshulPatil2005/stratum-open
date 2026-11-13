@@ -1,0 +1,82 @@
+"""What a review needs from the code host: the seam between the review and
+GitHub, GitLab or anything else.
+
+`runner.review_pull` and `github.publish` call these methods on
+`Context.gh`, and nothing else. `github.api.GitHub` is the reference
+implementation, and the shapes below are GitHub's: another host's client
+(`gitlab.api.GitLab`) answers in the same shapes, so the review, the summary,
+the inline comments and the triage code are shared as they are. A client
+raises `GitHubError` (or a subclass) when the host refuses a call; the runner
+catches that one type.
+
+The shapes, as the runner and `publish` read them:
+
+- `pull(number)`: {"number", "state": "open" | ..., "draft", "title", "body",
+  "user": {"login", "type"} | None, "head": {"sha", "ref"}, "labels":
+  [{"name"}], "additions", "deletions"}.
+- `issue_comments(number)`: oldest first, [{"id", "body", "user": {"login"}}].
+- `review_threads(number)`: [{"id", "resolved", "path", "comments": [{"id",
+  "body", "author"}]}], the first comment being the one that opened the thread.
+- `create_review(number, head_sha, comments)`: each comment is {"path",
+  "line", "side": "RIGHT", "body"} plus "start_line" for a range, in new-file
+  line numbers; a comment the host won't place is a `GitHubError` with
+  status 422, and the caller then posts the comments one at a time.
+- `check_run(...)`: the review's verdict on the head commit (a check run on
+  GitHub, a commit status on GitLab).
+
+`SURFACE` lists the names, and a test keeps it in step with what the runner
+and `publish` call, so a new call there shows up as one every host's client
+has to answer.
+"""
+
+from __future__ import annotations
+
+from typing import Protocol
+
+
+class Platform(Protocol):
+    repo: str  # a name for logs and storage keys: owner/name, or a GitLab project path
+
+    def repository(self) -> dict: ...  # {"default_branch": ...}
+
+    def pull(self, number: int) -> dict: ...
+
+    def pull_diff(self, number: int) -> str: ...  # a unified diff, as `git diff` writes it
+
+    def file_text(self, path: str, ref: str, *, max_bytes: int | None = None) -> str | None: ...
+
+    def compare_files(self, base: str, head: str) -> list[str] | None: ...  # None: review everything again
+
+    def issue_comments(self, number: int) -> list[dict]: ...
+
+    def comment(self, number: int, body: str) -> dict: ...
+
+    def edit_comment(self, comment_id: int, body: str) -> dict: ...
+
+    def review_threads(self, number: int) -> list[dict]: ...
+
+    def create_review(self, number: int, head_sha: str, comments: list[dict], body: str = "") -> dict: ...
+
+    def edit_review_comment(self, comment_id: int, body: str) -> dict: ...
+
+    def resolve_thread(self, thread_id: str) -> None: ...
+
+    def check_run(self, head_sha: str, name: str, conclusion: str, title: str, summary: str, text: str,
+                  annotations: list[dict]) -> dict: ...
+
+    def ci_state(self, sha: str, *, ignore: set[str]) -> bool | None: ...
+
+    def linked_issues(self, number: int) -> list[int]: ...
+
+    def commit_emails(self, login: str) -> set[str]: ...
+
+    def ensure_label(self, name: str, color: str, description: str) -> None: ...
+
+    def add_labels(self, number: int, labels: list[str]) -> None: ...
+
+    def remove_label(self, number: int, label: str) -> None: ...
+
+    def close(self, number: int) -> None: ...
+
+
+SURFACE = frozenset(name for name in vars(Platform) if not name.startswith("_")) | {"repo"}
