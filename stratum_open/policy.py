@@ -78,6 +78,8 @@ class Checks:
     weakened_tests: bool = False  # a finding on the line where a PR switches a test off, removes its assertions or widens a tolerance
     unknown_names: bool = False  # in Python, an import or a call of a name its module doesn't define; needs a checkout
     removed_names: bool = False  # in Python, a name a PR removes from a module while another file still imports or uses it; needs a checkout
+    shellcheck: bool = False  # ShellCheck's errors, and the warnings that name a real bug, on added lines of shell scripts; needs `shellcheck` on PATH
+    actionlint: bool = False  # actionlint's errors on added lines of GitHub workflows (a key GitHub doesn't know, a `needs:` with no such job); needs `actionlint` on PATH
 
 
 @dataclass(frozen=True)

@@ -30,6 +30,7 @@ from stratum_open.util import count, redact
 MAX_BANDIT_FILES = 20
 MAX_CONTEXT_FILES = 20
 MAX_PROMISE_FILES = 20  # JavaScript and TypeScript files read in full for checks.floating_promises
+MAX_SCRIPT_FILES = 20  # shell scripts, and files that may be one, read in full for checks.shellcheck
 MAX_MOVED_FILES = 20  # files moved into a check's scope, which the checks read in full
 MAX_MOVED_BYTES = 1_000_000  # the contents API's own limit for a file's text
 MAX_REVIEW_TEXT_FILES = 20  # files whose text is fetched for review.context_lines
@@ -448,12 +449,14 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
     otherwise the Python files whose change touches async code, for the
     missing-await check. With `checks.floating_promises` on and its parser
     installed, the JavaScript and TypeScript files that add a line starting
-    with a call. Files moved to where a check does more than where they were,
+    with a call. With `checks.shellcheck` on and ShellCheck on PATH, the
+    shell scripts, and the files with no extension that may be one (their
+    first line says). Files moved to where a check does more than where they were,
     since the diff shows none of their lines as added (at most
     MAX_MOVED_BYTES each; a bigger one is named as unread). With `around`
     (the profile shows code around each hunk), the biggest changes the model
     will read too."""
-    from stratum_open.checks import bandit, moved_in, promises, ruff
+    from stratum_open.checks import bandit, moved_in, promises, ruff, shellcheck
     from stratum_open.checks.awaits import touches_async
     from stratum_open.checks.common import looks_binary
     from stratum_open.checks.dependencies import manifest_kind
@@ -471,6 +474,8 @@ def _contents(ctx: Context, files: list[FileDiff], head: str, *, around: bool = 
     fetch += (python if whole else [f for f in python if touches_async(f)])[:MAX_BANDIT_FILES]
     if ctx.policy.checks.floating_promises and promises.available():
         fetch += [f for f in live if promises.worth_reading(f)][:MAX_PROMISE_FILES]
+    if ctx.policy.checks.shellcheck and shellcheck.available():
+        fetch += [f for f in live if shellcheck.worth_reading(f)][:MAX_SCRIPT_FILES]
     moved = [f for f in live if moved_in(f)]  # the size cap and the binary test apply however they're fetched
     fetch += [f for f in moved if f not in fetch][:MAX_MOVED_FILES]
     if around:
@@ -619,7 +624,7 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
     last review couldn't read that the model read this time; `unread`: the
     ones whose call failed or was cut off this time; `policy`: for the checks
     that run only when it says so."""
-    from stratum_open.checks import bandit, moved_in, ruff
+    from stratum_open.checks import actionlint, bandit, moved_in, ruff, shellcheck
 
     lines = []
     if incremental and previous_head:
@@ -664,6 +669,13 @@ def _coverage(result: ReviewResult | None, incremental: bool, changed: set[str] 
         if left_out:
             lines.append(f"Not read by Ruff ({_files(len(left_out))} past its limit of {ruff.MAX_FILES}, too long, or without their text): "
                          + ", ".join(f"`{p}`" for p in left_out[:10]))
+    for on, tool, name in ((policy is not None and policy.checks.shellcheck, shellcheck, "ShellCheck"),
+                           (policy is not None and policy.checks.actionlint, actionlint, "actionlint")):
+        if on and tool.available():
+            _, left_out = tool.plan(files, contents)
+            if left_out:
+                lines.append(f"Not read by {name} ({_files(len(left_out))} past its limit of {tool.MAX_FILES}, too long, or without their text): "
+                             + ", ".join(f"`{p}`" for p in left_out[:10]))
     return lines
 
 
