@@ -1,0 +1,59 @@
+# Add this job to your .gitlab-ci.yml (or `include:` this file from it).
+#
+# Stratum reviews each merge request: a summary note, comments on the lines
+# (with suggestions you can apply), and a commit status. It reads the MR only
+# through GitLab's API, and this job checks out nothing of the MR
+# (GIT_STRATEGY: none). It clones your default branch for history, and the
+# rules come from .stratum/policy.yml on that branch.
+#
+# Once, in Settings > CI/CD > Variables, add STRATUM_GITLAB_TOKEN: a project
+# access token (Settings > Access tokens) with the Developer role and the api
+# scope, masked and hidden. CI_JOB_TOKEN can't post MR notes.
+#
+# Read docs/gitlab.md first. On GitLab an MR's pipeline runs the
+# .gitlab-ci.yml of the MR's own branch, so anyone who can push a branch here
+# can change this job and read the token. MRs from forks run in the fork and
+# get no token: the job says so and posts nothing.
+stratum:
+  stage: test
+  image: python:3.12-slim
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  # With "Auto-cancel redundant pipelines" on, a new push cancels the review of the old one.
+  interruptible: true
+  # A review that couldn't finish never blocks the MR. The status Stratum posts is
+  # what blocks it, and only with "Pipelines must succeed" on (see docs/gitlab.md).
+  allow_failure: true
+  timeout: 60m
+  variables:
+    GIT_STRATEGY: none
+    # Pin a release tag, so a new version reaches you only when you choose.
+    STRATUM_OPEN_REF: main
+    # Runs the model in the job: no server needed, but slow on CPU. To use your own
+    # server instead, drop the start-ollama.sh line and the next four variables,
+    # and set review.endpoint in .stratum/policy.yml.
+    STRATUM_OLLAMA_MODEL: qwen2.5-coder:7b
+    STRATUM_OLLAMA_ROOT: $CI_PROJECT_DIR/.stratum-ollama
+    STRATUM_MODEL_ENDPOINT: http://localhost:11434/v1
+    STRATUM_MODEL_NAME: $STRATUM_OLLAMA_MODEL
+    # On CPU a 7B model reads ~20 tokens a second: calls stay small. The policy file's
+    # review.context_tokens wins over this.
+    STRATUM_CONTEXT_TOKENS: "8192"
+    STRATUM_CHECKOUT: $CI_PROJECT_DIR/.stratum-default-branch
+  cache:
+    key: stratum-ollama-0.40.13-$STRATUM_OLLAMA_MODEL
+    paths:
+      - .stratum-ollama/
+  script:
+    - |
+      if [ -z "$STRATUM_GITLAB_TOKEN" ] && [ "$CI_PROJECT_ID" != "$CI_MERGE_REQUEST_PROJECT_ID" ]; then
+        echo "A fork's pipeline can't see STRATUM_GITLAB_TOKEN, so there's nothing to post. See docs/gitlab.md."
+        exit 0
+      fi
+    - apt-get update -qq && apt-get install -y -qq --no-install-recommends ca-certificates curl git zstd > /dev/null
+    - git clone --quiet --depth 1 --branch "$STRATUM_OPEN_REF" https://github.com/stratum-org/stratum-open.git /tmp/stratum-open
+    - pip install --quiet --disable-pip-version-check /tmp/stratum-open
+    # The default branch with its history, for track records, ownership and hotspots. Never the MR's branch.
+    - rm -rf "$STRATUM_CHECKOUT" && git clone --quiet --branch "$CI_DEFAULT_BRANCH" "$CI_REPOSITORY_URL" "$STRATUM_CHECKOUT"
+    - bash /tmp/stratum-open/scripts/start-ollama.sh "$STRATUM_OLLAMA_MODEL"
+    - stratum-open gitlab
