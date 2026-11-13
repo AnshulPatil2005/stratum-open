@@ -36,7 +36,7 @@ repo. Nothing is sent to Stratum: no account, no telemetry, no license check.
 - **One triage label:** `ready`, `needs work`, `low effort` or `needs a maintainer`, with the reasons spelled out. It judges what's in front of it: CI, tests, a linked issue, size, and whether the change matches its description. It doesn't try to guess whether AI wrote the PR, because detectors for that aren't reliable. Labels are off until your policy turns them on, and it closes nothing unless your policy says so.
 - **A check run** that fails on a critical finding and is neutral on a high one. Make it required in branch protection if you want it to block merging.
 - **A triage queue:** one issue listing every open PR, cheapest to review and best supported first.
-- **Track records:** each author's merged PRs that were later reverted or fixed, read from git history. Every contributor can see their own, with `@stratum record`. A record affects nothing unless your policy says so.
+- **Track records:** each author's merged PRs that were later reverted or fixed, read from git history. Every contributor can see their own, with `/stratum record`. A record affects nothing unless your policy says so.
 
 ## Quick start: the GitHub Action
 
@@ -64,17 +64,19 @@ Every key, with its default, is in [policy.example.yml](policy.example.yml).
 
 ## Commands
 
-Comment on a PR:
+Comment on a PR, with the command at the start of a line. One inside a code block (between ``` lines) is shown, not run.
 
 | Command | Who | What it does |
 | --- | --- | --- |
-| `@stratum review` | write access | Review the whole PR again |
-| `@stratum ignore` | write access | As a reply to an inline comment: hide that finding on this PR |
-| `@stratum ignore <rule>` | write access | Hide a rule on this PR |
-| `@stratum mute <rule>` / `unmute` | write access | Hide a rule on every PR (GitHub App only, since it stores it) |
-| `@stratum explain` | the PR's author or write access, a few a day | As a reply to an inline comment: explain that finding in more detail |
-| `@stratum triage` | anyone | Why the PR got its label |
-| `@stratum record` | anyone | Your own track record in this repo |
+| `/stratum review` | write access | Review the whole PR again |
+| `/stratum ignore` | write access | As a reply to an inline comment: hide that finding on this PR |
+| `/stratum ignore <rule>` | write access | Hide a rule on this PR |
+| `/stratum mute <rule>` / `unmute` | write access | Hide a rule on every PR (GitHub App only, since it stores it) |
+| `/stratum explain` | the PR's author or write access, a few a day | As a reply to an inline comment: explain that finding in more detail |
+| `/stratum triage` | anyone | Why the PR got its label |
+| `/stratum record` | anyone | Your own track record in this repo |
+
+Commands used to be written `@stratum review`. They aren't read any more: `stratum` is an unrelated GitHub organization, and GitHub turned each one into a mention of it.
 
 ## Other ways to run it
 
@@ -157,7 +159,9 @@ The [benchmark](benchmark/) reviews real merged PRs with each model, and maintai
 
 ## Upgrading to 0.3.0
 
-The command is now `stratum-open`, or `python -m stratum_open`; it was `stratum`. Hosted Stratum's client also installs a `stratum` command, and the new name lets the two sit side by side. Change any script, cron job or container command that runs `stratum`, such as `stratum serve` or `stratum data purge`. Nothing else is renamed: the Action, the `@stratum` comment commands, `.stratum/policy.yml` and the `STRATUM_*` settings work as before.
+The command is now `stratum-open`, or `python -m stratum_open`; it was `stratum`. Hosted Stratum's client also installs a `stratum` command, and the new name lets the two sit side by side. Change any script, cron job or container command that runs `stratum`, such as `stratum serve` or `stratum data purge`. Nothing else is renamed: the Action, `.stratum/policy.yml` and the `STRATUM_*` settings work as before.
+
+Comment commands are now written `/stratum review`, `/stratum ignore` and so on (see [Commands](#commands)); `@stratum review` no longer does anything. If you copied [examples/stratum.yml](examples/stratum.yml), update its job's `if:` filter, or `/stratum` comments won't start the job: replace `contains(github.event.comment.body, '@stratum')` with `contains(github.event.comment.body, '/stratum ')`. The GitHub App needs no change. Inline comments from 0.2 say "Reply `@stratum ignore`"; the next review of the PR rewrites that hint as `/stratum ignore`.
 
 If your code embeds the engine (`stratum_open.analyze`): a check's finding can now have a line the diff doesn't show, when a file moves to where a check does more (out of `tests/`, or into `.github/workflows/`) and the check reads all of it. GitHub refuses an inline comment on such a line. Post inline only the findings `stratum_open.placeable(findings, files)` returns, and list the rest in the summary.
 

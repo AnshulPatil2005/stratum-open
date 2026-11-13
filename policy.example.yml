@@ -61,7 +61,7 @@ checks:
   unknown_names: false         # true flags, in Python, an import or a call of a name its module doesn't define (your own modules, and part of the standard library)
   removed_names: false         # true flags, in Python, a function, class or constant the PR removes from a module while another file still imports or uses it
 
-commands:                      # who may run each @stratum command: anyone | author | write
+commands:                      # who may run each /stratum command: anyone | author | write
   review: write                # "author" is the PR's author or anyone with write access
   ignore: write
   mute: write

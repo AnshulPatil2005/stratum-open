@@ -26,10 +26,12 @@ permissions:
 
 jobs:
   stratum:
+    # A comment starts the job only if it might hold a command: "/stratum " (with the
+    # space, so a link to stratum-org/stratum-open doesn't).
     if: >-
       github.event_name == 'pull_request_target' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' ||
       github.event_name == 'workflow_run' ||
-      contains(github.event.comment.body, '@stratum')
+      contains(github.event.comment.body, '/stratum ')
     runs-on: ubuntu-latest
     # On the job, not the workflow, so a comment without a command never joins
     # a group: GitHub keeps one pending run per group and cancels the others,

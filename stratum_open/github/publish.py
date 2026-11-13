@@ -19,7 +19,7 @@ from stratum_open.engine import default_conclusion
 from stratum_open.findings import Finding, counts, severity_rank
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.policy import Policy
-from stratum_open.review import MIN_REPEATED_FILES
+from stratum_open.review import COMMAND, MIN_REPEATED_FILES
 from stratum_open.triage import COLORS, DESCRIPTIONS, KEYS, Triage, label_for
 
 CHECK_NAME = "Stratum"
@@ -33,6 +33,9 @@ QUIET_SHOWN = 5  # `review.quiet`: the model's findings in view at most, on the 
 QUIET_NOTES = 3  # ... and the history notes shown; the rest go under "What was reviewed"
 COMMENT_LIMIT = 65000
 LABEL = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low"}
+# The hint under each inline comment, and the one 0.1 and 0.2 posted.
+HINT = "Reply `/stratum ignore` to hide it on this PR, or `/stratum explain` for more."
+OLD_HINT = "Reply `@stratum ignore` to hide it on this PR, or `@stratum explain` for more."
 
 
 @dataclass
@@ -101,13 +104,16 @@ def comment_body(finding: Finding, *, feedback: bool) -> str:
     lines = [f"**{LABEL[finding.severity]} · {finding.category}:** {finding.title}", "", finding.detail]
     if finding.suggestion:
         lines += ["", f"**Fix:** {finding.suggestion}"]
-    if finding.replacement is not None:
+    # Code to commit can't be put in backticks the way demention() does, so a
+    # suggestion with a line that would read as a `/stratum` command is left
+    # out, even one inside a fence of its own: the fences around it can change.
+    if finding.replacement is not None and not COMMAND.search(finding.replacement):
         # The fence has to be longer than any run of backticks inside, or GitHub ends the block early.
         longest = max((len(run) for run in re.findall(r"`+", finding.replacement)), default=0)
         fence = "`" * max(3, longest + 1)
         lines += ["", f"{fence}suggestion", finding.replacement.rstrip("\n"), fence]
     source = f"a check (`{finding.rule}`)" if finding.source == "check" else "the model"
-    hint = f"From {source}. Reply `@stratum ignore` to hide it on this PR, or `@stratum explain` for more."
+    hint = f"From {source}. {HINT}"
     if feedback:
         hint += " 👍 or 👎 tells Stratum whether this was useful."
     lines += ["", f"<sub>{hint}</sub>", f"<!-- stratum:finding {finding.fingerprint} {finding.rule} -->"]
@@ -191,10 +197,21 @@ def _inline(finding: Finding, feedback: bool) -> dict[str, Any]:
     return comment
 
 
-def resolve_threads(gh: GitHub, number: int, threads: list[dict], gone: dict[str, str], *, bot: str,
-                    log=lambda line: None) -> int:
-    """Close Stratum's open threads whose finding is gone, saying why. `gone`
-    maps a fingerprint to the reason.
+def _new_hint(body: str) -> str:
+    """The comment with the hint from before 0.3.0 rewritten, and nothing else
+    changed. The hint is in the last <sub>, after any suggestion, whose code
+    has to stay as it was posted."""
+    head, sub, tail = body.rpartition("<sub>")
+    return head + sub + tail.replace(OLD_HINT, HINT, 1) if sub else body
+
+
+def update_threads(gh: GitHub, number: int, threads: list[dict], gone: dict[str, str], *, bot: str,
+                   log=lambda line: None) -> int:
+    """Close Stratum's open threads whose finding is gone, saying why, and
+    rewrite the hint 0.2 posted in the open ones, so it names `/stratum`, the
+    form that's read now. `gone` maps a fingerprint to the reason. A comment
+    is edited at most once per review; once no open thread has the old hint,
+    only closing edits anything. Returns how many were closed.
 
     The comment itself is edited to say it's closed, because GitHub refuses
     to let an Actions token resolve threads, even its own; resolving is tried
@@ -202,19 +219,26 @@ def resolve_threads(gh: GitHub, number: int, threads: list[dict], gone: dict[str
     closed = 0
     for thread in threads:
         fp = thread_fingerprint(thread, bot)
-        if fp not in gone or not is_open(thread, bot):
+        if not fp or not is_open(thread, bot):
             continue
         root = thread["comments"][0]
-        try:
-            gh.edit_review_comment(root["id"], closed_body(root["body"], gone[fp]))
-        except GitHubError as exc:
-            log(f"couldn't mark a finding's comment as closed: {exc}")
-            continue
-        closed += 1
-        try:
-            gh.resolve_thread(thread["id"])
-        except GitHubError:
-            pass  # the edit already says it's closed
+        body = _new_hint(root["body"])
+        if fp in gone:
+            try:
+                gh.edit_review_comment(root["id"], closed_body(body, gone[fp]))
+            except GitHubError as exc:
+                log(f"couldn't mark a finding's comment as closed: {exc}")
+                continue
+            closed += 1
+            try:
+                gh.resolve_thread(thread["id"])
+            except GitHubError:
+                pass  # the edit already says it's closed
+        elif body != root["body"]:
+            try:
+                gh.edit_review_comment(root["id"], body)
+            except GitHubError as exc:
+                log(f"couldn't update the hint in a finding's comment: {exc}")
     return closed
 
 
@@ -307,7 +331,7 @@ def render_summary(summary: Summary, state: State) -> str:
     if more_notes:
         details.append("More from the project's history:" + "".join(f"\n  - {note}" for note in more_notes))
     lines += ["<details><summary>What was reviewed</summary>", ""] + [f"- {d}" for d in details] + ["", "</details>", ""]
-    lines.append("<sub>Stratum Open: review and triage on a model the maintainers run. Comment `@stratum help` for commands.</sub>")
+    lines.append("<sub>Stratum Open: review and triage on a model the maintainers run. Comment `/stratum help` for commands.</sub>")
     body = "\n".join(lines)
     encoded = state.encode()
     while len(body) + len(encoded) > COMMENT_LIMIT and state.findings:

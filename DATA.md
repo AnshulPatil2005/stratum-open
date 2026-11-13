@@ -131,7 +131,7 @@ time.
 
 A track record is about a person, so whenever records are on:
 
-- **Everyone can see their own record.** Commenting `@stratum record` on any PR
+- **Everyone can see their own record.** Commenting `/stratum record` on any PR
   in the project replies with their merged PRs in the window, the ones later
   reverted or fixed, and the commits behind each. `stratum-open record <login>` in
   the CLI shows the same.

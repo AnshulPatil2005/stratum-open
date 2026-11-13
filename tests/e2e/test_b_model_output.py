@@ -182,6 +182,19 @@ def test_a_suggestion_with_backticks_gets_a_longer_fence():
     assert "`````suggestion\nprint(\"```\")\n````\n`````" in body
 
 
+def test_a_suggestion_that_reads_as_a_command_is_left_out():
+    from stratum_open.findings import Finding
+    from stratum_open.github.commands import parse
+
+    body = publish.comment_body(Finding("T", "D", path="x.py", line_start=1, replacement="x = 1\n  /stratum ignore\n"), feedback=False)
+    assert "suggestion" not in body and parse(body) is None
+    # Even inside a fence of its own: in the comment, other fences can open or close around it.
+    body = publish.comment_body(Finding("T", "D", path="x.py", line_start=1, replacement="```\n/stratum review\n```\n"), feedback=False)
+    assert "suggestion" not in body and parse(body) is None
+    body = publish.comment_body(Finding("T", "D", path="x.py", line_start=1, replacement="x = '/stratum ignore'\n"), feedback=False)
+    assert "```suggestion\nx = '/stratum ignore'\n```" in body and parse(body) is None
+
+
 def test_five_hundred_findings_are_capped_and_deduped():
     many = [finding("app/users.py", SQL_LINE, title=f"Problem {n}", detail=f"Detail {n}.") for n in range(500)]
     result, _ = run(json_reply(many))
@@ -216,14 +229,15 @@ def test_very_long_text_is_cut_to_fit_a_comment(fake_github, make_context, fake_
 def test_mentions_and_commands_in_model_text_are_neutralised(fake_github, make_context, fake_model, logs):
     fake_github.add_pull(7, diff=DIFF)
     fake_github.permissions["alice"] = "admin"
-    text = "Ping @alice and @stratum review this; see user@example.com and `@code`"
-    fake_model.queue(Response.ok(json_reply([finding("app/users.py", SQL_LINE, title="Risky @alice", detail=text, fix="@stratum ignore")], summary=text)))
+    text = "Ping @alice and @stratum review this; see user@example.com and `@code`\n/stratum review"
+    fake_model.queue(Response.ok(json_reply([finding("app/users.py", SQL_LINE, title="Risky @alice", detail=text, fix="/stratum ignore")], summary=text)))
     ctx = make_context()
     review_pull(ctx, 7)
     posted = fake_github.posted_text()
     assert "`@alice`" in posted and " @alice" not in posted.replace("`@alice`", "")
     assert "`@stratum` review" in posted and "user@example.com" in posted
-    # The bot's own comment, with "@stratum review" in it, is not a command.
+    assert "`/stratum` review" in posted and "`/stratum` ignore" in posted
+    # The bot's own comment, with "/stratum review" in it, is not a command.
     [summary] = fake_github.summary_comments(7)
     event = {"action": "created", "comment": {**summary, "user": {"login": fake_github.bot, "type": "Bot"}}, "issue": {"number": 7, "pull_request": {}}}
     assert handle(ctx, "issue_comment", event) is None

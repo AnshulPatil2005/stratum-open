@@ -1,4 +1,6 @@
 import json
+import re
+from pathlib import Path
 
 import pytest
 
@@ -6,6 +8,7 @@ from fakes import FakeGitHub, FakeModel
 from test_runner import DIFF, model_answer
 
 from stratum_open import action
+from stratum_open.github.commands import parse
 
 
 def run(tmp_path, monkeypatch, event_name, payload, gh, model=None):
@@ -40,7 +43,7 @@ def test_drafts_and_other_actions_are_skipped(tmp_path, monkeypatch, capsys):
 def test_comment_events_run_commands(tmp_path, monkeypatch):
     gh = FakeGitHub(diff=DIFF)
     payload = {"action": "created", "repository": {"default_branch": "main"}, "issue": {"number": 7, "pull_request": {}},
-               "comment": {"id": 1, "body": "@stratum help", "user": {"login": "erin", "type": "User"}}}
+               "comment": {"id": 1, "body": "/stratum help", "user": {"login": "erin", "type": "User"}}}
     run(tmp_path, monkeypatch, "issue_comment", payload, gh)
     assert "Stratum commands" in gh.issue_comments_[7][-1]["body"]
 
@@ -58,11 +61,13 @@ def test_schedule_builds_the_queue(tmp_path, monkeypatch):
     [
         ("pull_request_target", None, True),
         ("schedule", None, True),
-        ("issue_comment", "@stratum triage", False),
-        ("issue_comment", "@stratum record", False),
-        ("issue_comment", "@stratum  rereview", True),
-        ("issue_comment", "@stratum\texplain", True),
-        ("pull_request_review_comment", "@Stratum Ignore", True),
+        ("issue_comment", "/stratum record", False),
+        ("issue_comment", "/stratum  rereview", True),
+        ("pull_request_review_comment", "/Stratum Ignore", True),
+        ("issue_comment", "@stratum review", False),
+        ("issue_comment", "/stratum triage", False),
+        ("issue_comment", "/stratum review", True),
+        ("pull_request_review_comment", "/Stratum explain", True),
         ("issue_comment", "thanks!", False),
     ],
 )
@@ -70,6 +75,35 @@ def test_needs_model_asks_the_command_parser(tmp_path, event_name, body, expecte
     event = tmp_path / "event.json"
     event.write_text(json.dumps({"comment": {"body": body}} if body is not None else {}))
     assert action.needs_model({"GITHUB_EVENT_NAME": event_name, "GITHUB_EVENT_PATH": str(event)}) is expected
+
+
+def comment_filter(path: str) -> list[str]:
+    """What the workflow's job filter looks for in a comment's body."""
+    text = (Path(__file__).parent.parent / path).read_text(encoding="utf-8")
+    return re.findall(r"contains\(github\.event\.comment\.body, '([^']*)'\)", text)
+
+
+def starts_the_job(needles: list[str], body: str) -> bool:
+    return any(needle.lower() in body.lower() for needle in needles)  # GitHub's contains() ignores case
+
+
+# Until 0.3.0 is out, the example also starts a job for the "@stratum" form, the only
+# one v0.2.0 (the version it pins) reads. The release commit drops it, and this changes with it.
+@pytest.mark.parametrize("path, needles", [("examples/stratum.yml", ["/stratum ", "@stratum"]), (".github/workflows/stratum.yml", ["/stratum "])])
+def test_the_workflow_starts_a_job_for_every_comment_the_parser_reads_as_a_command(path, needles):
+    assert comment_filter(path) == needles
+    commands = ["/stratum review", "/Stratum REVIEW", "thanks!\n/stratum review", "/stratum review\n", "ok\r\n/stratum  ignore code/sql\r\n",
+                "  /stratum record"]
+    for body in commands:
+        assert parse(body) is not None and starts_the_job(needles, body), body
+    # A slash command needs the space after it, the same text the filter looks for.
+    for body in ["/stratum\treview", "/stratum\nreview"]:
+        assert parse(body) is None and not starts_the_job(needles, body), body
+    for body in ["@stratum review", "@Stratum\ttriage"]:
+        assert parse(body) is None and starts_the_job(needles, body) is ("@stratum" in needles), body
+    # Links to the project don't start a job.
+    for body in ["Fixes https://github.com/stratum-org/stratum-open/issues/53", "/stratum-org/stratum-open", "see stratum-org/stratum-open#52"]:
+        assert parse(body) is None and not starts_the_job(needles, body), body
 
 
 def test_ci_finishing_respects_the_skip_settings(tmp_path, monkeypatch, capsys):

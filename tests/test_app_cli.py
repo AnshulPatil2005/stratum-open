@@ -66,13 +66,40 @@ def test_a_newer_push_replaces_the_queued_review(server):
     assert call(server, pr_event(number=9, action="labeled"))[1] == {"queued": False}
 
 
-def test_only_comments_that_mention_stratum_are_queued(server):
-    def comment(body):
-        return json.dumps({"action": "created", "installation": {"id": 1}, "repository": {"full_name": "acme/widget"},
-                           "issue": {"number": 7, "pull_request": {}}, "comment": {"id": 9, "body": body}}).encode()
+@pytest.mark.parametrize("body, queued", [
+    ("/stratum review", True),
+    ("thanks!\r\n/Stratum ignore code/sql\r\n", True),
+    ("@stratum review", False),
+    ("looks good", False),
+    ("Fixes https://github.com/stratum-org/stratum-open/issues/53", False),
+    ("/stratum-org/stratum-open has the docs", False),
+    ("From the model. Reply `/stratum ignore` to hide it on this PR.", False),  # Stratum's own footer
+    ("email me at hi@stratum.dev", False),
+])
+def test_only_comments_with_a_command_are_queued(server, body, queued):
+    comment = json.dumps({"action": "created", "installation": {"id": 1}, "repository": {"full_name": "acme/widget"},
+                          "issue": {"number": 7, "pull_request": {}}, "comment": {"id": 9, "body": body}}).encode()
+    assert call(server, comment, event="issue_comment")[1] == {"queued": queued}
 
-    assert call(server, comment("looks good"), event="issue_comment")[1] == {"queued": False}
-    assert call(server, comment("@stratum review"), event="issue_comment")[1] == {"queued": True}
+
+def test_a_bots_comment_is_never_queued(server):
+    # handle() drops it too, but only after a worker has cloned the repo for it.
+    comment = json.dumps({"action": "created", "installation": {"id": 1}, "repository": {"full_name": "acme/widget"},
+                          "issue": {"number": 7, "pull_request": {}},
+                          "comment": {"id": 9, "body": "/stratum review", "user": {"login": "stratum-test[bot]", "type": "Bot"}}}).encode()
+    assert call(server, comment, event="issue_comment")[1] == {"queued": False}
+
+
+def test_a_command_on_an_issue_that_isnt_a_pr_is_never_queued(server):
+    # handle() drops it too, but only after a worker has cloned the repo for it.
+    def comment(issue):
+        return json.dumps({"action": "created", "installation": {"id": 1}, "repository": {"full_name": "acme/widget"},
+                           "issue": issue, "comment": {"id": 9, "body": "/stratum review"}}).encode()
+    assert call(server, comment({"number": 7}), event="issue_comment")[1] == {"queued": False}
+    assert call(server, comment({"number": 7, "pull_request": {"url": "x"}}), event="issue_comment")[1] == {"queued": True}
+    inline = json.dumps({"action": "created", "installation": {"id": 1}, "repository": {"full_name": "acme/widget"},
+                         "pull_request": {"number": 8}, "comment": {"id": 10, "body": "/stratum ignore"}}).encode()
+    assert call(server, inline, event="pull_request_review_comment")[1] == {"queued": True}
 
 
 def test_uninstalling_deletes_the_repos_rows_and_clone(server, tmp_path):

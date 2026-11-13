@@ -2,7 +2,7 @@
 
 Every finding gets a fingerprint from what it's about (its rule, file and the
 code on its lines), not from where it sits, so the same problem keeps the same
-fingerprint when lines move. Inline comments, resolved threads, `@stratum
+fingerprint when lines move. Inline comments, resolved threads, `/stratum
 ignore` and 👍/👎 feedback all key on it.
 """
 
