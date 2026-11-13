@@ -10,7 +10,7 @@ answer is known before the model reads it.
     python benchmark/planted.py score benchmark/results/<name>
 
     python benchmark/planted.py checks --risks benchmark/planted/risks.yml --prs benchmark/planted/clean.json \\
-        --out benchmark/results/<name>-checks
+        --out benchmark/results/<name>-checks [--policy benchmark/planted/variants/known-vulnerabilities.yml]
 
     python benchmark/planted.py validate --bugs benchmark/planted/bugs.json --bugs benchmark/planted/bugs-2.json
 
@@ -27,7 +27,10 @@ folder (one per shard), so shards run as separate jobs.
 
 `checks` runs the checks that need no model: on planted risks (risks.yml),
 each of which should get its rule's finding, and on merged PRs as they are,
-where every finding is a possible false alarm for a person to mark.
+where every finding is a possible false alarm for a person to mark. A case
+marked `control: true` is the other way round: files its rule must leave
+alone. `--policy` is a policy file, for a rule that is off until a key
+turns it on.
 
 `validate` reads every case of a case file against its PR, before a model
 does: the fields are in order, the line is one the PR adds and reads `find`,
@@ -103,6 +106,7 @@ def main() -> int:
     checks.add_argument("--risks", required=True)
     checks.add_argument("--prs", required=True)
     checks.add_argument("--out", required=True)
+    checks.add_argument("--policy", help="a YAML policy file, for a rule that a key turns on")
     args = parser.parse_args()
     if args.command == "fetch":
         for bug in json.loads(Path(args.bugs).read_text(encoding="utf-8")):
@@ -492,20 +496,26 @@ def _size(model: str) -> float:
 def _checks(args) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    policy = parse_policy("")
+    policy = parse_policy(Path(args.policy).read_text(encoding="utf-8") if args.policy else "")
+    if policy.errors or policy.warnings:  # a mistyped key would leave its rule off, and the run would measure nothing
+        raise SystemExit(f"{args.policy}: " + " ".join(policy.errors + policy.warnings))
     lookup = PackageLookup()
     rows, results = [], []
     for case in yaml.safe_load(Path(args.risks).read_text(encoding="utf-8")):
         files, contents = _added_files({path: _fill(text, case["id"]) for path, text in case["files"].items()})
         found = run_checks(files, policy, lookup=lookup, contents=contents, pr_text=case.get("title", ""))
         rules = case["rule"] if isinstance(case["rule"], list) else [case["rule"]]
+        control = bool(case.get("control"))
         caught = any(f.rule in rules for f in found)
-        results.append({"id": case["id"], "rule": " or ".join(rules), "caught": caught, "found": sorted({f.rule for f in found})})
+        results.append({"id": case["id"], "rule": " or ".join(rules), "caught": caught, "found": sorted({f.rule for f in found})} | ({"control": True} if control else {}))
         for f in found:
-            expected = f.rule in rules
+            expected = f.rule in rules and not control
+            flagged = f.rule in rules and control
             rows.append({"set": "planted", "case": case["id"], "rule": f.rule, "path": f.path, "line": f.line_start or "",
-                         "title": f.title, "expected": "yes" if expected else "", "verdict": "right" if expected else "", "note": ""})
-        print(f"{case['id']}: {'caught' if caught else 'MISSED'} ({', '.join(sorted({f.rule for f in found})) or 'no findings'})", flush=True)
+                         "title": f.title, "expected": "yes" if expected else "", "verdict": "right" if expected else "wrong" if flagged else "",
+                         "note": "A control: its rule should have left this alone." if flagged else ""})
+        outcome = ("FLAGGED" if caught else "left alone") if control else ("caught" if caught else "MISSED")
+        print(f"{case['id']}: {outcome} ({', '.join(sorted({f.rule for f in found})) or 'no findings'})", flush=True)
     prs = json.loads(Path(args.prs).read_text(encoding="utf-8"))
     for item in prs:
         repo, number = item["repo"], int(item["pr"])
@@ -521,11 +531,14 @@ def _checks(args) -> int:
     (out / "prs.json").write_text(json.dumps(prs, indent=1) + "\n", encoding="utf-8")
     if not bandit_available():
         print("Bandit isn't installed, so its cases are missed: pip install bandit.")
+    if not policy.dependencies.known_vulnerabilities:
+        print("dependencies.known_vulnerabilities is off, so its cases are missed: --policy benchmark/planted/variants/known-vulnerabilities.yml.")
     return _score(out)
 
 
 def _checks_summary(out: Path) -> str:
-    planted = json.loads((out / "planted.json").read_text(encoding="utf-8"))
+    cases = json.loads((out / "planted.json").read_text(encoding="utf-8"))
+    planted, controls = [c for c in cases if not c.get("control")], [c for c in cases if c.get("control")]
     rows = _read(out / "checks.csv")
     merged = [r for r in rows if r["set"] == "merged"]
     prs = json.loads((out / "prs.json").read_text(encoding="utf-8"))
@@ -548,6 +561,10 @@ def _checks_summary(out: Path) -> str:
     missed = [c for c in planted if not c["caught"]]
     if missed:
         lines += ["", "Missed: " + "; ".join(f"`{c['id']}` (found: {', '.join(c['found']) or 'nothing'})" for c in missed) + "."]
+    if controls:
+        flagged = [c for c in controls if c["caught"]]
+        lines += ["", f"Controls, files a rule must leave alone: {len(controls) - len(flagged)} of {len(controls)} left alone."
+                  + (" Flagged: " + "; ".join(f"`{c['id']}`" for c in flagged) + "." if flagged else "")]
     marked = {v: sum(r["verdict"] == v for r in merged) for v in ("right", "wrong", "unsure", "")}
     lines += [
         "",

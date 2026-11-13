@@ -1,0 +1,3 @@
+# Flag a dependency pinned to a version with published advisories; asks osv.dev.
+dependencies:
+  known_vulnerabilities: true
