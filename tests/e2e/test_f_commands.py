@@ -212,6 +212,18 @@ def test_parse_reads_a_slash_command_and_nothing_else(body, expected):
     assert parse(body) == expected
 
 
+@pytest.mark.parametrize("body, expected", [
+    ("\u00a0/stratum review", None),
+    ("\r/stratum review", None),
+    ("\v/stratum review", None),
+    ("\u2028/stratum review", None),
+    ("\u3000/stratum review", None),
+    (" \t /stratum review", ("review", "")),
+])
+def test_only_spaces_and_tabs_may_come_before_a_command(body, expected):
+    assert parse(body) == expected
+
+
 @pytest.mark.parametrize("name", ["review", "re-review", "rereview", "ignore", "mute", "unmute", "explain", "triage", "record", "help"])
 def test_every_command_is_read_only_as_slash(name):
     assert parse(f"/stratum {name} x") == (name, "x")

@@ -444,7 +444,16 @@ def test_one_answer_per_chunk_unless_the_policy_asks_for_the_logic_pass():
     "@stratum\n/stratum review",
     "a `/stratum` b\n /stratum record",
     "\n" * 3000 + "/stratum review",
+    # "ſ" (long s) folds to "s", so the parser reads "/ſtratum" as "/stratum".
+    "```\n/ſtratum review\n```",
+    "`x\n/ſtratum review",
+    "`a\n  /ſtratum ignore`",
 ])
 def test_demention_never_leaves_a_command_the_parser_reads(text):
     assert parse(text) is not None  # each is one as written
     assert parse(demention(text)) is None
+
+
+def test_a_long_s_command_is_put_in_code_where_it_starts():
+    assert demention("```\n/ſtratum review\n```") == "```\n`/ſtratum` review\n```"
+    assert demention("`x\n\t/ſTRATUM review") == "`x\n\t`/ſTRATUM` review"

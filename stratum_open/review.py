@@ -723,7 +723,7 @@ _TO_CODE = re.compile(r"(?<![A-Za-z0-9`])(?<![A-Za-z0-9]_)@[A-Za-z0-9][A-Za-z0-9
 # filter looks for, so a link to stratum-org/stratum-open doesn't start a job.
 # Only spaces and tabs may come before it on its line: `\s` there would also
 # match newlines and make a search quadratic in a comment's line count.
-COMMAND = re.compile(r"^[^\S\n]*/stratum +([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
+COMMAND = re.compile(r"^[ \t]*/stratum +([a-z-]+)[ \t]*(.*)$", re.IGNORECASE | re.MULTILINE)
 
 
 def parse(body: str) -> tuple[str, str] | None:
@@ -751,7 +751,9 @@ def demention(text: str) -> str:
     # starts with one isn't a command.
     at = 0
     while match := COMMAND.search(text, at):
-        at = match.start() + match.group(0).lower().index("/stratum")
+        # Past the spaces and tabs before "/stratum". Not .lower().index(): the
+        # match ignores case, so it also takes "/ſtratum", which .lower() keeps.
+        at = match.start() + len(match.group(0)) - len(match.group(0).lstrip())
         text = f"{text[:at]}`{text[at:at + 8]}`{text[at + 8:]}"
     return text
 
