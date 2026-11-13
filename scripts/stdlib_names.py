@@ -46,8 +46,9 @@ MODULES = (
     "typing", "unittest", "unittest.mock", "urllib.error", "urllib.parse", "urllib.request", "uuid", "warnings", "weakref",
     "zipfile",
 )
-# `os.path` is one of these two, by platform.
-ALIASES = {"os.path": ("posixpath", "ntpath")}
+# `os.path` is one of these two, by platform. `collections.abc` was a file of its own
+# until 3.13, which makes it another name for `_collections_abc`, private helpers and all.
+ALIASES = {"os.path": ("posixpath", "ntpath"), "collections.abc": ("collections.abc", "_collections_abc")}
 _LAZY = re.compile(r"^(\s*)lazy\s+(import|from)\b", re.M)
 
 

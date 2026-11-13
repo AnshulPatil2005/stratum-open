@@ -198,7 +198,7 @@ def test_the_list_has_every_name_the_running_python_has():
         except ModuleNotFoundError:
             continue  # newer than this Python
         missing = [name for name in dir(live) if name not in names and not (name.startswith("__") and name.endswith("__"))]
-        assert missing == [], module
+        assert missing == [], f"{module}: run scripts/stdlib_names.py again, or see why it reads this module differently"
 
 
 def test_the_running_python_is_asked_too(tmp_path, monkeypatch):

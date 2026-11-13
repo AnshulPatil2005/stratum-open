@@ -26,15 +26,6 @@ NAMES: dict[str, frozenset[str]] = {
         bytes_types decode decodebytes decodestring encode encodebytes encodestring main re standard_b64decode standard_b64encode
         struct test urlsafe_b64decode urlsafe_b64encode z85decode z85encode
     """.split()),
-    "collections.abc": frozenset("""
-        ABCMeta AsyncGenerator AsyncIterable AsyncIterator Awaitable Buffer ByteString Callable Collection Container Coroutine
-        EllipsisType FunctionType Generator GenericAlias Hashable ItemsView Iterable Iterator KeysView Mapping MappingView
-        MutableMapping MutableSequence MutableSet Reversible Sequence Set Sized ValuesView _CallableGenericAlias
-        _DeprecateByteStringMeta __all__ __name__ _ag _check_methods _coro _f _is_param_expr _is_typevarlike _type_repr
-        abstractmethod async_generator bytearray_iterator bytes_iterator coroutine dict_itemiterator dict_items dict_keyiterator
-        dict_keys dict_valueiterator dict_values generator list_iterator list_reverseiterator longrange_iterator mappingproxy
-        range_iterator set_iterator str_iterator sys tuple_iterator zip_iterator
-    """.split()),
     "configparser": frozenset("""
         BasicInterpolation ConfigParser ConverterMapping DEFAULTSECT DuplicateOptionError DuplicateSectionError Error
         ExtendedInterpolation Interpolation InterpolationDepthError InterpolationError InterpolationMissingOptionError
