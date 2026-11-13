@@ -105,9 +105,9 @@ On GitHub's free runner (4 CPUs, 16 GB RAM, no GPU) you can choose between two m
 | `ollama-model` | Policy setting | Bugs found | Wrong comments per clean PR | Time per PR | Download |
 | --- | --- | --- | --- | --- | --- |
 | `qwen2.5-coder:7b` (the example's) | | 1 of 39 | about 0.4 | about 2.5 min | 4.7 GB, kept in the Actions cache |
-| `gpt-oss:20b` | `review.reasoning: low` and `review.verify: strict` | 16 of 39 (12 to 16 over three runs) | about 0.2 | about 3.5 min | 13.8 GB, downloaded each run |
+| `gpt-oss:20b` | `review.reasoning: low` and `review.verify: strict` | 16 of 39 (12 to 18 over four runs) | about 0.2 | about 3.5 min | 13.8 GB, downloaded each run |
 
-`gpt-oss:20b` finds far more, at about the same speed and with fewer wrong comments. Two costs:
+`gpt-oss:20b` finds far more, at about the same speed and with fewer wrong comments. With the logic pass and ten lines of code around each change it finds more again, for about three times the wait ([how it was measured](benchmark/results/2026-11-13-logic-pass-actions-cpu/notes.md)). Two costs of `gpt-oss:20b` either way:
 - **Disk:** it doesn't fit the runner's disk as it comes, so the Action removes preinstalled SDKs it doesn't need to make room.
 - **Cache:** it's bigger than a repository's 10 GB Actions cache, so it's downloaded each run, which adds a couple of minutes. Ollama itself is still cached.
 
