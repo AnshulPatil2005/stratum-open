@@ -155,6 +155,13 @@ python benchmark/planted.py run --bugs benchmark/planted/bugs-2.json --set dev -
 
 On GitHub's runners, give the **Planted-bug benchmark** workflow the file as its `bugs` input. Results on the second set are reported separately from the first set's, in a run folder of their own, so every "of 39" stays comparable.
 
+## Other reviewers
+
+[others/](others/README.md) runs another open-source reviewer, PR-Agent,
+through the same planted bugs with the same local model on the same runner,
+and writes the same files, so `planted.py score` puts both in one table. Its
+README says how PR-Agent is set up and what the comparison doesn't show.
+
 ## Results
 
 Each run is a folder in [results/](results/), holding its `summary.md`, every
