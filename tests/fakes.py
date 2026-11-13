@@ -50,6 +50,7 @@ class FakeGitHub:
         self.replies: list[tuple[int, int, str]] = []
         self.resolved: list[str] = []
         self.reactions_: dict[int, list[dict]] = {}
+        self.history_review_comments: list[dict] = []  # inline comments on other PRs, for review.learn_from_history
         self.compare: dict[tuple[str, str], list[str] | None] = {}
         self.closed: list[int] = []
         self.issues: list[dict] = []
@@ -107,6 +108,17 @@ class FakeGitHub:
 
     def review_comment(self, comment_id):
         return next((c for c in self.review_comments_ if c["id"] == comment_id), None)
+
+    def recent_review_comments(self, limit):
+        """This PR's inline comments and `history_review_comments` (other PRs'), newest first."""
+        url = f"https://api.github.com/repos/{self.repo}/pulls/{next(iter(self.pulls))}"
+        found = [dict(c, pull_request_url=url) for c in self.review_comments_] + list(self.history_review_comments)
+        return sorted(found, key=lambda c: -c["id"])[:limit]
+
+    def recent_issue_comments(self, limit):
+        found = [dict(c, issue_url=c.get("issue_url") or f"https://api.github.com/repos/{self.repo}/issues/{number}")
+                 for number, comments in self.issue_comments_.items() for c in comments]
+        return sorted(found, key=lambda c: -c["id"])[:limit]
 
     def create_review(self, number, head_sha, comments, body=""):
         if self.reject_review and len(comments) > 1:

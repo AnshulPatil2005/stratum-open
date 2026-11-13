@@ -50,6 +50,11 @@ review:
   skip_authors: []             # logins whose PRs aren't reviewed
   skip_labels: []              # PRs with any of these labels aren't reviewed
   skip_branches: []            # globs, e.g. ["release/**"]: PRs from these branches aren't reviewed
+  learn_from_history: false    # true leaves out findings like ones maintainers rejected on recent PRs, read from GitHub at review time (nothing is stored):
+                               #   a rule muted once it has 5 or more votes from people with write access and 60% of them are 👎
+                               #   (an `@stratum ignore` reply or `@stratum ignore <rule>` counts as a 👎), as the GitHub App does;
+                               #   and a model finding on the same file and code that maintainers voted down. The summary says what was left out.
+  learn_lookback: 100          # how many of the repo's latest inline comments (and PR comments) that reads; one API call per 100, at most 500
 
 checks:
   bandit_low: false            # profile: keep Bandit's low-severity results too (large: true)

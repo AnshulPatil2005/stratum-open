@@ -25,6 +25,10 @@ from stratum_open.util import redact
 SCHEMA_VERSION = 1  # kept in `PRAGMA user_version`, so it needs no table
 TABLES = ("reviews", "findings", "jobs", "votes", "mutes")
 FINDING_FIELDS = ("fingerprint", "rule", "severity", "category", "path", "line_start", "line_end", "title", "detail")
+# A rule is muted by at least MUTE_MIN_VOTES votes of which at least MUTE_DOWN_RATE are 👎. The App counts the
+# votes it stored; the Action, with `review.learn_from_history`, the ones on the repo's latest comments.
+MUTE_MIN_VOTES = 5
+MUTE_DOWN_RATE = 0.6
 
 # IF NOT EXISTS makes this safe to rerun after a crash, or by two processes
 # opening a new file at once.
@@ -105,7 +109,7 @@ class Storage(Protocol):
     def rule_votes(self, repo: str) -> dict[str, tuple[int, int]]:
         """rule -> (👍, 👎)."""
 
-    def muted_rules(self, repo: str, *, min_votes: int = 5, down_rate: float = 0.6) -> set[str]:
+    def muted_rules(self, repo: str, *, min_votes: int = MUTE_MIN_VOTES, down_rate: float = MUTE_DOWN_RATE) -> set[str]:
         """Rules muted by hand, or by at least `min_votes` votes of which at
         least `down_rate` are 👎."""
 
@@ -151,7 +155,7 @@ class NullStorage:
     def rule_votes(self, repo: str) -> dict[str, tuple[int, int]]:
         return {}
 
-    def muted_rules(self, repo: str, *, min_votes: int = 5, down_rate: float = 0.6) -> set[str]:
+    def muted_rules(self, repo: str, *, min_votes: int = MUTE_MIN_VOTES, down_rate: float = MUTE_DOWN_RATE) -> set[str]:
         return set()
 
     def mute(self, repo: str, rule: str, by: str) -> None:
@@ -261,8 +265,8 @@ class SQLiteStorage:
             rows = db.execute("SELECT rule, SUM(vote > 0), SUM(vote < 0) FROM votes WHERE repo = ? GROUP BY rule", (_repo(repo),)).fetchall()
         return {rule: (up, down) for rule, up, down in rows}
 
-    def muted_rules(self, repo: str, *, min_votes: int = 5, down_rate: float = 0.6) -> set[str]:
-        by_votes = {rule for rule, (up, down) in self.rule_votes(repo).items() if up + down >= min_votes and down / (up + down) >= down_rate}
+    def muted_rules(self, repo: str, *, min_votes: int = MUTE_MIN_VOTES, down_rate: float = MUTE_DOWN_RATE) -> set[str]:
+        by_votes = muted_by_votes(self.rule_votes(repo), min_votes=min_votes, down_rate=down_rate)
         with self._tx() as db:
             by_hand = {row["rule"] for row in db.execute("SELECT rule FROM mutes WHERE repo = ?", (_repo(repo),))}
         return by_hand | by_votes
@@ -340,6 +344,11 @@ class SQLiteStorage:
                 )
             ]
         return {table: out[table] for table in TABLES}
+
+
+def muted_by_votes(votes: dict[str, tuple[int, int]], *, min_votes: int = MUTE_MIN_VOTES, down_rate: float = MUTE_DOWN_RATE) -> set[str]:
+    """The rules muted by their votes: rule -> (👍, 👎)."""
+    return {rule for rule, (up, down) in votes.items() if up + down >= min_votes and down / (up + down) >= down_rate}
 
 
 def _repo(repo: str) -> str:
