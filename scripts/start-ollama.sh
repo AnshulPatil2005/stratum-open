@@ -66,4 +66,16 @@ for _ in $(seq 1 60); do
   if curl -sf http://localhost:11434/api/version > /dev/null; then break; fi
   sleep 1
 done
-"$root/bin/ollama" pull "$model"
+# The registry now and then answers 503, sometimes at the very end of a pull.
+# Ollama keeps the layers it has, so trying again only fetches what's missing.
+for attempt in 1 2 3; do
+  if "$root/bin/ollama" pull "$model"; then
+    exit 0
+  fi
+  if [ "$attempt" -lt 3 ]; then
+    echo "Pulling $model failed (attempt $attempt of 3); trying again in $((attempt * 15)) s"
+    sleep $((attempt * 15))
+  fi
+done
+echo "Pulling $model failed three times" >&2
+exit 1
