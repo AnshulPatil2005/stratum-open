@@ -49,6 +49,7 @@ class Review:
     min_severity: str = "medium"  # the model's findings below this aren't shown; the checks' always are
     verify: str = "none"  # none | strict | lenient: one more short call per model finding, dropping those the model rejects
     reasoning: str = "default"  # default | low | off: how much a thinking model (gpt-oss, Qwen3) thinks before answering
+    logic_pass: bool = False  # one more call per chunk that looks only for logic errors, one decision at a time
     rules: tuple[str, ...] = ()  # the project's own review rules, in plain words, added to the prompt
     ignore_paths: tuple[str, ...] = DEFAULT_IGNORED
     log_prompts: bool = False

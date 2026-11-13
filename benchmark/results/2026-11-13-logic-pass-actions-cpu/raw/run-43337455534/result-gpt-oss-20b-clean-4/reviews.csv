@@ -1,0 +1,5 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/werkzeug#3337,dev,negated-condition,src/werkzeug/http.py,1356,gpt-oss:20b,samples2-verify-strict,clean,827.3,yes,6,0,2,0,
+psf/requests#7496,dev,flipped-comparison,src/requests/models.py,241,gpt-oss:20b,samples2-verify-strict,clean,124.8,yes,2,0,0,0,
+Textualize/textual#6464,dev,wrong-boolean,src/textual/screen.py,1532,gpt-oss:20b,samples2-verify-strict,clean,195.5,yes,2,0,0,0,
+pypa/pip#14349,dev,off-by-one,src/pip/_internal/cli/autocompletion.py,144,gpt-oss:20b,samples2-verify-strict,clean,207.6,yes,2,0,0,0,

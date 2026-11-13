@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/werkzeug#3337,gpt-oss:20b,logic-context10-verify-strict,clean,medium,bug,src/werkzeug/sansio/http.py,114,,Passing unsupported kwargs to http.parse_cookie,"The wrapper forwards all kwargs to http.parse_cookie, which does not accept a 'cls' keyword. If callers pass a 'cls' argument (as the old implementation did), this will raise a TypeError.",,

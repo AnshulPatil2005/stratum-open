@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/rich#4006,gpt-oss:20b,samples2-verify-strict,clean,medium,bug,rich/cells.py,203,,Potential IndexError when no prior span,"When a variation selector is encountered and no character has been measured yet, the code enters the else branch and accesses spans[-1] without checking if spans is empty, causing an IndexError.",,
+Textualize/rich#4006,gpt-oss:20b,samples2-verify-strict,clean,medium,bug,rich/cells.py,214,,Potential IndexError for zero-width character with no prior span,"When a zero-width character is processed and spans is empty, the code attempts to access spans[-1], raising an IndexError.",,

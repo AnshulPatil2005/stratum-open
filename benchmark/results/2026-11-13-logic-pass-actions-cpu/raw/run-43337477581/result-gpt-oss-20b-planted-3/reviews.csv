@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3818,dev,negated-condition,src/click/core.py,1591,gpt-oss:20b,logic-context10-verify-strict,planted,1208.6,yes,4,0,0,0,
+psf/black#5634,dev,flipped-comparison,src/black/comments.py,698,gpt-oss:20b,logic-context10-verify-strict,planted,950.6,yes,4,0,2,2,
+Textualize/rich#3905,dev,wrong-boolean,rich/progress.py,1177,gpt-oss:20b,logic-context10-verify-strict,planted,482.3,yes,3,0,1,1,
+scrapy/scrapy#8461,dev,missing-await,scrapy/extensions/feedexport.py,969,gpt-oss:20b,logic-context10-verify-strict,planted,424.6,yes,3,0,1,0,
+pallets/werkzeug#3293,dev,not-in,src/werkzeug/datastructures/accept.py,302,gpt-oss:20b,logic-context10-verify-strict,planted,407.5,yes,3,0,1,1,

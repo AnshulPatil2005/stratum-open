@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+scrapy/scrapy#8461,gpt-oss:20b,logic-verify-strict,clean,medium,bug,scrapy/extensions/feedexport.py,965,,Incorrect lock status check,"Twisted's DeferredLock exposes a `locked()` method, not a `locked` attribute. This condition always evaluates to True, causing the lock to be acquired twice and potentially deadlocking.",,
+scrapy/scrapy#8461,gpt-oss:20b,logic-verify-strict,clean,medium,bug,scrapy/extensions/feedexport.py,967,yes,Missing await on lock acquisition,`DeferredLock.acquire()` returns a Deferred that must be awaited. Calling it without awaiting may leave the lock in an inconsistent state and block subsequent operations.,,

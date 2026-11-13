@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/jinja#2098,gpt-oss:20b,logic-context10-verify-strict,clean,high,bug,src/jinja2/__init__.py,55,,Incorrect package name in version lookup,"The `__getattr__` implementation returns the version of the `werkzeug` package instead of `jinja2`, causing callers to receive the wrong version string and potentially breaking logic that relies on the correct version.",,

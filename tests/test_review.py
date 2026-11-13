@@ -339,3 +339,87 @@ def test_the_verifier_is_shown_the_flagged_line_even_in_a_long_hunk():
 ])
 def test_demention_escapes_every_mention_github_would_link(text, escaped):
     assert demention(text) == escaped
+
+
+# review.logic_pass: a second answer per chunk, from a prompt of its own.
+
+RETURN_LINE = {"file": "app/users.py", "code": "return cur.fetchone()", "line": 6, "severity": "high", "category": "bug",
+               "title": "Returns before the cursor is closed", "detail": "The row is returned and the cursor is never closed.",
+               "fix": "Close it first."}
+LOGIC = parse_policy("review:\n  logic_pass: true\n")
+DOWN = Reply("", "fake-7b", 0.1, error="couldn't reach the model")
+
+
+def logic_answer(*findings):
+    decisions = [{"line": 6, "does": "Returns the first row.", "should": "Close the cursor first.", "agree": "no" if findings else "yes"}]
+    return json.dumps({"decisions": decisions, "findings": list(findings)})
+
+
+def test_the_logic_pass_reads_the_same_chunk_with_its_own_prompt():
+    model = FakeModel(answer(findings=[]), logic_answer(RETURN_LINE))
+    result = run(model, LOGIC)
+    (general, first), (logic, second) = model.prompts
+    assert first == second  # the same chunk, so a finding lands on the same lines
+    assert "Find concrete defects" in general and "one kind of defect only" in logic
+    assert '"decisions"' in logic and '"decisions"' not in general
+    [finding] = result.findings
+    assert (finding.title, finding.line_start) == ("Returns before the cursor is closed", 6)
+    assert [c.get("pass") for c in result.calls] == [None, "logic"]
+    assert result.complete and result.summary.startswith("Switches")
+
+
+def test_a_logic_pass_that_fails_leaves_the_review_complete():
+    for broken in (DOWN, "not JSON at all"):
+        result = run(FakeModel(answer(), broken), LOGIC)
+        assert [f.title for f in result.findings] == ["SQL injection"]
+        assert result.complete and result.failed_calls == 0 and not result.unread
+        assert result.calls[1]["error"] and result.calls[1]["pass"] == "logic"
+
+
+def test_the_logic_pass_is_skipped_when_the_review_got_no_answer():
+    model = FakeModel(DOWN, logic_answer(RETURN_LINE))
+    result = run(model, LOGIC)
+    assert len(model.prompts) == 1  # a model that's down isn't asked twice
+    assert result.failed_calls == 1 and not result.complete and result.findings == []
+
+
+def test_what_both_passes_report_is_one_finding_ranked_ahead():
+    again = dict(json.loads(answer())["findings"][0], title="Query built from a string", severity="medium")
+    result = run(FakeModel(answer(), logic_answer(again, RETURN_LINE)), LOGIC)
+    by_line = {f.line_start: f for f in result.findings}
+    assert sorted(by_line) == [5, 6]
+    assert by_line[5].title == "SQL injection" and by_line[5].severity == "high"  # the most severe copy
+    assert by_line[5].confidence == 0.8 and by_line[6].confidence == 0.6
+
+
+def test_one_pass_saying_a_thing_twice_is_not_agreement():
+    first = json.loads(answer())["findings"][0]
+    repeated = dict(first, title="Query built from a string")
+    result = run(FakeModel(answer(findings=[first, repeated]), logic_answer()), LOGIC)
+    [finding] = result.findings
+    assert finding.confidence == 0.6
+
+
+def test_a_cut_off_answer_still_gets_its_logic_pass():
+    cut = '{"summary": "Changes the query.", "findings": [' + json.dumps(json.loads(answer())["findings"][0]) + ', {"file": "app/users.py", "tit'
+    result = run(FakeModel(cut, logic_answer(RETURN_LINE)), LOGIC)
+    assert sorted(f.line_start for f in result.findings) == [5, 6]
+    assert not result.complete and (result.salvaged_calls, result.failed_calls) == (1, 0) and result.unread == {"app/users.py"}
+
+
+def test_verify_checks_a_finding_both_passes_reported_once():
+    again = dict(json.loads(answer())["findings"][0], title="Query built from a string")
+    policy = parse_policy("review:\n  logic_pass: true\n  verify: strict\n")
+    model = FakeModel(answer(), logic_answer(again, RETURN_LINE),
+                      '{"real": "yes", "why": "user_id is put in the SQL."}', '{"real": "no", "why": "The cursor is closed elsewhere."}')
+    result = run(model, policy)
+    assert [c.get("pass") for c in result.calls] == [None, "logic", "verify", "verify"]
+    assert [f.title for f in result.findings] == ["SQL injection"]
+
+
+def test_one_answer_per_chunk_unless_the_policy_asks_for_the_logic_pass():
+    model = FakeModel(answer())
+    result = run(model)
+    assert len(model.prompts) == 1 and [f.confidence for f in result.findings] == [0.6]
+    assert parse_policy(None).review.logic_pass is False
+    assert parse_policy("review:\n  logic_pass: 1\n").errors == ("review.logic_pass must be true or false.",)

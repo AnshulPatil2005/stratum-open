@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+encode/httpx#3672,gpt-oss:20b,logic-context10-verify-strict,clean,medium,bug,src/httpx/_server.py,52,,Potential blocking and resource leak on keep‑alive,"When a keep‑alive request is detected, the code calls `stream.read()` which blocks until the stream is exhausted. If the body has already been read by `_recv_body`, this call will block forever, causing the server to hang. Additionally, the stream is never explicitly closed, leading to a resource leak.",,
