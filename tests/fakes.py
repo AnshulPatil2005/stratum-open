@@ -31,6 +31,7 @@ class FakeGitHub:
                  permissions: dict | None = None, ci: bool | None = True, linked: list[int] | None = None):
         self.repo = repo
         self.diff = diff
+        self.diffs: dict[int, str] = {}  # a PR's own diff, where it isn't `diff`
         self.files = files or {}  # (path, ref) -> text
         self.permissions = permissions or {}
         self.ci = ci
@@ -72,8 +73,11 @@ class FakeGitHub:
     def open_pulls(self):
         return list(self.pulls.values())
 
+    def closed_pulls(self):
+        return iter(sorted((p for p in self.pulls.values() if p["state"] == "closed"), key=lambda p: -p["number"]))
+
     def pull_diff(self, number):
-        return self.diff
+        return self.diffs.get(number, self.diff)
 
     def file_text(self, path, ref, *, max_bytes=None):
         text = self.files.get((path, ref))
@@ -156,6 +160,9 @@ class FakeGitHub:
         return self.permissions.get(login, "read")
 
     def ci_state(self, sha, *, ignore):
+        return self.ci
+
+    def ci_state_at(self, sha, when, *, ignore):
         return self.ci
 
     def linked_issues(self, number):

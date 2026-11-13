@@ -9,6 +9,8 @@ import subprocess
 
 import pytest
 
+from stratum_open.checks import bandit
+
 from conftest import DIFF, SQL_LINE, head_of
 from contract import assert_contract, assert_no_traceback, run_stratum
 from fake_model import Response, finding, json_reply
@@ -89,6 +91,56 @@ def test_triage_command(fake_github, fake_model):
     fake_github.add_pull(7, diff=DIFF)
     result = run_stratum(["triage", fake_github.repo], env=env_for(fake_github, fake_model))
     assert result.returncode == 0 and "Not reviewed yet (1)" in result.stdout, result.stderr
+
+
+def closed_prs(fake_github):
+    """#7 merged with CI that failed, #8 closed unmerged with CI that passed, #9 still open."""
+    def run(started, completed, conclusion):
+        return {"name": "test", "check_suite": {"id": 1}, "status": "completed", "conclusion": conclusion,
+                "started_at": f"2026-01-01T{started}:00Z", "completed_at": f"2026-01-01T{completed}:00Z"}
+
+    fake_github.add_pull(7, diff=DIFF, state="closed", merged=True, body="Fixes #3: the user query, and its test.")
+    fake_github.add_pull(8, diff=DIFF, state="closed", title="Résumé → ✓")
+    fake_github.add_pull(9, diff=DIFF)
+    fake_github.statuses[HEAD] = {"state": "failure", "statuses": [{"context": "docs", "state": "failure", "created_at": "2026-01-01T12:00:00Z"}]}
+    # Passed while the PR was open; run again after it closed (2026-01-02), when it failed. The Action's own job isn't CI.
+    fake_github.ci_runs[head_of(8)] = [run("12:00", "12:05", "success"), {**run("12:00", "12:05", "failure"), "started_at": "2026-01-05T12:00:00Z"},
+                                       {**run("12:00", "12:05", "cancelled"), "name": "stratum", "check_suite": {"id": 2}}]
+
+
+def test_replay_reads_closed_prs_and_writes_nothing(fake_github, fake_model, tmp_path):
+    closed_prs(fake_github)
+    report = tmp_path / "replay.md"
+    result = run_stratum(["replay", fake_github.repo, "--json", "--out", str(report)], env=env_for(fake_github, fake_model))
+    assert result.returncode == 0, result.stderr
+    assert_no_traceback(result.stderr)
+    data = json.loads(result.stdout)
+    assert [(p["number"], p["outcome"], p["ci"], p["linked_issues"]) for p in data["pulls"]] == [
+        (8, "closed unmerged", True, []), (7, "merged", False, [3]),
+    ]
+    assert data["pulls"][1]["findings"] == {"code/sql": 1} and "CI is failing." in data["pulls"][1]["reasons"]
+    assert "| #7 Add a thing | merged | triage: needs work |" in report.read_text(encoding="utf-8")
+    assert {r["method"] for r in fake_github.requests} == {"GET"}
+    assert fake_github.posted_text() == "" and not fake_github.labels and not fake_github.closed
+    # The repo, its policy and the list; then a PR's diff, its two CI reads and, for Bandit, its Python file.
+    assert data["requests"] == len(fake_github.requests) == 3 + 2 * (3 + bandit.available())
+    assert fake_github.token not in result.stdout + result.stderr
+
+
+def test_replay_stops_when_the_rate_limit_runs_low_and_keeps_its_rows(fake_github, fake_model):
+    closed_prs(fake_github)
+
+    def spend(request):  # someone else on the same token uses up the hour while #8 is being read
+        if request["path"].endswith("/pulls/8"):
+            fake_github.remaining = 40
+
+    fake_github.on_request = spend
+    result = run_stratum(["replay", fake_github.repo], env=env_for(fake_github, fake_model))
+    assert result.returncode == 2, result.stderr
+    assert "Stopped after 1 of 50 PRs: GitHub's rate limit is nearly used up (40 requests left)." in result.stderr
+    assert "| #8 R" in result.stdout and "| #7 " not in result.stdout
+    assert fake_github.requests_to("GET", r"/pulls/7$") == []
+    assert_no_traceback(result.stderr)
 
 
 def test_local_review_in_a_repo_with_a_planted_bug_and_emoji(fake_model, tmp_path):
