@@ -48,7 +48,7 @@ runs:
       uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: ~/.stratum-ollama
-        key: stratum-ollama-${{ runner.os }}-${{ runner.arch }}-0.40.13-${{ inputs.ollama-model }}
+        key: stratum-ollama-${{ runner.os }}-${{ runner.arch }}-0.40.16-${{ inputs.ollama-model }}
 
     - name: Start Ollama
       if: inputs.ollama-model != '' && steps.need.outputs.model == 'true'

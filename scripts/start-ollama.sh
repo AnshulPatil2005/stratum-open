@@ -17,8 +17,8 @@ set -euo pipefail
 
 model="${1:?usage: start-ollama.sh <model>}"
 root="${STRATUM_OLLAMA_ROOT:-$HOME/.stratum-ollama}"
-version="0.40.13"
-sha256="c9490e0f520be21271d969e6703f012268b1d39f8b70dd58854e5bfef7a75bb6"
+version="0.40.16"
+sha256="87bfafb2acbc89b2e6a1be0a9043de6aa75fb450696f86bc426e65fc448f788d"
 cache_limit=$((9 * 1024 * 1024 * 1024))
 headroom=$((3 * 1024 * 1024 * 1024))
 
