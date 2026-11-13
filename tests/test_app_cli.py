@@ -90,6 +90,18 @@ def test_a_bots_comment_is_never_queued(server):
     assert call(server, comment, event="issue_comment")[1] == {"queued": False}
 
 
+def test_a_command_on_an_issue_that_isnt_a_pr_is_never_queued(server):
+    # handle() drops it too, but only after a worker has cloned the repo for it.
+    def comment(issue):
+        return json.dumps({"action": "created", "installation": {"id": 1}, "repository": {"full_name": "acme/widget"},
+                           "issue": issue, "comment": {"id": 9, "body": "/stratum review"}}).encode()
+    assert call(server, comment({"number": 7}), event="issue_comment")[1] == {"queued": False}
+    assert call(server, comment({"number": 7, "pull_request": {"url": "x"}}), event="issue_comment")[1] == {"queued": True}
+    inline = json.dumps({"action": "created", "installation": {"id": 1}, "repository": {"full_name": "acme/widget"},
+                         "pull_request": {"number": 8}, "comment": {"id": 10, "body": "/stratum ignore"}}).encode()
+    assert call(server, inline, event="pull_request_review_comment")[1] == {"queued": True}
+
+
 def test_uninstalling_deletes_the_repos_rows_and_clone(server, tmp_path):
     server.storage.record_review("acme/widget", 7, "a" * 40, 50, "s", [Finding("t", "d", path="x.py")])
     clone = server._clone_dir("acme/widget")
