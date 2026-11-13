@@ -1,0 +1,6 @@
+# The logic pass with each hunk's whole function shown, less thinking and the strict verify pass.
+review:
+  reasoning: low
+  verify: strict
+  logic_pass: true
+  context_scope: function

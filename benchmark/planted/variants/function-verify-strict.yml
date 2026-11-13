@@ -1,0 +1,5 @@
+# Each hunk shown with its whole function, with less thinking and the strict verify pass.
+review:
+  reasoning: low
+  verify: strict
+  context_scope: function
