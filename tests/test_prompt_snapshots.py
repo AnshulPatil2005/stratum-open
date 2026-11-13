@@ -57,3 +57,11 @@ def test_large_per_file_and_walkthrough_prompts():
     (file_system, file_user), (synthesis_system, synthesis_user) = model.prompts
     snapshots.check("prompt_large_file.txt", f"{file_system}\n\n===== user =====\n\n{file_user}\n")
     snapshots.check("prompt_large_synthesis.txt", f"{synthesis_system}\n\n===== user =====\n\n{synthesis_user}\n")
+
+
+def test_the_logic_pass_prompt():
+    model = FakeModel('{"summary": "", "findings": []}', '{"decisions": [], "findings": []}')
+    policy = apply(parse_policy("review:\n  logic_pass: true\n"), "small")
+    review(title="Query users", description="Small refactor.", files=parse_diff(DIFF), policy=policy, model=model)
+    system, user = model.prompts[1]
+    snapshots.check("prompt_logic.txt", f"{system}\n\n===== user =====\n\n{user}\n")

@@ -279,3 +279,109 @@ def test_the_verifier_is_shown_the_flagged_line_even_in_a_long_hunk():
 ])
 def test_demention_escapes_every_mention_github_would_link(text, escaped):
     assert demention(text) == escaped
+
+
+# review.logic_pass and review.samples: more than one answer per chunk.
+
+RETURN_LINE = {"file": "app/users.py", "code": "return cur.fetchone()", "line": 6, "severity": "high", "category": "bug",
+               "title": "Returns before the cursor is closed", "detail": "The row is returned and the cursor is never closed.",
+               "fix": "Close it first."}
+LOGIC = parse_policy("review:\n  logic_pass: true\n")
+TWICE = parse_policy("review:\n  samples: 2\n")
+DOWN = Reply("", "fake-7b", 0.1, error="couldn't reach the model")
+
+
+def logic_answer(*findings):
+    decisions = [{"line": 6, "does": "Returns the first row.", "should": "Close the cursor first.", "agree": "no" if findings else "yes"}]
+    return json.dumps({"decisions": decisions, "findings": list(findings)})
+
+
+def test_the_logic_pass_reads_the_same_chunk_with_its_own_prompt():
+    model = FakeModel(answer(findings=[]), logic_answer(RETURN_LINE))
+    result = run(model, LOGIC)
+    (general, first), (logic, second) = model.prompts
+    assert first == second  # the same chunk, so a finding lands on the same lines
+    assert "Find concrete defects" in general and "one kind of defect only" in logic
+    assert '"decisions"' in logic and '"decisions"' not in general
+    [finding] = result.findings
+    assert (finding.title, finding.line_start) == ("Returns before the cursor is closed", 6)
+    assert [c.get("pass") for c in result.calls] == [None, "logic"]
+    assert result.complete and result.summary.startswith("Switches")
+
+
+def test_a_logic_pass_that_fails_leaves_the_review_complete():
+    for broken in (DOWN, "not JSON at all"):
+        result = run(FakeModel(answer(), broken), LOGIC)
+        assert [f.title for f in result.findings] == ["SQL injection"]
+        assert result.complete and result.failed_calls == 0 and not result.unread
+        assert result.calls[1]["error"] and result.calls[1]["pass"] == "logic"
+
+
+def test_the_logic_pass_is_skipped_when_the_review_got_no_answer():
+    model = FakeModel(DOWN, logic_answer(RETURN_LINE))
+    result = run(model, LOGIC)
+    assert len(model.prompts) == 1  # a model that's down isn't asked twice
+    assert result.failed_calls == 1 and not result.complete and result.findings == []
+
+
+def test_samples_ask_the_same_question_again_and_merge_the_findings():
+    model = FakeModel(answer(), answer(findings=[RETURN_LINE], matches_description="no", mismatch="It does more."))
+    result = run(model, TWICE)
+    assert model.prompts[0] == model.prompts[1]
+    assert sorted(f.line_start for f in result.findings) == [5, 6]
+    assert [c.get("pass") for c in result.calls] == [None, "sample"]
+    # The description is judged by the first answer; a second sample is there for its findings.
+    assert result.matches_description == "yes" and result.mismatch == ""
+    assert result.complete
+
+
+def test_what_two_answers_agree_on_is_one_finding_ranked_ahead():
+    again = dict(json.loads(answer())["findings"][0], title="Query built from a string", severity="medium")
+    result = run(FakeModel(answer(), answer(findings=[again, RETURN_LINE])), TWICE)
+    by_line = {f.line_start: f for f in result.findings}
+    assert sorted(by_line) == [5, 6]
+    assert by_line[5].title == "SQL injection" and by_line[5].severity == "high"  # the most severe copy
+    assert by_line[5].confidence == 0.8 and by_line[6].confidence == 0.6
+
+
+def test_one_answer_saying_a_thing_twice_is_not_agreement():
+    first = json.loads(answer())["findings"][0]
+    repeated = dict(first, title="Query built from a string")
+    result = run(FakeModel(answer(findings=[first, repeated]), answer(findings=[])), TWICE)
+    [finding] = result.findings
+    assert finding.confidence == 0.6
+
+
+def test_a_chunk_is_read_when_one_of_its_samples_was_read_in_full():
+    cut = '{"summary": "Changes the query.", "findings": [' + json.dumps(RETURN_LINE) + ', {"file": "app/users.py", "tit'
+    read = run(FakeModel(DOWN, answer()), TWICE)
+    assert read.complete and read.failed_calls == 0 and not read.unread
+    assert [f.title for f in read.findings] == ["SQL injection"] and read.summary.startswith("Switches")
+    both = run(FakeModel(cut, answer()), TWICE)  # the cut-off answer still gives up what it held
+    assert both.complete and both.salvaged_calls == 0 and sorted(f.line_start for f in both.findings) == [5, 6]
+    partly = run(FakeModel(cut, DOWN), TWICE)
+    assert not partly.complete and (partly.salvaged_calls, partly.failed_calls) == (1, 0) and partly.unread == {"app/users.py"}
+    unread = run(FakeModel(DOWN, DOWN), TWICE)
+    assert not unread.complete and (unread.salvaged_calls, unread.failed_calls) == (0, 1) and unread.unread == {"app/users.py"}
+
+
+def test_verify_checks_a_finding_two_passes_reported_once():
+    again = dict(json.loads(answer())["findings"][0], title="Query built from a string")
+    policy = parse_policy("review:\n  samples: 2\n  logic_pass: true\n  verify: strict\n")
+    model = FakeModel(answer(), answer(findings=[again]), logic_answer(RETURN_LINE),
+                      '{"real": "yes", "why": "user_id is put in the SQL."}', '{"real": "no", "why": "The cursor is closed elsewhere."}')
+    result = run(model, policy)
+    assert [c.get("pass") for c in result.calls] == [None, "sample", "logic", "verify", "verify"]
+    assert [f.title for f in result.findings] == ["SQL injection"]
+
+
+def test_one_answer_per_chunk_unless_the_policy_asks_for_more():
+    model = FakeModel(answer())
+    result = run(model)
+    assert len(model.prompts) == 1 and [f.confidence for f in result.findings] == [0.6]
+    assert (parse_policy(None).review.samples, parse_policy(None).review.logic_pass) == (1, False)
+    assert parse_policy("review:\n  samples: 0\n").errors == ("review.samples must be at least 1.",)
+    assert parse_policy("review:\n  logic_pass: 1\n").errors == ("review.logic_pass must be true or false.",)
+    many = FakeModel(*[answer()] * 9)
+    run(many, parse_policy("review:\n  samples: 9\n"))
+    assert len(many.prompts) == 5  # past five the answers repeat

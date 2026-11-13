@@ -49,6 +49,8 @@ class Review:
     min_severity: str = "medium"  # the model's findings below this aren't shown; the checks' always are
     verify: str = "none"  # none | strict | lenient: one more short call per model finding, dropping those the model rejects
     reasoning: str = "default"  # default | low | off: how much a thinking model (gpt-oss, Qwen3) thinks before answering
+    samples: int = 1  # how many times the chunked review asks the model; every answer's findings are merged
+    logic_pass: bool = False  # one more call per chunk that looks only for logic errors, one decision at a time
     rules: tuple[str, ...] = ()  # the project's own review rules, in plain words, added to the prompt
     ignore_paths: tuple[str, ...] = DEFAULT_IGNORED
     log_prompts: bool = False
@@ -193,6 +195,7 @@ _MINIMUMS = {
     ("review", "context_lines"): 0,
     ("review", "lens_files"): 0,
     ("review", "parallel_calls"): 1,
+    ("review", "samples"): 1,
     ("review", "fail_at"): 0,
     ("review", "warn_at"): 0,
     ("track_record", "window_days"): 1,
