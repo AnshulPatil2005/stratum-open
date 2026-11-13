@@ -1,0 +1,5 @@
+# Ten lines of code around each hunk, less thinking and the strict verify pass, without the logic pass.
+review:
+  reasoning: low
+  verify: strict
+  context_lines: 10
