@@ -229,6 +229,7 @@ _UNTRUSTED = re.compile(
     r"\.(?:title|body|message|name|label|ref|email|head_ref|page_name|head_branch|display_title|default_branch)(?![\w.-])"
     r"|\bgithub\.head_ref\b"
 )
+_BASE_REPO = re.compile(r"\.(?:base|repository)\.")
 
 
 def _script_lines(lines: list[tuple[int, str]]) -> set[int]:
@@ -258,7 +259,8 @@ def _injection(path: str, number: int, text: str) -> list[Finding]:
     untrusted = []
     for expression in _EXPRESSION.finditer(text):
         match = _UNTRUSTED.search(expression.group(1))
-        if match and ".base." not in match.group(0):
+        # `.base.` and `.repository.` (not `.head_repository.`) name the base repo, which its maintainers control.
+        if match and not _BASE_REPO.search(match.group(0)):
             untrusted.append(match.group(0))
     if not untrusted:
         return []

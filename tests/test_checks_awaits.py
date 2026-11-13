@@ -131,6 +131,27 @@ match 1:
 """) == [(n, "`client.close()` isn't awaited") for n in (6, 10, 14, 19)]
 
 
+def test_async_defs_inside_except_star_are_checked():
+    assert flagged("""
+try:
+    async def a(client):
+        await client.close()
+        client.close()
+except* ValueError:
+    pass
+""") == [(4, "`client.close()` isn't awaited")]
+
+
+def test_async_defs_inside_async_for_are_checked():
+    assert flagged("""
+async def outer(stream):
+    async for _ in stream:
+        async def a(client):
+            await client.close()
+            client.close()
+""") == [(5, "`client.close()` isn't awaited")]
+
+
 def test_it_runs_with_the_other_checks():
     files, contents = added_file("app.py", "async def a(s):\n    await s.send()\n    s.send()\n")
     rules = [f.rule for f in run_checks(files, Policy(), contents=contents)]

@@ -352,6 +352,15 @@ def test_the_head_repos_default_branch_is_untrusted():
     assert [f.line_start for f in findings if f.rule == "workflow/script-injection"] == [1]
 
 
+def test_the_workflow_runs_base_repo_default_branch_is_trusted():
+    # workflow_run.repository is the repo the workflow ran in; head_repository can be a fork.
+    lines = ["      - run: echo ${{ github.event.workflow_run.repository.default_branch }}",
+             "      - run: echo ${{ github.event.workflow_run.head_repository.default_branch }}",
+             "      - run: echo ${{ github.event.workflow_run.head_repository.name }}"]
+    findings = run(diff(WORKFLOW, lines, new=True))
+    assert [f.line_start for f in findings if f.rule == "workflow/script-injection"] == [2, 3]
+
+
 def test_untrusted_text_in_a_run_block_is_script_injection():
     lines = [
         "    steps:",
