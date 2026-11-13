@@ -25,6 +25,11 @@ the bug that describes it, or for any other finding that's a real problem;
 `wrong` or `unsure` otherwise. `score` reads every reviews.csv under the run
 folder (one per shard), so shards run as separate jobs.
 
+Some checks read the repository, not only the PR. For those a planted case
+can have `repo`, the files already on the default branch, and `checks --repos
+<folder>` reads each merged PR against a clone of its project, as it was just
+before the PR merged (unknown_names.py makes the clones).
+
 `checks` runs the checks that need no model: on planted risks (risks.yml),
 each of which should get its rule's finding, and on merged PRs as they are,
 where every finding is a possible false alarm for a person to mark. A case
@@ -53,6 +58,7 @@ import re
 import statistics
 import string
 import sys
+import tempfile
 import time
 from collections import defaultdict
 from pathlib import Path
@@ -64,6 +70,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import yaml  # noqa: E402
 
 from bench import CACHE, _fetch, _token, _write  # noqa: E402
+import unknown_names  # noqa: E402
 from stratum_open.checks import run_checks  # noqa: E402
 from stratum_open.checks.bandit import available as bandit_available  # noqa: E402
 from stratum_open.checks.dependencies import PackageLookup, manifest_kind  # noqa: E402
@@ -74,6 +81,7 @@ from stratum_open.github.api import GitHub, GitHubError  # noqa: E402
 from stratum_open.runner import MAX_BANDIT_FILES, MAX_CONTEXT_FILES  # noqa: E402
 from stratum_open.model import Model  # noqa: E402
 from stratum_open.policy import parse_policy  # noqa: E402
+from stratum_open.repo.unknown_names import RULE as UNKNOWN_NAME, unknown_name_findings  # noqa: E402
 
 LINES_NEAR = 3
 POLICY = "review:\n  profile: small\n  context_tokens: {tokens}\n"  # what the Action runs with Ollama
@@ -108,6 +116,7 @@ def main() -> int:
     checks = sub.add_parser("checks")
     checks.add_argument("--risks", required=True)
     checks.add_argument("--prs", required=True)
+    checks.add_argument("--repos", help="a folder with a clone of each PR's project, for the checks that read the repository")
     checks.add_argument("--out", required=True)
     checks.add_argument("--policy", help="a YAML policy file, for a rule that a key turns on")
     args = parser.parse_args()
@@ -508,6 +517,7 @@ def _checks(args) -> int:
     for case in yaml.safe_load(Path(args.risks).read_text(encoding="utf-8")):
         files, contents = _case_files(case)
         found = run_checks(files, policy, lookup=lookup, contents=contents, pr_text=case.get("title", ""))
+        found += _repo_checks(case, files, policy, contents)
         rules = case["rule"] if isinstance(case["rule"], list) else [case["rule"]]
         control = bool(case.get("control"))
         caught = any(f.rule in rules for f in found)
@@ -521,11 +531,17 @@ def _checks(args) -> int:
         outcome = ("FLAGGED" if caught else "left alone") if control else ("caught" if caught else "MISSED")
         print(f"{case['id']}: {outcome} ({', '.join(sorted({f.rule for f in found})) or 'no findings'})", flush=True)
     prs = json.loads(Path(args.prs).read_text(encoding="utf-8"))
+    if not policy.checks.unknown_names:
+        print("checks.unknown_names is off, so its cases are missed: --policy benchmark/planted/variants/unknown-names.yml.")
+    elif not args.repos:
+        print("No --repos, so the unknown-names check doesn't see the merged PRs: benchmark/unknown_names.py clone makes the clones.")
     for item in prs:
         repo, number = item["repo"], int(item["pr"])
         pull, text = _fetch(repo, number)
         files = parse_diff(text)
         found = run_checks(files, policy, lookup=lookup, contents=_head_contents(repo, number, files), pr_text=f"{pull.get('title') or ''}\n{pull.get('body') or ''}")
+        if args.repos:
+            found += unknown_names.at_base(Path(args.repos), repo, number, files, policy, out)
         for f in found:
             rows.append({"set": "merged", "case": f"{repo}#{number}", "rule": f.rule, "path": f.path, "line": f.line_start or "",
                          "title": f.title, "expected": "", "verdict": "", "note": ""})
@@ -556,6 +572,11 @@ def _checks_summary(out: Path) -> str:
     names = {"code": "Secrets and risky code", "bandit": "Bandit (optional extra)", "ruff": "Ruff (optional extra, off by default)",
              "workflow": "GitHub workflows",
              "deps": "Dependencies", "agents": "Coding-agent files", "unicode": "Hidden Unicode", "tests": "Weakened tests"}
+    # The unknown-names rule is off by default and measured on its own, so it gets its own line.
+    own = [case for case in groups["code"] if case["rule"] == UNKNOWN_NAME]
+    if own:
+        groups["code"] = [case for case in groups["code"] if case["rule"] != UNKNOWN_NAME]
+        groups[UNKNOWN_NAME], names[UNKNOWN_NAME] = own, "Names their module doesn't define (off by default)"
     lines = [
         "# Checks that need no model",
         "",
@@ -619,6 +640,17 @@ def _case_files(case: dict) -> tuple[list[FileDiff], dict[str, str]]:
     if "diff" in case:
         return parse_diff(case["diff"]), {}
     return _added_files({path: _fill(text, case["id"]) for path, text in case["files"].items()})
+
+
+def _repo_checks(case: dict, files: list[FileDiff], policy, contents: dict[str, str]) -> list:
+    """The checks that read the repository and not only the PR, against a
+    case's `repo`: the files already on the default branch."""
+    with tempfile.TemporaryDirectory() as root:
+        for path, text in (case.get("repo") or {}).items():
+            target = Path(root, path)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding="utf-8")
+        return unknown_name_findings(files, policy, root, contents=contents)
 
 
 def _added_files(spec: dict[str, str]) -> tuple[list[FileDiff], dict[str, str]]:

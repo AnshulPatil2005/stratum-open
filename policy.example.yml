@@ -51,6 +51,7 @@ checks:
   floating_promises: false     # true flags, in JavaScript and TypeScript, a call left unawaited in an async function when the file awaits it elsewhere;
                                #   needs the `js` extra, which installs the parser (tree-sitter)
   weakened_tests: false        # true reports, on the line, a test a PR switches off, assertions it removes from a test, and a tolerance it widens
+  unknown_names: false         # true flags, in Python, an import or a call of a name its module doesn't define (your own modules, and part of the standard library)
 
 commands:                      # who may run each @stratum command: anyone | author | write
   review: write                # "author" is the PR's author or anyone with write access
