@@ -140,6 +140,11 @@ class GitHub:
     def open_pulls(self) -> list[dict]:
         return list(self.paginate(f"{self._r}/pulls", state="open"))
 
+    def closed_pulls(self) -> Iterator[dict]:
+        """Closed PRs, merged or not, newest first. A page is fetched only
+        when the caller reads that far."""
+        return self.paginate(f"{self._r}/pulls", state="closed", sort="created", direction="desc")
+
     def pull_diff(self, number: int) -> str:
         """The PR's diff ("" when it changes nothing). GitHub refuses one over
         its size limit; the file list's patches stand in for it then (each
@@ -188,16 +193,27 @@ class GitHub:
         Stratum's own checks (`ignore`) don't count."""
         runs = [r for r in self.paginate(f"{self._r}/commits/{sha}/check-runs") if r.get("name") not in ignore]
         status = self.get(f"{self._r}/commits/{sha}/status")
-        states = [s.get("state") for s in status.get("statuses", [])]
-        if any(r.get("conclusion") in ("failure", "timed_out", "cancelled", "action_required") for r in runs) or any(
-            s in ("failure", "error") for s in states
-        ):
-            return False
-        if not runs and not states:
-            return None
-        if any(r.get("status") != "completed" for r in runs) or any(s == "pending" for s in states):
-            return None
-        return True
+        return _ci_verdict(runs, [s.get("state") for s in status.get("statuses", [])])
+
+    def ci_state_at(self, sha: str, when: str, *, ignore: set[str]) -> bool | None:
+        """`ci_state` as it stood at `when`, a time as GitHub writes one: of
+        each check, the last run started by then, pending if it ended later;
+        of each status, the last one reported by then. A job run again
+        afterwards doesn't change the answer."""
+        # GitHub writes every time the same way (2026-01-31T12:00:00Z), so they compare as text.
+        latest: dict[tuple, dict] = {}
+        for run in self.paginate(f"{self._r}/commits/{sha}/check-runs", filter="all"):
+            key = ((run.get("check_suite") or {}).get("id"), run.get("name"))  # a job run again keeps both
+            started = run.get("started_at") or ""
+            if run.get("name") not in ignore and started <= when and started >= (latest.get(key, {}).get("started_at") or ""):
+                latest[key] = run
+        runs = [run if run.get("status") == "completed" and (run.get("completed_at") or "") <= when
+                else {**run, "status": "in_progress", "conclusion": None} for run in latest.values()]
+        states: dict[str, str] = {}
+        for status in self.paginate(f"{self._r}/commits/{sha}/statuses"):  # newest first
+            if (status.get("created_at") or "") <= when:
+                states.setdefault(status.get("context") or "", status.get("state") or "")
+        return _ci_verdict(runs, list(states.values()))
 
     # ── comments, reviews and threads ────────────────────────────────────
 
@@ -307,6 +323,18 @@ class GitHub:
 
     def edit_issue(self, number: int, body: str) -> dict:
         return self.request("PATCH", f"{self._r}/issues/{number}", json={"body": body})
+
+
+def _ci_verdict(runs: list[dict], states: list[str | None]) -> bool | None:
+    if any(r.get("conclusion") in ("failure", "timed_out", "cancelled", "action_required") for r in runs) or any(
+        s in ("failure", "error") for s in states
+    ):
+        return False
+    if not runs and not states:
+        return None
+    if any(r.get("status") != "completed" for r in runs) or any(s == "pending" for s in states):
+        return None
+    return True
 
 
 def _login(author: dict | None) -> str:

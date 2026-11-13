@@ -51,3 +51,43 @@ def test_a_too_big_diff_keeps_a_move_as_a_move(monkeypatch):
     move, edited = parse_diff(gh.pull_diff(7))
     assert (move.status, move.old_path, move.path, move.binary) == ("renamed", "docs/ci.yml", ".github/workflows/ci.yml", False)
     assert edited.binary
+
+
+def test_ci_is_read_as_it_stood_at_a_time(monkeypatch):
+    gh = GitHub("t", "acme/widget")
+    closed = "2026-03-02T10:00:00Z"
+    asked = []
+    found = {"check-runs": [], "statuses": []}
+
+    def paginate(path, **params):
+        asked.append((path.rsplit("/", 1)[1], params))
+        return iter(found[path.rsplit("/", 1)[1]])
+
+    def run(name, started, completed, conclusion, suite=1):
+        return {"name": name, "check_suite": {"id": suite}, "status": "completed", "conclusion": conclusion,
+                "started_at": f"2026-03-02T{started}:00Z", "completed_at": f"2026-03-02T{completed}:00Z"}
+
+    def ci():
+        return gh.ci_state_at("a" * 40, closed, ignore={"Stratum"})
+
+    monkeypatch.setattr(gh, "paginate", paginate)
+    assert ci() is None  # no CI by then
+    found["check-runs"] = [run("test", "09:00", "09:05", "failure"), run("test", "09:10", "09:15", "success")]
+    assert ci() is True  # run again before the PR closed: the second run is the one that stood
+    assert asked[-2] == ("check-runs", {"filter": "all"})  # GitHub's default hides the earlier runs
+    found["check-runs"].append(run("test", "11:00", "11:05", "failure"))
+    assert ci() is True  # run again after it closed: not what was known then
+    found["check-runs"].append(run("test", "09:00", "09:05", "failure", suite=2))
+    assert ci() is False  # another workflow's job of the same name is its own check
+    found["check-runs"] = [run("test", "09:00", "09:05", "success"), run("docs", "09:50", "10:20", "failure")]
+    assert ci() is None  # still running when the PR closed, however it ended
+    found["check-runs"] = [run("test", "09:00", "09:05", "success"), run("Stratum", "09:00", "09:05", "failure")]
+    assert ci() is True  # Stratum's own check isn't CI
+    found["statuses"] = [  # newest first, as GitHub lists them
+        {"context": "docs", "state": "error", "created_at": "2026-03-02T10:30:00Z"},
+        {"context": "docs", "state": "success", "created_at": "2026-03-02T09:30:00Z"},
+        {"context": "docs", "state": "pending", "created_at": "2026-03-02T09:00:00Z"},
+    ]
+    assert ci() is True  # each context's last status by then
+    found["statuses"][1]["state"] = "failure"
+    assert ci() is False
