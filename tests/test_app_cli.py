@@ -129,6 +129,10 @@ def test_policy_check(tmp_path, capsys):
     assert cli.main(["policy", "check", str(good)]) == 0
     assert cli.main(["policy", "check", str(bad)]) == 1
     assert "review.model must be one of: local, hosted." in capsys.readouterr().out
+    repeated = tmp_path / "repeated.yml"
+    repeated.write_text("review:\n  max_chunks: 5\nreview:\n  rules: [Use parameters.]\n")
+    assert cli.main(["policy", "check", str(repeated)]) == 0
+    assert "warning: review appears twice (lines 1 and 3); only the last one is read." in capsys.readouterr().out
 
 
 def test_review_local_runs_the_checks(tmp_path, capsys, monkeypatch):

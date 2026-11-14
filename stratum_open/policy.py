@@ -229,6 +229,7 @@ def parse_policy(text: str | None) -> Policy:
         return Policy()
     try:
         raw = yaml.safe_load(text)
+        repeated = _repeated_keys(yaml.compose(text, Loader=yaml.SafeLoader))
     except yaml.YAMLError as exc:
         return _unusable(f"{POLICY_PATH} isn't valid YAML ({_yaml_problem(exc)}).")
     if raw is None:
@@ -238,7 +239,7 @@ def parse_policy(text: str | None) -> Policy:
     if raw.get("version", VERSION) != VERSION:
         return _unusable(f"{POLICY_PATH} has version {raw.get('version')!r}; this release reads version {VERSION}.")
 
-    warnings: list[str] = []
+    warnings: list[str] = repeated
     errors: list[str] = []
     explicit: set[str] = set()
     policy = _build(Policy, {k: v for k, v in raw.items() if k not in _HOSTED}, (), warnings, errors, explicit)
@@ -387,6 +388,34 @@ def _check(path: tuple[str, ...], value: Any, default: Any, warnings: list[str],
             return tuple(value)
         errors.append(f"{name} must be a list of text values.")
     return _INVALID
+
+
+def _repeated_keys(node: yaml.Node | None, path: tuple[str, ...] = (), seen: set[int] | None = None) -> list[str]:
+    """YAML keeps the last copy of a key given twice in one mapping and drops
+    the others without a word; name each one, with its lines."""
+    seen = set() if seen is None else seen
+    if node is None or id(node) in seen:  # an alias points back at a node already walked
+        return []
+    seen.add(id(node))
+    found: list[str] = []
+    if isinstance(node, yaml.SequenceNode):
+        for item in node.value:
+            found.extend(_repeated_keys(item, path, seen))
+    elif isinstance(node, yaml.MappingNode):
+        lines: dict[tuple[str, str], list[int]] = {}
+        for key, value in node.value:
+            if key.tag == "tag:yaml.org,2002:merge":  # `<<: *base`: the keys after it are meant to override
+                continue
+            key_path = path + (str(key.value),)
+            if isinstance(key, yaml.ScalarNode):
+                lines.setdefault((key.tag, key.value), []).append(key.start_mark.line + 1)
+            found.extend(_repeated_keys(value, key_path, seen))
+        for (_, name), at in lines.items():
+            if len(at) > 1:
+                times = "twice" if len(at) == 2 else f"{len(at)} times"
+                found.append(f"{_dotted(path + (name,))} appears {times} (lines {', '.join(map(str, at[:-1]))} and {at[-1]}); "
+                             "only the last one is read.")
+    return found
 
 
 def _dotted(path: tuple[str, ...]) -> str:
