@@ -127,11 +127,13 @@ jobs:
       - if: always()
         run: tail -n 50 "$RUNNER_TEMP/ollama.log" || true
       - name: Memory
-        # What Ollama planned to load, the model runner's peak resident memory, and any out-of-memory kill.
+        # What Ollama found free, the peak memory of the biggest process (the model's), and any out-of-memory kill.
         if: always()
         run: |
-          grep -E 'inference compute|model weights|kv cache|compute graph|total memory|system memory' "$RUNNER_TEMP/ollama.log" | tail -n 12 || true
-          for pid in $(pgrep -f 'ollama runner'); do grep -E 'VmHWM|VmRSS' "/proc/$pid/status"; done || true
+          grep -E 'inference compute|system memory|of system memory|cache state' "$RUNNER_TEMP/ollama.log" | tail -n 6 || true
+          pid=$(ps -eo pid --sort=-rss --no-headers | head -n 1 | tr -d ' ')
+          ps -o comm= -p "$pid" || true
+          grep -E 'VmHWM|VmRSS|VmSwap' "/proc/$pid/status" || true
           free -m
           sudo dmesg | grep -i -E 'out of memory|killed process' || echo "No out-of-memory kill"
       - if: always()  # a stopped shard's partial results are still worth keeping
