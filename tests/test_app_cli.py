@@ -353,3 +353,48 @@ def test_the_job_skips_what_the_repos_policy_says(server, monkeypatch):
     server.run("pull_request", payload)
     assert reviewed == []
     assert server.storage.export("acme/widget")["jobs"][-1]["outcome"] == "skipped"
+
+
+def test_triage_post_with_a_personal_token_edits_its_own_queue_issue(monkeypatch, capsys):
+    from fakes import FakeGitHub
+
+    import stratum_open.github.api as api
+    from stratum_open.github.api import GitHubError
+
+    class AsAlice(FakeGitHub):
+        """GitHub, with the CLI's token belonging to alice (GITHUB_TOKEN or `gh auth token`)."""
+
+        user = {"login": "alice"}
+
+        def repository(self):
+            return {"default_branch": "main"}
+
+        def file_text(self, path, ref):
+            return None
+
+        def get(self, path, **params):
+            assert path == "/user"
+            if self.user is None:
+                raise GitHubError(403, "Resource not accessible by integration")
+            return self.user
+
+        def create_issue(self, title, body):
+            issue = super().create_issue(title, body)
+            issue["user"] = dict(self.user or {"login": "github-actions[bot]"})  # GitHub makes the token's user the author
+            return issue
+
+    gh = AsAlice(diff="")
+    monkeypatch.setattr(api, "GitHub", lambda token, repo, api=None: gh)
+    monkeypatch.setattr(cli, "_token", lambda: "t")
+    monkeypatch.delenv("STRATUM_BOT_LOGIN", raising=False)
+    for _ in range(3):
+        assert cli.main(["triage", "acme/widget", "--post"]) == 0
+    assert [(i["title"], i["user"]["login"]) for i in gh.issues] == [("Stratum triage queue", "alice")]
+
+    # The Action's token can't read /user; its issues are github-actions[bot]'s, as before.
+    gh.issues.clear()
+    gh.user = None
+    for _ in range(2):
+        assert cli.main(["triage", "acme/widget", "--post"]) == 0
+    assert [(i["title"], i["user"]["login"]) for i in gh.issues] == [("Stratum triage queue", "github-actions[bot]")]
+    capsys.readouterr()

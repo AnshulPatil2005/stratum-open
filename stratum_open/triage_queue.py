@@ -14,7 +14,10 @@ TITLE = "Stratum triage queue"
 MAX_PULLS = 100
 
 
-def update_queue(ctx: Context, *, post: bool = True) -> str:
+def update_queue(ctx: Context, *, post: bool = True, poster: str | None = None) -> str:
+    """`poster` is the login the queue issue is posted as, when that isn't
+    `ctx.bot`, the login whose PR summaries are read (the CLI with a personal
+    token reads the Action's summaries and posts as the token's user)."""
     gh = ctx.gh
     rows: list[tuple[PRFacts, Triage | None]] = []
     for pull in gh.open_pulls()[:MAX_PULLS]:
@@ -29,7 +32,7 @@ def update_queue(ctx: Context, *, post: bool = True) -> str:
             result = Triage(str(found["key"]), _strings(found.get("reasons")), _strings(found.get("evidence")), _number(found.get("score")))
         rows.append((facts, result))
     body = render_queue(rows, ctx.policy)
-    return _post(ctx, body) if post else body
+    return _post(ctx, body, poster or ctx.bot) if post else body
 
 
 def _strings(value) -> list[str]:
@@ -43,12 +46,12 @@ def _number(value) -> float:
         return 0.0
 
 
-def _post(ctx: Context, body: str) -> str:
+def _post(ctx: Context, body: str, poster: str) -> str:
     """Edit the queue issue in place when there is one, else create it."""
     gh = ctx.gh
     issue = next((i for i in gh.paginate(f"/repos/{gh.repo}/issues", state="open")
                   if i.get("title") == TITLE and "pull_request" not in i
-                  and publish._is_bot(i, ctx.bot)), None)
+                  and publish._is_bot(i, poster)), None)
     if issue:
         gh.edit_issue(issue["number"], body)
     else:

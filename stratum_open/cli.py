@@ -303,7 +303,13 @@ def _triage(args) -> int:
     gh = GitHub(_token(), args.repo, api=_api())
     policy = load_context_policy(gh, gh.repository().get("default_branch") or "main")
     bot = os.environ.get("STRATUM_BOT_LOGIN") or "github-actions[bot]"
-    print(update_queue(Context(gh=gh, policy=policy, model=None, bot=bot), post=args.post))
+    poster = None
+    if args.post and not os.environ.get("STRATUM_BOT_LOGIN"):
+        try:  # the queue issue's author is the token's user, as for `review --post`
+            poster = (gh.get("/user") or {}).get("login")
+        except GitHubError:  # an Action's or App's token can't read /user; it posts as the bot
+            pass
+    print(update_queue(Context(gh=gh, policy=policy, model=None, bot=bot), post=args.post, poster=poster))
     return 0
 
 
