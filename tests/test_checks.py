@@ -181,6 +181,23 @@ def test_fixed_commands_and_argument_lists_are_not_flagged(path, lines):
     assert "code/shell" not in rules(run(diff(path, lines)))
 
 
+@pytest.mark.parametrize("path,line,expected", [
+    # A call named only in a comment after the code runs nothing.
+    ("app.py", "x = parse(data)  # was eval(data) before", set()),
+    ("app.js", "run(data); // no eval(data) here", set()),
+    ("app.py", "run(cmd)  # used to be os.system(cmd)", set()),
+    # A real call with a comment after it. `//` is floor division in Python, and `#` starts a
+    # private field in JavaScript, so neither is a comment there.
+    ("app.py", "x = eval(data)  # don't, really", {"code/eval"}),
+    ("app.py", "os.system(cmd)  # it's fine", {"code/shell"}),
+    ("app.py", "n = total // 2 + eval(expr)", {"code/eval"}),
+    ("app.js", "const u = 'http://x'; eval(code) // later", {"code/eval"}),
+    ("app.js", "this.#count = eval(code)", {"code/eval"}),
+])
+def test_a_call_in_a_trailing_comment_is_not_flagged(path, line, expected):
+    assert set(rules(run(diff(path, [line])))) & {"code/eval", "code/shell"} == expected
+
+
 @pytest.mark.parametrize("path,line", [
     ("db.py", 'cur.execute(f"SELECT * FROM users WHERE id = {user_id}")'),
     ("db.py", 'cur.execute("SELECT name FROM users WHERE id = %s" % user_id)'),

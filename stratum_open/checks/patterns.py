@@ -192,7 +192,7 @@ def _eval(path: str, number: int, text: str, ext: str) -> list[Finding]:
     if pattern is None or _DEFINES.search(text):
         return []
     for match in pattern.finditer(text):
-        if _in_string(text, match.start()):
+        if not _is_code(text, match.start(), ext):
             continue
         fixed = _ALL_LITERAL_ARGS if match.groupdict().get("ctor") else _LITERAL_ARG
         if fixed.match(text, match.end() - 1) or text[match.end():].lstrip().startswith(")"):
@@ -228,19 +228,19 @@ _JS_SHELL_OPTION = re.compile(r"\b(?:spawn|spawnSync|execFile|execFileSync)\s*\(
 def _shell(path: str, number: int, text: str, ext: str, lines: dict[int, str], child_process: bool) -> list[Finding]:
     risky = False
     if ext in PYTHON:
-        call = _code_search(_PY_SHELL_CALL, text)
+        call = _code_search(_PY_SHELL_CALL, text, ext)
         if call:
             risky = not _LITERAL_ARG.match(text, call.end() - 1)
-        elif _code_search(_SHELL_TRUE, text):
+        elif _code_search(_SHELL_TRUE, text, ext):
             risky = not _constant_command(lines, number)
     elif ext in JAVASCRIPT:
-        call = _code_search(_JS_CP_EXEC, text)
+        call = _code_search(_JS_CP_EXEC, text, ext)
         if call is None and child_process:  # a bare exec() is child_process's only if it's imported
-            call = _code_search(_JS_BARE_EXEC, text)
+            call = _code_search(_JS_BARE_EXEC, text, ext)
         if call:
             risky = not _LITERAL_ARG.match(text, call.end() - 1)
         else:
-            risky = bool(_code_search(_JS_SHELL_OPTION, text))
+            risky = bool(_code_search(_JS_SHELL_OPTION, text, ext))
     if not risky:
         return []
     return [_finding(
@@ -258,10 +258,32 @@ def _shell(path: str, number: int, text: str, ext: str, lines: dict[int, str], c
     )]
 
 
-def _code_search(pattern: re.Pattern, text: str) -> re.Match | None:
-    """The first match that's code, not text inside a string: a regex, a
-    message or a docstring that mentions `shell=True` runs nothing."""
-    return next((m for m in pattern.finditer(text) if not _in_string(text, m.start())), None)
+def _code_search(pattern: re.Pattern, text: str, ext: str) -> re.Match | None:
+    """The first match that's code, not text inside a string or a comment: a
+    regex, a message or a note that mentions `shell=True` runs nothing."""
+    return next((m for m in pattern.finditer(text) if _is_code(text, m.start(), ext)), None)
+
+
+# What starts a comment after code. Each language has its own: `//` is floor division in Python,
+# and `#` starts a private field in JavaScript.
+_COMMENT_MARKER = {**dict.fromkeys(PYTHON, "#"), **dict.fromkeys(JAVASCRIPT, "//")}
+
+
+def _is_code(text: str, pos: int, ext: str) -> bool:
+    """Whether `pos` is code: not inside a string, and not after the line's
+    comment marker (the first one that isn't inside a string)."""
+    if _in_string(text, pos):
+        return False
+    marker = _COMMENT_MARKER.get(ext)
+    if marker is None:
+        return True
+    strings = _strings(text)
+    start = text.find(marker)
+    while start != -1 and start < pos:
+        if not any(begin < start < end for begin, end, _, _ in strings):
+            return False
+        start = text.find(marker, start + 1)
+    return True
 
 
 def _in_string(text: str, pos: int) -> bool:
