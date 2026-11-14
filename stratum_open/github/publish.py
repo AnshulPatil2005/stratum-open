@@ -343,6 +343,7 @@ class Summary:
     walkthrough: str = ""
     hidden: str = ""  # a line on the findings left out for being like ones maintainers rejected (review.learn_from_history)
     pending: str = ""  # `review.early_checks`: the checks alone, posted before the model has run; this says where the model is
+    label_held: str = ""  # why the triage label wasn't applied this time, though labels are on
 
 
 def render_summary(summary: Summary, state: State) -> str:
@@ -359,7 +360,8 @@ def render_summary(summary: Summary, state: State) -> str:
 
     if summary.triage is not None:
         label = label_for(summary.policy, summary.triage.key)
-        state_word = "" if summary.policy.triage.enabled else " (labels are off in this project's policy, so nothing was applied)"
+        state_word = (" (labels are off in this project's policy, so nothing was applied)" if not summary.policy.triage.enabled
+                      else f" (not applied: {summary.label_held})" if summary.label_held else "")
         lines.append(f"**Triage:** `{label}`{state_word}")
         lines += [f"- {reason}" for reason in summary.triage.reasons]
         if summary.triage.evidence:

@@ -221,6 +221,11 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     except GitHubError as exc:
         facts.linked_issues = None
         problems.append(f"Couldn't read the linked issues ({exc.status}), so triage doesn't count them either way.")
+    # Under `require_linked_issue`, a label from a review that couldn't read the linked issues would
+    # say the PR meets a rule nobody checked. The PR keeps the label the last review that could read
+    # them gave it (none, on a first review), and the queue keeps that review's verdict.
+    held = ("this project asks for a linked issue, and this review couldn't read them, so the label stays as it was"
+            if policy.triage.require_linked_issue and facts.linked_issues is None else "")
 
     # Each `/stratum` command runs on its own, so an `ignore` can land while
     # this review was reading the PR: read the summary again before writing
@@ -270,7 +275,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         matches_description=result.matches_description if result else "", mismatch=result.mismatch if result else "",
         triage=sorted_pr, notes=notes, coverage=coverage, problems=problems,
         muted=sorted(set(muted) | set(learned.rules)) if learned else muted,
-        **_walkthrough(large, findings), hidden=_hidden_line(hidden, learned, number),
+        **_walkthrough(large, findings), hidden=_hidden_line(hidden, learned, number), label_held=held,
     )
     # The next review reads what changed since this head, plus `unread`, so
     # it reads those again rather than calling a review it never finished
@@ -284,7 +289,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         unread=state.unread if keep_head else unread,
         findings=[publish.state_finding(f, snippet_of(f, files)) for f in findings if f.source == "model"],
         ignored=state.ignored, ignored_rules=state.ignored_rules,
-        triage={**sorted_pr.as_dict(), "additions": facts.additions, "deletions": facts.deletions},
+        triage={**(state.triage if held else sorted_pr.as_dict()), "additions": facts.additions, "deletions": facts.deletions},
     )
     if not post:
         return Outcome(number, "dry-run", findings, sorted_pr, result, publish.render_summary(summary, new_state))
@@ -336,7 +341,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     if policy.triage.enabled and not facts.draft:
         try:
             labels = [label.get("name", "") for label in pull.get("labels") or [] if isinstance(label, dict)]
-            publish.apply_label(gh, number, policy, sorted_pr.key, labels)
+            if not held:
+                publish.apply_label(gh, number, policy, sorted_pr.key, labels)
             # Only on a lookup that worked and found none: a failed one is no reason to close a PR.
             if policy.triage.close_without_issue and policy.triage.require_linked_issue and facts.unlinked and sorted_pr.key != "needs_human":
                 gh.comment(number, "Closing this PR: this project asks for every PR to link an issue (`Fixes #123`), and this one doesn't. "
