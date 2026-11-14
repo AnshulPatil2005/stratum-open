@@ -271,10 +271,8 @@ def _script_lines(lines: list[tuple[int, str]]) -> set[int]:
 def _injection(path: str, number: int, text: str) -> list[Finding]:
     untrusted = []
     for expression in _EXPRESSION.finditer(text):
-        match = _UNTRUSTED.search(expression.group(1))
         # `.base.` and `.repository.` (not `.head_repository.`) name the base repo, which its maintainers control.
-        if match and not _BASE_REPO.search(match.group(0)):
-            untrusted.append(match.group(0))
+        untrusted += [match.group(0) for match in _UNTRUSTED.finditer(expression.group(1)) if not _BASE_REPO.search(match.group(0))]
     if not untrusted:
         return []
     shown = untrusted[0]
