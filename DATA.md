@@ -17,8 +17,10 @@ test fails when a stored field isn't listed here.
 **The Action keeps its memory on GitHub.** Stratum's summary comment on each PR
 carries a hidden copy of the last review's findings (title, detail, file,
 lines, the code they're on), of what a maintainer ignored, and of the paths
-of any files the model hasn't read yet. That's how the next push reviews
-only what changed, plus those files. With `review.early_checks`, while the
+of any files the model hasn't read yet, each with how many reviews of the
+commit got no usable answer for it. That's how the next push reviews only
+what changed, plus those files, and how a file that never gets one stops
+being sent again on the same commit. With `review.early_checks`, while the
 model runs it also holds the commit, the check run's ID and the fingerprints
 of the comments the checks posted first, so the full review can complete
 them; the full review removes it. It's the same text the PR's comments
