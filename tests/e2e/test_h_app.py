@@ -205,6 +205,82 @@ def test_uninstall_deletes_the_repos_rows_at_once(tmp_path, monkeypatch):
     assert server.storage.latest_findings("other/repo", 1)
 
 
+class GoneAuth(StubAuth):
+    """After the uninstall: GitHub gives no token, and lists no installation."""
+
+    def token(self, installation_id):
+        raise RuntimeError("404 Client Error: Not Found for url: .../app/installations/1/access_tokens")
+
+    def installations(self):
+        return []
+
+
+def start_worker(server, monkeypatch):
+    monkeypatch.undo()  # make_server held the workers back
+    threading.Thread(target=server._work, daemon=True).start()
+
+
+def wait_for(condition, seconds=10):
+    deadline = time.monotonic() + seconds
+    while not condition() and time.monotonic() < deadline:
+        time.sleep(0.02)
+    assert condition()
+
+
+def test_a_job_queued_when_the_app_is_uninstalled_leaves_no_row(tmp_path, monkeypatch):
+    server = make_server(tmp_path, monkeypatch)
+    server.auth = GoneAuth()
+    uninstall = json.dumps({"action": "deleted", "installation": {"id": 1}, "repositories": [{"full_name": "acme/widget"}]}).encode()
+    other = json.dumps({"action": "opened", "installation": {"id": 2}, "repository": {"full_name": "other/repo"}, "pull_request": {"number": 1}}).encode()
+    assert call(server, pr_event(), delivery="1")[1] == {"queued": True}
+    call(server, uninstall, event="installation", delivery="2")
+    assert call(server, other, delivery="3")[1] == {"queued": True}
+    start_worker(server, monkeypatch)
+    wait_for(lambda: server.storage.export("other/repo")["jobs"])  # one worker: acme/widget's job came first
+    assert server.storage.export("acme/widget") == {t: [] for t in ("reviews", "findings", "jobs", "votes", "mutes")}
+
+
+def test_a_job_running_when_the_app_is_uninstalled_has_its_rows_deleted_when_it_ends(tmp_path, monkeypatch):
+    server = make_server(tmp_path, monkeypatch)
+    uninstalled, started = threading.Event(), threading.Event()
+
+    def run(event, payload):
+        started.set()
+        uninstalled.wait(10)
+        server.storage.record_review("acme/widget", 7, HEAD, 50, "s", [Finding("t", "d", path="x.py")])
+        os.makedirs(server._clone_dir("acme/widget"), exist_ok=True)
+        raise RuntimeError("the installation is gone")
+
+    server.run = run  # type: ignore[method-assign]
+    call(server, pr_event(), delivery="1")
+    start_worker(server, monkeypatch)
+    assert started.wait(10)
+    call(server, json.dumps({"action": "deleted", "installation": {"id": 1}, "repositories": [{"full_name": "acme/widget"}]}).encode(),
+         event="installation", delivery="2")
+    uninstalled.set()
+    wait_for(lambda: not server._busy)
+    assert server.storage.export("acme/widget") == {t: [] for t in ("reviews", "findings", "jobs", "votes", "mutes")}
+    assert not os.path.exists(server._clone_dir("acme/widget"))
+    # Installed again: its next job is kept.
+    server.run = lambda event, payload: server.storage.record_job("acme/widget", 7, "review", "published")  # type: ignore[method-assign]
+    call(server, pr_event(), delivery="3")
+    wait_for(lambda: server.storage.export("acme/widget")["jobs"])
+
+
+def test_the_daily_purge_deletes_old_job_rows_of_repos_no_longer_installed(tmp_path, monkeypatch):
+    server = make_server(tmp_path, monkeypatch)
+    server.auth = GoneAuth()
+    server.storage.record_review("gone/repo", 1, HEAD, 50, "s", [Finding("t", "d", path="x.py")])
+    server.storage.record_job("gone/repo", 1, "review", "error", "HTTPError: 404")
+    server.storage.record_job("gone/repo", 2, "review", "error", "HTTPError: 404")
+    with server.storage._tx() as db:
+        db.execute("UPDATE jobs SET created_at = ? WHERE pr = 1", ((datetime.now(timezone.utc) - timedelta(days=15)).strftime("%Y-%m-%dT%H:%M:%SZ"),))
+    server.purge_all()
+    exported = server.storage.export("gone/repo")
+    assert [job["pr"] for job in exported["jobs"]] == [2]
+    assert exported["reviews"]  # their retention is the repo's own policy, which purge_all can't read here
+
+
 def test_stratum_data_shows_and_deletes(tmp_path):
     db = str(tmp_path / "s.db")
     storage = SQLiteStorage(db)
