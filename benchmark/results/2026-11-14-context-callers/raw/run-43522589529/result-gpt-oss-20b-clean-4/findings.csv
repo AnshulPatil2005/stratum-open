@@ -1,0 +1,3 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pypa/pip#14349,gpt-oss:20b,logic-context10-callers-verify-strict,clean,medium,bug,src/pip/_internal/commands/debug.py,51,,Uncaught ImportError on missing vendor module,"The function now returns a ModuleType but does not handle ImportError. If the vendor module does not exist, importlib.import_module will raise ImportError, causing the program to crash.",,
+pypa/pip#14349,gpt-oss:20b,logic-context10-callers-verify-strict,clean,medium,bug,src/pip/_internal/commands/debug.py,67,,Unconditional assert on module.__file__,"Modules loaded from zip files or built‑in modules may not have a __file__ attribute, causing an AssertionError and crashing the program.",,

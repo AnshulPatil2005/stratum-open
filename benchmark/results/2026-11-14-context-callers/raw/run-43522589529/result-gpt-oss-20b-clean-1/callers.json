@@ -1,0 +1,35 @@
+{
+ "pallets/flask#5899": {
+  "functions": 2,
+  "calls": 2,
+  "named": [
+   "src/flask/app.py:991 Flask.full_dispatch_request (1 of 1)",
+   "src/flask/app.py:1547 Flask.wsgi_app (1 of 1)"
+  ]
+ },
+ "pallets/jinja#2026": {
+  "functions": 0,
+  "calls": 0,
+  "named": []
+ },
+ "pydantic/pydantic#14244": {
+  "functions": 2,
+  "calls": 2,
+  "named": [
+   "pydantic/json_schema.py:2922 _decimal_serialization_pattern (1 of 1)",
+   "pydantic/json_schema.py:2877 _decimal_validation_pattern (1 of 1)"
+  ]
+ },
+ "scrapy/scrapy#8431": {
+  "functions": 0,
+  "calls": 0,
+  "named": []
+ },
+ "Textualize/rich#4006": {
+  "functions": 1,
+  "calls": 2,
+  "named": [
+   "rich/cells.py:161 split_graphemes (2 of 2)"
+  ]
+ }
+}

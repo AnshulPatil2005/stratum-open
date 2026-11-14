@@ -1,0 +1,33 @@
+{
+ "pallets/click#3818": {
+  "functions": 1,
+  "calls": 1,
+  "named": [
+   "src/click/core.py:1489 Command.main (1 of 1)"
+  ]
+ },
+ "psf/black#5634": {
+  "functions": 1,
+  "calls": 1,
+  "named": [
+   "src/black/comments.py:465 _handle_regular_fmt_block (1 of 1)"
+  ]
+ },
+ "Textualize/rich#3905": {
+  "functions": 1,
+  "calls": 1,
+  "named": [
+   "rich/progress.py:1173 Progress.stop (1 of 1)"
+  ]
+ },
+ "scrapy/scrapy#8461": {
+  "functions": 0,
+  "calls": 0,
+  "named": []
+ },
+ "pallets/werkzeug#3293": {
+  "functions": 0,
+  "calls": 0,
+  "named": []
+ }
+}

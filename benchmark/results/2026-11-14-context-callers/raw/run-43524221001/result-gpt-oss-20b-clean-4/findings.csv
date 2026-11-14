@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/werkzeug#3337,gpt-oss:20b,reasoning-low-verify-strict,clean,medium,bug,src/werkzeug/sansio/http.py,114,,Passing unsupported `cls` kwarg to http.parse_cookie,"The sansio.parse_cookie function forwards all kwargs to http.parse_cookie, but the core implementation does not accept a `cls` parameter. If callers pass `cls`, this will raise a TypeError.",,

@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/rich#4006,gpt-oss:20b,logic-context10-callers-verify-strict,clean,medium,bug,rich/cells.py,214,,Potential IndexError when handling variation selector with no prior span,"When a variation selector (e.g., '\ufe0f') appears at the start of the string, the code enters the else branch at line 210. It then accesses spans[-1] assuming a span already exists. If the string consists solely of a variation selector, spans is empty, causing an IndexError.",,

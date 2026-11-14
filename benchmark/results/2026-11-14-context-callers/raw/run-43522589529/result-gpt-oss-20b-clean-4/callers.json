@@ -1,0 +1,35 @@
+{
+ "pallets/werkzeug#3337": {
+  "functions": 3,
+  "calls": 9,
+  "named": [
+   "src/werkzeug/http.py:1296 parse_cookie (3 of 7)",
+   "src/werkzeug/http.py:1396 dump_cookie (3 of 16)",
+   "src/werkzeug/debug/__init__.py:431 DebuggedApplication.check_pin_trust (3 of 4)"
+  ]
+ },
+ "psf/requests#7496": {
+  "functions": 1,
+  "calls": 1,
+  "named": [
+   "src/requests/help.py:35 _implementation (1 of 1)"
+  ]
+ },
+ "Textualize/textual#6464": {
+  "functions": 2,
+  "calls": 2,
+  "named": [
+   "src/textual/dom.py:1788 DOMNode.add_class (1 of 1)",
+   "src/textual/dom.py:1806 DOMNode.remove_class (1 of 1)"
+  ]
+ },
+ "pypa/pip#14349": {
+  "functions": 3,
+  "calls": 6,
+  "named": [
+   "src/pip/_internal/cli/autocompletion.py:134 get_path_completion_type (2 of 2)",
+   "src/pip/_internal/commands/__init__.py:120 create_command (3 of 40)",
+   "src/pip/_internal/commands/debug.py:61 get_vendor_version_from_module (1 of 1)"
+  ]
+ }
+}

@@ -1,0 +1,37 @@
+{
+ "pallets/click#3884": {
+  "functions": 1,
+  "calls": 1,
+  "named": [
+   "src/click/core.py:3440 Option.get_help_extra (1 of 1)"
+  ]
+ },
+ "psf/black#5645": {
+  "functions": 1,
+  "calls": 3,
+  "named": [
+   "src/blackd/client.py:10 BlackDClient (3 of 10)"
+  ]
+ },
+ "pydantic/pydantic#14199": {
+  "functions": 0,
+  "calls": 0,
+  "named": []
+ },
+ "encode/httpx#3673": {
+  "functions": 3,
+  "calls": 5,
+  "named": [
+   "src/ahttpx/_pool.py:167 Connection.send (2 of 2)",
+   "src/httpx/_network.py:160 NetworkServer (1 of 1)",
+   "src/httpx/_pool.py:167 Connection.send (2 of 2)"
+  ]
+ },
+ "psf/black#5626": {
+  "functions": 1,
+  "calls": 2,
+  "named": [
+   "src/black/linegen.py:1993 _continues_fmt_skip_line (2 of 2)"
+  ]
+ }
+}
