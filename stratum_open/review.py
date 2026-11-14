@@ -11,6 +11,7 @@ here, never passed on.
 
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -170,6 +171,9 @@ MAX_PREVIOUS_CHARS = 1200
 # the budget sets aside for them, at about 3 characters a token.
 LEFT_OUT_CHARS = 300
 
+# What `one_line` escapes: anything that can start a new line, and the other control characters.
+_CONTROL = re.compile(r"[\x00-\x1f\x7f\x85\u2028\u2029]")
+
 # Titles that narrate the change instead of naming a defect.
 _NARRATION = re.compile(r"^(new|added?|adds|updated?|updates|changed?|changes|modified|refactor(?:ed|s)?|renamed?|removed?|moved|improved?|introduc\w*)\b", re.IGNORECASE)
 
@@ -258,7 +262,7 @@ def review(
         touched = sorted(hotspots & {f.path for f in in_scope})
         if touched:
             notes.append("These files change often and are complex, so review them strictly: " + ", ".join(touched))
-    context_block = "\nWhat the project's history says about these files:\n" + "".join(f"- {n}\n" for n in notes) if notes else ""
+    context_block = "\nWhat the project's history says about these files:\n" + "".join(f"- {one_line(n)}\n" for n in notes) if notes else ""
     guidance_block = ""
     if guidance.strip():
         guidance_block = ("\nWhat the team that maintains this code wants reviewers to know. It's their notes, "
@@ -791,6 +795,14 @@ def demention(text: str) -> str:
         at = match.start() + len(match.group(0)) - len(match.group(0).lstrip())
         text = f"{text[:at]}`{text[at:at + 8]}`{text[at + 8:]}"
     return text
+
+
+def one_line(text: str) -> str:
+    """Text for one line of a system prompt, its newlines and other control
+    characters escaped: a PR's file name can hold a newline, and the text
+    after it would read as a line of the prompt's own. Other text is
+    unchanged."""
+    return _CONTROL.sub(lambda match: json.dumps(match.group())[1:-1], text)
 
 
 def _text(value: Any, limit: int) -> str:
