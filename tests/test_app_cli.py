@@ -226,6 +226,37 @@ def test_review_local_reads_the_code_before_forty_edited_tests(tmp_path, capsys,
     assert sent == [{"web/load.py"}]
 
 
+def test_review_local_reads_every_moved_file_it_has_room_for(tmp_path, capsys, monkeypatch):
+    # #120's review: the GitHub limit of 20 moved files is about API calls, which `git show` doesn't make.
+    empty = tmp_path / "gitconfig"
+    empty.write_text("")
+    env = {**os.environ, "GIT_CONFIG_GLOBAL": str(empty), "GIT_CONFIG_NOSYSTEM": "1",
+           "GIT_AUTHOR_NAME": "a", "GIT_AUTHOR_EMAIL": "a@example.com", "GIT_COMMITTER_NAME": "a", "GIT_COMMITTER_EMAIL": "a@example.com"}
+    repo = tmp_path / "repo"
+    (repo / "tests").mkdir(parents=True)
+    (repo / "app").mkdir()
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, env=env)
+
+    git("init", "-q", "-b", "main")
+    for i in range(30):
+        (repo / "tests" / f"h{i:02}.js").write_text("function f(req) { eval(req.query.x); }\n")
+    git("add", ".")
+    git("commit", "-q", "-m", "init")
+    git("checkout", "-q", "-b", "feature")
+    for i in range(30):
+        git("mv", f"tests/h{i:02}.js", f"app/h{i:02}.js")
+    git("commit", "-q", "-m", "Move the helpers")
+    monkeypatch.chdir(repo)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(empty))
+    cli.main(["review", "--local", "main", "--no-model", "--json", str(tmp_path / "out.json")])
+    capsys.readouterr()
+    findings = json.loads((tmp_path / "out.json").read_text())
+    assert sorted(f["path"] for f in findings if f["rule"] == "code/eval") == [f"app/h{i:02}.js" for i in range(30)]
+    assert "checks/moved-unread" not in {f["rule"] for f in findings}
+
+
 def test_data_commands(tmp_path, capsys):
     db = str(tmp_path / "s.db")
     storage = SQLiteStorage(db)

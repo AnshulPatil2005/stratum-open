@@ -500,9 +500,12 @@ def to_read(policy: Policy, files: list[FileDiff], *, around: bool = False) -> t
         fetch += [f for f in live if promises.worth_reading(f)][:MAX_PROMISE_FILES]
     if policy.checks.shellcheck and shellcheck.available():
         fetch += [f for f in live if shellcheck.worth_reading(f)][:MAX_SCRIPT_FILES]
-    moved = sorted((f for f in live if moved_in(f) and f not in fetch), key=lambda f: -gained(f))
+    # By path: comparing FileDiffs compares their hunks, which is slow on a PR that moves thousands of files.
+    taken = {f.path for f in fetch}
+    moved = sorted((f for f in live if f.path not in taken and moved_in(f)), key=lambda f: -gained(f))
     if around:
-        reviewed = sorted((f for f in live if not policy.ignored(f.path) and f not in fetch and f not in moved),
+        taken |= {f.path for f in moved}
+        reviewed = sorted((f for f in live if f.path not in taken and not policy.ignored(f.path)),
                           key=lambda f: -(f.additions + f.deletions))
         fetch += reviewed[:MAX_REVIEW_TEXT_FILES]
     return fetch, moved

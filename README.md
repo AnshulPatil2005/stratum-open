@@ -214,8 +214,6 @@ If your code embeds the engine (`stratum_open.analyze`): a file that moves to wh
 - **Leave out the binary ones.** A move with no edits looks the same in a diff whether the file is text or not. When `stratum_open.looks_binary(text)` is true, don't pass the text; set `file.binary = True` instead. Text from an image or an archive passed in `contents` can match the secret rules.
 - **Post inline only what can take a comment.** A check's finding can now have a line the diff doesn't show, and GitHub refuses an inline comment there. Post inline only the findings `stratum_open.placeable(findings, files)` returns, and list the rest in the summary.
 
-In 0.3.0 itself the two helpers are `stratum_open.checks.moved_in` and `stratum_open.checks.common.looks_binary`.
-
 ## Stratum Open and hosted Stratum
 
 Stratum Open is the engine and the ways to run it yourself. Hosted Stratum runs the same engine as a service, with managed models and features that need a database (incidents, Drift, Insights). [How Stratum and Stratum Open fit together](docs/stratum-and-stratum-open.md) explains which does what, the commands in each, and which repository owns what.
