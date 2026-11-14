@@ -32,7 +32,8 @@ from stratum_open.findings import Finding, severity_rank, slug
 from stratum_open.model import Reply, parse_json, salvage
 from stratum_open.policy import Policy
 from stratum_open.review import (
-    GUIDANCE_CHARS, LEGEND, MAX_DESCRIPTION_CHARS, OUTPUT_RESERVE_TOKENS, _NARRATION, _one_per_claim, _text, _to_finding, demention, shown,
+    GUIDANCE_CHARS, LEGEND, MAX_DESCRIPTION_CHARS, OUTPUT_RESERVE_TOKENS, _NARRATION, _one_per_claim, _text, _to_finding, demention,
+    one_line, shown,
 )
 
 REVIEW_MODES = {
@@ -222,7 +223,7 @@ def review_files(
         parts = dict(title=title, description=description, all_files=all_files, path=file.path, why=review.why_it_matters,
                      notes=_file_notes(file.path, notes, hotspots, (file_notes or {}).get(file.path, "")), legend=LEGEND[style])
         systems = [FILE_SYSTEM.format(mode=mode, focus=LENSES[lens] if lens else REVIEW_MODES[mode], project_rules=project_rules,
-                                      guidance=guidance_block, path=file.path, max_findings=MAX_FINDINGS_PER_FILE_CALL) for lens in lenses]
+                                      guidance=guidance_block, path=one_line(file.path), max_findings=MAX_FINDINGS_PER_FILE_CALL) for lens in lenses]
         budget = min(MAX_FILE_TOKENS, policy.review.context_tokens - OUTPUT_RESERVE_TOKENS - 200
                      - diffs.approx_tokens(max(systems, key=len) + FILE_USER.format(**parts, clipped="", diff="")))
         shown_file = diffs.with_context(file, (contents or {}).get(file.path), policy.review.context_lines)
