@@ -86,7 +86,7 @@ class GitHub:
             if isinstance(data, list):
                 yield from data
             elif isinstance(data, dict):
-                yield from data.get("check_runs", data.get("items", [])) or []
+                yield from data.get("check_runs", data.get("items", data.get("repositories", []))) or []
             match = _NEXT.search(response.headers.get("Link", ""))
             url, params = (match.group(1), None) if match else (None, None)
 

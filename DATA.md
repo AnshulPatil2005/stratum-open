@@ -43,7 +43,9 @@ This applies to the GitHub App. The Action and the CLI store none of it.
 | PR diffs, model prompts and replies | Never stored | Nothing to delete |
 | App private key, webhook secret, model API key | Environment variables on the server, never the database | Rotate them at GitHub or the model provider |
 
-`data.findings_retention_days` changes the 180 days. `review.log_prompts: true`
+`data.findings_retention_days` changes the 180 days (when the App can't read a
+repo's policy, the 180 days apply). The App purges every repo it's installed on
+once a day, so this holds for repos with no PRs lately. `review.log_prompts: true`
 keeps prompts and replies in the job log for its 14 days. Uninstalling the App
 deletes its rows at once.
 

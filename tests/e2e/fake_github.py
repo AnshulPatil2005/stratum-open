@@ -356,9 +356,10 @@ def _handler(fake: FakeGitHubServer) -> type[BaseHTTPRequestHandler]:
             if path == "/app":
                 return 200, {"slug": fake.bot.removesuffix("[bot]"), "id": 1}, {}
             if path == "/app/installations":
-                return 200, fake.installations, {}
+                return self._page(fake.installations, query, path)
             if path == "/installation/repositories":
-                return 200, {"total_count": len(fake.installation_repos), "repositories": fake.installation_repos}, {}
+                status, repos, headers = self._page(fake.installation_repos, query, path)
+                return status, {"total_count": len(fake.installation_repos), "repositories": repos}, headers
             if path == "/rate_limit":
                 return 200, {"resources": {"core": {"limit": 5000, "remaining": 4999}}}, {}
             if re.fullmatch(f"{r}", path):
