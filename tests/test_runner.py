@@ -555,13 +555,30 @@ def test_a_file_whose_answer_is_never_json_is_sent_twice_on_one_commit(gh):
     body = gh.issue_comments_[7][0]["body"]
     assert STOPPED.format("app/users.py") in body
     assert "the next review reads it" not in body
-    assert gh.checks[-1]["conclusion"] == "neutral"  # still not a complete review
     state = publish.State.decode(body)
     assert (state.unread, state.tries) == (["app/users.py"], [2])
 
 
 STOPPED = ("Stopped sending `{}` to the model on this commit: 2 reviews of it got no usable answer (cut off, not the JSON "
            "asked for, timed out, or refused by the model server). Push a commit, or comment `/stratum review`, to try again.")
+CLEAN = ("diff --git a/app/util.py b/app/util.py\n--- a/app/util.py\n+++ b/app/util.py\n@@ -1,2 +1,3 @@\n def double(x):\n"
+         "+    x = int(x)\n     return x * 2\n")
+
+
+def test_a_stopped_file_keeps_the_check_neutral():
+    # No check flags this diff, so only the stop keeps the third review from counting as complete.
+    gh = FakeGitHub(diff=CLEAN)
+    for _ in range(3):
+        review_pull(context(gh, prose()), 7)
+    assert STOPPED.format("app/util.py") in gh.issue_comments_[7][0]["body"]
+    assert gh.checks[-1]["conclusion"] == "neutral"
+
+
+def test_the_tries_count_towards_the_size_kept_for_unread_files(gh, monkeypatch):
+    monkeypatch.setattr("stratum_open.runner.MAX_UNREAD_BYTES", len(json.dumps(["app/users.py"])))  # the path fits; with its count, it doesn't
+    review_pull(context(gh, prose()), 7)
+    state = publish.State.decode(gh.issue_comments_[7][0]["body"])
+    assert (state.head, state.unread, state.tries) == ("", [], [])  # the old (empty) head is kept: the next run reads it all
 
 
 class ModelServer:
