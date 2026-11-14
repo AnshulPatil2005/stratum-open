@@ -378,6 +378,18 @@ def test_the_workflow_runs_base_repo_default_branch_is_trusted():
     assert [f.line_start for f in findings if f.rule == "workflow/script-injection"] == [2, 3]
 
 
+def test_every_reference_in_an_expression_is_read_not_just_the_first():
+    # A trusted base-repo reference first doesn't make the rest of the expression trusted.
+    lines = ["      - run: echo ${{ github.event.pull_request.base.ref || github.event.pull_request.title }}",
+             "      - run: echo ${{ format('{0} {1}', github.event.workflow_run.repository.default_branch, "
+             "github.event.workflow_run.head_branch) }}",
+             "      - run: echo ${{ github.event.pull_request.base.ref || github.event.repository.default_branch }}"]
+    findings = [f for f in run(diff(WORKFLOW, lines, new=True)) if f.rule == "workflow/script-injection"]
+    assert [f.line_start for f in findings] == [1, 2]
+    assert "github.event.pull_request.title" in findings[0].detail
+    assert "github.event.workflow_run.head_branch" in findings[1].detail
+
+
 def test_untrusted_text_in_a_run_block_is_script_injection():
     lines = [
         "    steps:",
