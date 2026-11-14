@@ -4,6 +4,7 @@ import json
 import time
 
 import pytest
+import requests
 from fakes import FakeGitHub, FakeModel
 
 from stratum_open.github import publish
@@ -534,6 +535,158 @@ def test_a_cut_off_reply_is_read_again_on_the_same_commit(gh):
     review_pull(context(gh, model), 7)
     assert len(model.prompts) == 1
     assert "No files changed since" not in gh.issue_comments_[7][0]["body"]
+
+
+PROSE = "Sorry, I can't answer that in JSON."  # the model answers, but never as asked: the same every time
+
+
+def prose(n=10):
+    return FakeModel(*[PROSE] * n)
+
+
+def test_a_file_whose_answer_is_never_json_is_sent_twice_on_one_commit(gh):
+    # #59: every event on a commit reviews it again, and paid for the same failed call each time.
+    calls = []
+    for _ in range(4):
+        model = prose()
+        review_pull(context(gh, model), 7)
+        calls.append(len(model.prompts))
+    assert calls == [1, 1, 0, 0]
+    body = gh.issue_comments_[7][0]["body"]
+    assert STOPPED.format("app/users.py") in body
+    assert "the next review reads it" not in body
+    state = publish.State.decode(body)
+    assert (state.unread, state.tries) == (["app/users.py"], [2])
+
+
+STOPPED = ("Stopped sending `{}` to the model on this commit: 2 reviews of it got no usable answer (cut off, not the JSON "
+           "asked for, timed out, or refused by the model server). Push a commit, or comment `/stratum review`, to try again.")
+CLEAN = ("diff --git a/app/util.py b/app/util.py\n--- a/app/util.py\n+++ b/app/util.py\n@@ -1,2 +1,3 @@\n def double(x):\n"
+         "+    x = int(x)\n     return x * 2\n")
+
+
+def test_a_stopped_file_keeps_the_check_neutral():
+    # No check flags this diff, so only the stop keeps the third review from counting as complete.
+    gh = FakeGitHub(diff=CLEAN)
+    for _ in range(3):
+        review_pull(context(gh, prose()), 7)
+    assert STOPPED.format("app/util.py") in gh.issue_comments_[7][0]["body"]
+    assert gh.checks[-1]["conclusion"] == "neutral"
+
+
+def test_on_gitlab_the_stop_line_offers_only_a_push():
+    # A note doesn't start a GitLab pipeline, and a re-run reviews the same commit: a push is the only way.
+    from stratum_open.gitlab.api import gitlab_body
+
+    gh = FakeGitHub(diff=CLEAN)
+    for _ in range(3):
+        review_pull(context(gh, prose()), 7)
+    [line] = [line for line in gitlab_body(gh.issue_comments_[7][0]["body"]).split("\n") if "Stopped sending" in line]
+    assert line.endswith("refused by the model server). Push a commit to try again.") and "/stratum" not in line
+
+
+def test_the_tries_count_towards_the_size_kept_for_unread_files(gh, monkeypatch):
+    monkeypatch.setattr("stratum_open.runner.MAX_UNREAD_BYTES", len(json.dumps(["app/users.py"])))  # the path fits; with its count, it doesn't
+    review_pull(context(gh, prose()), 7)
+    state = publish.State.decode(gh.issue_comments_[7][0]["body"])
+    assert (state.head, state.unread, state.tries) == ("", [], [])  # the old (empty) head is kept: the next run reads it all
+
+
+class ModelServer:
+    """A session for the real `Model`: not Ollama, and every chat call fails with `fail()`."""
+
+    def __init__(self, fail):
+        self.fail, self.posts = fail, 0
+
+    def get(self, url, **kwargs):
+        raise requests.ConnectionError()  # no /api/version, so not Ollama; no /models either
+
+    def post(self, url, **kwargs):
+        self.posts += 1
+        return self.fail()
+
+
+class Refused:
+    """What an OpenAI-compatible server sends for a prompt longer than its context."""
+
+    status_code, ok, headers, text = 400, False, {}, "This model's maximum context length is 8192 tokens."
+    content = text.encode()
+
+
+def raises(exc):
+    def fail():
+        raise exc
+    return fail
+
+
+@pytest.mark.parametrize("fail, calls", [
+    (raises(requests.ReadTimeout()), [1, 1, 0]),     # it took the request and didn't answer in time
+    (Refused, [2, 2, 0]),                            # 400, then 400 again without response_format
+    (raises(requests.ConnectTimeout()), [1, 1, 1]),  # it couldn't be reached: an outage, which passes
+])
+def test_timeouts_and_refused_requests_count_but_an_unreachable_model_doesnt(gh, fail, calls):
+    from stratum_open.model import Model
+
+    seen = []
+    for _ in range(3):
+        server = ModelServer(fail)
+        review_pull(context(gh, Model("https://models.example/v1", "m", session=server), parse_policy("review:\n  profile: small\n")), 7)
+        seen.append(server.posts)
+    assert seen == calls
+
+
+def test_a_push_sends_a_stopped_file_again(gh):
+    for _ in range(2):
+        review_pull(context(gh, prose()), 7)
+    gh.move_head(7, "b" * 40, DIFF)
+    gh.compare[("a" * 40, "b" * 40)] = []  # the file didn't change, but the commit did
+    model = FakeModel(model_answer())
+    review_pull(context(gh, model), 7)
+    assert len(model.prompts) == 1 and "app/users.py" in model.prompts[0][1]
+    state = publish.State.decode(gh.issue_comments_[7][0]["body"])
+    assert (state.unread, state.tries) == ([], [])
+
+
+def test_the_review_command_sends_a_stopped_file_again(gh):
+    for _ in range(2):
+        review_pull(context(gh, prose()), 7)
+    model = prose()
+    gh.permissions["mona"] = "write"
+    event, payload = comment_event("/stratum review", login="mona")
+    assert handle(context(gh, model), event, payload) == "review"
+    assert len(model.prompts) == 1
+    # It starts the count again: one more review of the commit may send it, then it stops.
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).tries == [1]
+    model = prose()
+    review_pull(context(gh, model), 7)
+    assert len(model.prompts) == 1
+    model = prose()
+    review_pull(context(gh, model), 7)
+    assert model.prompts == []
+
+
+def test_a_model_that_cant_be_reached_doesnt_use_up_the_tries(gh):
+    from stratum_open.model import Reply
+
+    for _ in range(3):
+        review_pull(context(gh, FakeModel(Reply("", "m", 0, error="couldn't reach the model: ConnectTimeout"))), 7)
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).tries == [0]
+    model = prose()
+    review_pull(context(gh, model), 7)  # the model is back, and answers in prose: the first try that counts
+    assert len(model.prompts) == 1
+    assert publish.State.decode(gh.issue_comments_[7][0]["body"]).tries == [1]
+
+
+def test_the_tries_are_dropped_when_they_dont_match_the_unread_files():
+    import base64
+
+    def decode(data):
+        return publish.State.decode(f"<!-- stratum:state {base64.b64encode(json.dumps(data).encode()).decode()} -->")
+
+    assert decode({"unread": ["a.py", "b.py"], "tries": [2, 1]}).tries_by_path() == {"a.py": 2, "b.py": 1}
+    assert decode({"unread": ["a.py", "b.py"], "tries": [2]}).tries_by_path() == {}
+    assert decode({"unread": ["a.py"], "tries": [True]}).tries_by_path() == {}
+    assert decode({"unread": ["a.py"]}).tries_by_path() == {}  # a summary from before the counts
 
 
 SPLIT = parse_policy("review:\n  profile: small\n  context_tokens: 6000\n  max_chunks: 4\n")
