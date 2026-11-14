@@ -107,6 +107,21 @@ Commands used to be written `@stratum review`. They aren't read any more: `strat
 - GitHub sends no event for a reaction, so a 👎 takes effect on the next push.
 - Only votes still among those latest comments count, so on a busy repo a muted rule can come back once its votes are older than that; a larger `review.learn_lookback` keeps them longer.
 
+## GitLab
+
+Experimental: Stratum reviews merge requests from a GitLab CI job, on gitlab.com or a self-hosted GitLab. It has been tested against a faked GitLab API, not a live GitLab yet, so please open an issue for anything that breaks.
+
+To set it up:
+
+1. Create a project access token with the Developer role and the `api` scope, and add it as a masked, hidden CI/CD variable named `STRATUM_GITLAB_TOKEN`. The job token can't post MR notes.
+2. Add the job in [examples/gitlab-ci.yml](examples/gitlab-ci.yml) to your `.gitlab-ci.yml`. It runs `qwen2.5-coder:7b` with Ollama in the job, like the GitHub Action, and runs `stratum-open gitlab`.
+
+It posts a summary note that's updated on each pipeline, threads on the lines with suggestions you can apply, resolves a thread when its code changes, and sets a commit status (and a triage label, when your policy turns labels on). The API URL comes from `CI_API_V4_URL`, so a self-hosted GitLab needs nothing more.
+
+The job checks out nothing of the MR and reads it only through the API, and the rules come from your default branch, as on GitHub. One thing is different, and you should know it before you turn it on: an MR's pipeline runs the `.gitlab-ci.yml` of the MR's own branch, so anyone who can push a branch to the project can change the job and read the token. Keep the token's role at Developer, and give it an expiry. MRs from forks run in the fork and get no token, so nothing is posted until a maintainer runs the pipeline in the project. Comment commands aren't read on GitLab yet; resolving a thread hides its finding on that MR. [docs/gitlab.md](docs/gitlab.md) has the details, what else differs, and what has been tested (a faked GitLab API, not a live one yet).
+
+Gitea and Forgejo aren't supported yet; [docs/gitea-forgejo.md](docs/gitea-forgejo.md) has what it would take.
+
 ## Other ways to run it
 
 **GitHub App.** One container on your server, for projects that would rather install an App than add a workflow to every repo.

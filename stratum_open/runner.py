@@ -308,7 +308,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
                                         **({"early": posted_early} if posted_early else {}))
     except GitHubError as exc:
         ctx.log(f"couldn't post inline comments: {exc}")
-        problems.append(f"Couldn't post inline comments (GitHub answered {exc.status}), so every finding is listed here instead.")
+        problems.append(f"Couldn't post inline comments ({getattr(gh, 'platform', 'GitHub')} answered {exc.status}), so every finding is listed here instead.")
     on_lines = {publish.thread_fingerprint(t, ctx.bot) for t in threads if publish.is_open(t, ctx.bot)}
     summary.inline = (on_lines | set(posted)) & {f.fingerprint for f in findings}
     body = publish.render_summary(summary, new_state)

@@ -82,13 +82,15 @@ def main(argv: list[str] | None = None) -> int:
     step.add_argument("--early", action="store_true", help="post the checks' findings before the model starts, with review.early_checks on")
     step.add_argument("--stopped", action="store_true", help="after --early, when the review step didn't finish: say so on the PR")
     sub.add_parser("needs-model", help="the GitHub Action: print whether this event can call the model")
+    gitlab = sub.add_parser("gitlab", help="GitLab CI's entry point: review the pipeline's merge request")
+    gitlab.add_argument("--dry-run", action="store_true", help="print the review instead of posting it")
 
     args = parser.parse_args(argv)
     _printable_output()
     command = {
         "review": _review, "record": _record, "policy": _policy, "triage": _triage,
         "data": _data, "serve": _serve, "action": _action, "needs-model": _needs_model,
-        "replay": _replay,
+        "replay": _replay, "gitlab": _gitlab,
     }[args.command]
     # Exit codes: 0 done; 1 a usage problem, or `review --local` found something critical;
     # 2 GitHub or the network refused (the message says what); 130 stopped with Ctrl-C.
@@ -356,6 +358,12 @@ def _action(args) -> int:
     if getattr(args, "stopped", False):
         return action.stopped()
     return action.main()
+
+
+def _gitlab(args) -> int:
+    from stratum_open.gitlab.ci import main as gitlab_main
+
+    return gitlab_main(post=not args.dry_run)
 
 
 def _needs_model(args) -> int:

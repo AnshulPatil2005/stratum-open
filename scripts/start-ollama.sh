@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Start Ollama on a GitHub runner and pull a model: used by action.yml and by
-# the benchmark workflow, so the benchmark runs the Action's own setup.
+# the benchmark workflow, so the benchmark runs the Action's own setup, and by
+# examples/gitlab-ci.yml in a GitLab CI job.
 #
 #   start-ollama.sh <model>
 #
@@ -50,7 +51,8 @@ esac
 free=$(df --output=avail -B1 "$HOME" | tail -1 | tr -d ' ')
 if [ "$size" -gt 0 ] && [ $((size + headroom)) -gt "$free" ]; then
   echo "$model is $((size / 1024 / 1024)) MB and the disk has $((free / 1024 / 1024)) MB free: removing preinstalled SDKs"
-  sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+  # Root in a container (a GitLab CI job) has no sudo, and needs none.
+  $([ "$(id -u)" = 0 ] || echo sudo) rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
   df -h "$HOME" | tail -1
 fi
 
