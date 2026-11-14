@@ -190,3 +190,38 @@ def test_rebase_merged_commits_are_not_counted_as_prs(repo):
     repo.commit("Add login", email=ALICE, day=10)
 
     assert records(repo) == {}
+
+
+def test_the_cli_reads_the_track_record_settings_from_the_policy_at_ref(repo, monkeypatch, capsys):
+    from functools import partial
+
+    from stratum_open import cli
+
+    monkeypatch.setattr(cli, "build_records", partial(build_records, now=NOW))
+    policy = os.path.join(repo.path, ".stratum", "policy.yml")
+    os.makedirs(os.path.dirname(policy))
+
+    def set_policy(text, day):
+        with open(policy, "w", encoding="utf-8") as f:
+            f.write(text)
+        repo.git("add", ".stratum")
+        repo.commit("Set the policy", day=day)
+
+    def record(login):
+        assert cli.main(["record", login, "--repo", repo.path]) == 0
+        return capsys.readouterr().out
+
+    set_policy("track_record:\n  window_days: 30\n  exclude: [Alice]\n", day=1)
+    sha = repo.squash(12, "Add login", email=ALICE, day=50)  # 50 days before NOW: outside the 30-day window
+    repo.squash(13, 'Revert "Add login"', email=BOB, day=55, body=f"This reverts commit {sha}.")
+    repo.squash(14, "Add cache", email=ALICE, day=90)
+
+    assert record("Alice") == "No record is built for Alice: the project's policy excludes that login.\n"
+    assert record(BOB).startswith(f"No merged PRs by {BOB} in the last 30 days of HEAD.")
+
+    set_policy("track_record:\n  window_days: 60\n", day=91)
+    assert record(BOB).startswith(f"{BOB}: 1 merged PR(s)")
+    assert "#12 Add login: reverted" in record(ALICE)
+
+    set_policy("track_record:\n  enabled: false\n", day=92)
+    assert record(BOB) == "Track records are turned off in this project's policy.\n"
