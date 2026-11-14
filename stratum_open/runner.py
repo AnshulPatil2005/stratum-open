@@ -228,7 +228,7 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         named = ", ".join(f"`{p}`" for p in stopped[:10]) + (f" and {len(stopped) - 10} more" if len(stopped) > 10 else "")
         problems.append(f"Stopped sending {named} to the model on this commit: {MAX_UNUSABLE_TRIES} reviews of it got no usable "
                         "answer (cut off, not the JSON asked for, timed out, or refused by the model server). "
-                        "Push a commit, or comment `/stratum review`, to try again.")
+                        f"Push a commit{publish.RETRY_COMMAND} to try again.")
     # A review that left files unread isn't complete, whichever run failed to read them.
     complete = engine.complete and not waiting and not stopped
 

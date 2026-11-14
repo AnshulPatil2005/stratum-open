@@ -574,6 +574,17 @@ def test_a_stopped_file_keeps_the_check_neutral():
     assert gh.checks[-1]["conclusion"] == "neutral"
 
 
+def test_on_gitlab_the_stop_line_offers_only_a_push():
+    # A note doesn't start a GitLab pipeline, and a re-run reviews the same commit: a push is the only way.
+    from stratum_open.gitlab.api import gitlab_body
+
+    gh = FakeGitHub(diff=CLEAN)
+    for _ in range(3):
+        review_pull(context(gh, prose()), 7)
+    [line] = [line for line in gitlab_body(gh.issue_comments_[7][0]["body"]).split("\n") if "Stopped sending" in line]
+    assert line.endswith("refused by the model server). Push a commit to try again.") and "/stratum" not in line
+
+
 def test_the_tries_count_towards_the_size_kept_for_unread_files(gh, monkeypatch):
     monkeypatch.setattr("stratum_open.runner.MAX_UNREAD_BYTES", len(json.dumps(["app/users.py"])))  # the path fits; with its count, it doesn't
     review_pull(context(gh, prose()), 7)

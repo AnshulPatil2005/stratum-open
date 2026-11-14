@@ -104,7 +104,10 @@ that tries to steal secrets in the parent project when the pipeline runs."
 - **No `/stratum` commands.** A note doesn't start a pipeline, so the job
   never sees one. The hints that name commands are left out of what's posted
   on GitLab. To hide a finding on an MR, resolve its thread: Stratum doesn't
-  post it again there. `/stratum review` becomes "run the pipeline again".
+  post it again there. `/stratum review` becomes "run the pipeline again",
+  with one difference: a re-run reviews the same commit, so a file Stratum
+  stopped sending to the model on that commit (after two reviews got no
+  usable answer for it) stays stopped. Push a commit to send it again.
   See [Commands on GitLab](#commands-on-gitlab).
 - **The commit status can block merging by itself.** On GitHub, a check blocks
   only when branch protection requires it. On GitLab, the status is part of the

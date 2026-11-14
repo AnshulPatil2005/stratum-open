@@ -429,7 +429,7 @@ def gitlab_body(body: str, *, suggestion_above: int | None = None) -> str:
     could run as a quick action; the hints that name commands reworded; and
     every other line that starts with a slash escaped, outside code blocks.
     Running it twice changes nothing more."""
-    body = body.replace(publish.HINT, HINT).replace(FOOTER_COMMANDS, "")
+    body = body.replace(publish.HINT, HINT).replace(FOOTER_COMMANDS, "").replace(publish.RETRY_COMMAND, "")
     fences = list(_SUGGESTION.finditer(body))
     if fences:
         opening = max(fences, key=lambda m: len(m.group(1)))  # longer than any run of backticks in the code

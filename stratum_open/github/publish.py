@@ -36,6 +36,10 @@ LABEL = {"critical": "Critical", "high": "High", "medium": "Medium", "low": "Low
 # The hint under each inline comment, and the one 0.1 and 0.2 posted.
 HINT = "Reply `/stratum ignore` to hide it on this PR, or `/stratum explain` for more."
 OLD_HINT = "Reply `@stratum ignore` to hide it on this PR, or `@stratum explain` for more."
+# The command that sends a file the model stopped being sent on a commit again, as the summary
+# offers it next to a push. GitLab has no commands (a note doesn't start a pipeline), so
+# `gitlab_body` drops it there, and a push is the only way.
+RETRY_COMMAND = ", or comment `/stratum review`,"
 # `review.early_checks`: the summary's line while the model reads the PR, and once it's clear it won't finish.
 EARLY_PENDING = "still running. This comment becomes the full review when it's done."
 EARLY_STOPPED = "didn't finish, so this review has only the checks. Comment `/stratum review` to run it again."
