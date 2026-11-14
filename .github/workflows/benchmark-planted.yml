@@ -126,6 +126,14 @@ jobs:
           python benchmark/planted.py run "${args[@]}"
       - if: always()
         run: tail -n 50 "$RUNNER_TEMP/ollama.log" || true
+      - name: Memory
+        # What Ollama planned to load, the model runner's peak resident memory, and any out-of-memory kill.
+        if: always()
+        run: |
+          grep -E 'inference compute|model weights|kv cache|compute graph|total memory|system memory' "$RUNNER_TEMP/ollama.log" | tail -n 12 || true
+          for pid in $(pgrep -f 'ollama runner'); do grep -E 'VmHWM|VmRSS' "/proc/$pid/status"; done || true
+          free -m
+          sudo dmesg | grep -i -E 'out of memory|killed process' || echo "No out-of-memory kill"
       - if: always()  # a stopped shard's partial results are still worth keeping
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
