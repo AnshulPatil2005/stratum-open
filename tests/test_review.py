@@ -188,6 +188,25 @@ def test_ignored_paths_and_only_paths():
     assert run(FakeModel(), only_paths={"other.py"}).calls == []
 
 
+def test_a_finding_on_a_file_the_model_was_not_shown_is_dropped():
+    def changed(path, lines):
+        return (f"diff --git a/{path} b/{path}\n--- a/{path}\n+++ b/{path}\n@@ -1 +1,{lines + 1} @@\n x\n"
+                + "".join(f"+line {n} " * 20 + "\n" for n in range(lines)))
+
+    guess = {"file": "vendor/lib/thing.py", "code": "", "line": 3, "severity": "high", "category": "bug",
+             "title": "Crash on empty input", "detail": "A guess about a file it never saw.", "fix": "Guard it."}
+    files = parse_diff(DIFF + changed("vendor/lib/thing.py", 3))
+    for policy, only_paths in ((None, None), ("review:\n  ignore_paths: []\n", {"app/users.py"})):
+        result = review(title="t", description="d", files=files, policy=parse_policy(policy), model=FakeModel(answer(findings=[guess])),
+                        only_paths=only_paths)
+        assert "vendor/lib/thing.py" not in result.packed.reviewed and result.findings == [] and result.dropped == 1
+    # One that didn't fit in the review's size limit.
+    files = parse_diff(changed("f0.py", 40) + changed("f1.py", 40) + changed("vendor/lib/thing.py", 40))
+    result = review(title="t", description="d", files=files, model=FakeModel(answer(findings=[guess])),
+                    policy=parse_policy("review:\n  ignore_paths: []\n  context_tokens: 4000\n  max_chunks: 1\n"))
+    assert "vendor/lib/thing.py" in result.packed.omitted and result.findings == [] and result.dropped == 1
+
+
 def test_the_worst_description_answer_wins_across_chunks():
     big = "".join(
         f"diff --git a/f{i}.py b/f{i}.py\n--- a/f{i}.py\n+++ b/f{i}.py\n@@ -1 +1,40 @@\n x\n" + "".join(f"+line {n} " * 20 + "\n" for n in range(40))
