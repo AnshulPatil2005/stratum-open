@@ -470,6 +470,16 @@ def test_explain_has_a_daily_limit_per_person_and_per_pr(gh):
     assert handle(ctx, event, payload) == "explain"
 
 
+CLOSE_UNLINKED = parse_policy("triage:\n  enabled: true\n  require_linked_issue: true\n  close_without_issue: true\n")
+README_DIFF = "diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1,2 @@\n # x\n+more\n"
+
+
+def test_a_pr_that_links_no_issue_is_still_closed():
+    gh = FakeGitHub(diff=README_DIFF, linked=[])
+    review_pull(context(gh, None, CLOSE_UNLINKED), 7)
+    assert gh.closed == [7] and gh.issue_comments_[7][-1]["body"].startswith("Closing this PR")
+
+
 def test_record_command_without_history(gh):
     ctx = context(gh, None)
     event, payload = comment_event("/stratum record")

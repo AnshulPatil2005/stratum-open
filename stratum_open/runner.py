@@ -330,7 +330,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         try:
             labels = [label.get("name", "") for label in pull.get("labels") or [] if isinstance(label, dict)]
             publish.apply_label(gh, number, policy, sorted_pr.key, labels)
-            if policy.triage.close_without_issue and policy.triage.require_linked_issue and not facts.linked_issues and sorted_pr.key != "needs_human":
+            # Only on a lookup that worked and found none: a failed one is no reason to close a PR.
+            if policy.triage.close_without_issue and policy.triage.require_linked_issue and facts.unlinked and sorted_pr.key != "needs_human":
                 gh.comment(number, "Closing this PR: this project asks for every PR to link an issue (`Fixes #123`), and this one doesn't. "
                                    "Link one and reopen it, or ask a maintainer. Closed by Stratum under the project's `.stratum/policy.yml`.")
                 gh.close(number)
