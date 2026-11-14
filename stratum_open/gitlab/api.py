@@ -87,6 +87,7 @@ class GitLab:
         self._note_thread: dict[int, str] = {}  # note id -> discussion id
         self._thread_mr: dict[str, int] = {}  # discussion id -> MR iid
         self._refs: dict[str, str] = {}  # head sha -> the ref its pipeline runs on
+        self._started: dict[int, dict] = {}  # commit status id -> what `start_check_run` said
 
     # ── plumbing ─────────────────────────────────────────────────────────
 
@@ -349,6 +350,14 @@ class GitLab:
         return self.request("PUT", f"{self._mr(self._note_mr[comment_id])}/discussions/{thread}/notes/{comment_id}",
                             json={"body": gitlab_body(body)}) or {}
 
+    def delete_review_comment(self, comment_id: int) -> None:
+        """Delete a note of a diff thread; a thread left with no notes goes with it."""
+        thread = self._note_thread.get(comment_id)
+        if thread is None:
+            raise GitLabError(404, f"note {comment_id} isn't in a thread Stratum read")
+        self.request("DELETE", f"{self._mr(self._note_mr[comment_id])}/discussions/{thread}/notes/{comment_id}")
+        self._note_thread.pop(comment_id, None)
+
     def resolve_thread(self, thread_id: str) -> None:
         if thread_id not in self._thread_mr:
             raise GitLabError(404, f"thread {thread_id} isn't one Stratum read")
@@ -356,20 +365,40 @@ class GitLab:
 
     # ── status, labels, state ────────────────────────────────────────────
 
-    def check_run(self, head_sha: str, name: str, conclusion: str, title: str, summary: str, text: str, annotations: list[dict]) -> dict:
+    def check_run(self, head_sha: str, name: str, conclusion: str, title: str, summary: str, text: str, annotations: list[dict],
+                  run_id: int | None = None) -> dict:
         """A commit status named like the check run: failed for a failure,
         success otherwise (GitLab has no neutral). The findings themselves are
-        in the threads and the summary, so `annotations` aren't sent."""
+        in the threads and the summary, so `annotations` aren't sent.
+        `run_id` needs no handling: GitLab keeps one status per name in a
+        pipeline, so this completes the one `start_check_run` set running."""
+        return self._status(head_sha, STATES.get(conclusion, "success"), name, title)
+
+    def start_check_run(self, head_sha: str, name: str, title: str, summary: str) -> dict:
+        """A check run in progress: a `running` commit status of that name,
+        which `check_run` then completes."""
+        status = self._status(head_sha, "running", name, title)
+        if isinstance(status.get("id"), int):
+            self._started[status["id"]] = {"title": title, "summary": summary}
+        return status
+
+    def check_run_output(self, run_id: int) -> dict:
+        """What a check run in progress says. GitLab has no call that reads
+        one commit status by its id, so only one this client started is
+        known; for any other, {} (and the caller words the title itself)."""
+        return dict(self._started.get(run_id, {}))
+
+    def _status(self, sha: str, state: str, name: str, title: str) -> dict:
         if not self.statuses:
             return {}
-        data: dict[str, Any] = {"state": STATES.get(conclusion, "success"), "name": name, "description": _short(title, 255)}
+        data: dict[str, Any] = {"state": state, "name": name, "description": _short(title, 255)}
         if self.target_url:
             data["target_url"] = self.target_url[:255]
         if self.pipeline_id:
             data["pipeline_id"] = self.pipeline_id
-        elif self._refs.get(head_sha):
-            data["ref"] = self._refs[head_sha][:255]
-        return self.request("POST", f"{self._p}/statuses/{head_sha}", json=data) or {}
+        elif self._refs.get(sha):
+            data["ref"] = self._refs[sha][:255]
+        return self.request("POST", f"{self._p}/statuses/{sha}", json=data) or {}
 
     def ensure_label(self, name: str, color: str, description: str) -> None:
         if self.request("GET", f"{self._p}/labels/{quote(name, safe='')}", ok404=True) is None:

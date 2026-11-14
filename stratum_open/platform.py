@@ -22,7 +22,9 @@ The shapes, as the runner and `publish` read them:
   line numbers; a comment the host won't place is a `GitHubError` with
   status 422, and the caller then posts the comments one at a time.
 - `check_run(...)`: the review's verdict on the head commit (a check run on
-  GitHub, a commit status on GitLab).
+  GitHub, a commit status on GitLab). `review.early_checks` starts it first
+  with `start_check_run`, and `stop_early` reads it back with
+  `check_run_output`.
 
 `SURFACE` lists the names, and a test keeps it in step with what the runner
 and `publish` call, so a new call there shows up as one every host's client
@@ -59,10 +61,16 @@ class Platform(Protocol):
 
     def edit_review_comment(self, comment_id: int, body: str) -> dict: ...
 
+    def delete_review_comment(self, comment_id: int) -> None: ...  # `review.early_checks`: an early comment the review doesn't keep
+
     def resolve_thread(self, thread_id: str) -> None: ...
 
     def check_run(self, head_sha: str, name: str, conclusion: str, title: str, summary: str, text: str,
-                  annotations: list[dict]) -> dict: ...
+                  annotations: list[dict], run_id: int | None = None) -> dict: ...  # run_id: complete the one started below
+
+    def start_check_run(self, head_sha: str, name: str, title: str, summary: str) -> dict: ...  # in progress; {"id": ...}
+
+    def check_run_output(self, run_id: int) -> dict: ...  # a started run's {"title", "summary"}; {} when unknown
 
     def ci_state(self, sha: str, *, ignore: set[str]) -> bool | None: ...
 

@@ -424,3 +424,67 @@ def test_the_gitlab_command_as_a_process_with_a_checkout_of_the_default_branch(g
     assert result.returncode == 0 and "MR !7: published" in result.stdout, result.stderr
     assert_no_traceback(result.stderr)
     assert len(gl.summary_notes(7)) == 1 and gl.posted_statuses(HEAD)
+
+
+# ── review.early_checks' calls ───────────────────────────────────────────
+
+
+def test_an_early_comment_the_review_doesnt_keep_is_deleted_with_its_thread(gl):
+    gl.add_mr(7, diff=DIFF)
+    api = client(gl)
+    api.pull(7)
+    api.create_review(7, HEAD, [_comment(5)])
+    [thread] = api.review_threads(7)
+    api.delete_review_comment(thread["comments"][0]["id"])
+    assert gl.threads(7) == [] and gl.requests_to("DELETE", rf"/discussions/{thread['id']}/notes/\d+$")
+    with pytest.raises(GitLabError) as exc:
+        api.delete_review_comment(thread["comments"][0]["id"])  # gone, and no longer known
+    assert exc.value.status == 404
+
+
+def test_a_started_status_runs_until_the_review_completes_it(gl):
+    gl.add_mr(7, diff=DIFF)
+    api = GitLab(gl.token, gl.project_id, api=gl.url, pipeline_id=77)
+    api.pull(7)
+    started = api.start_check_run(HEAD, "Stratum", "Checks: nothing. Model: still running.", "text")
+    assert api.check_run_output(started["id"]) == {"title": "Checks: nothing. Model: still running.", "summary": "text"}
+    assert api.check_run_output(started["id"] + 1) == {}  # GitLab can't read a status back by its id
+    api.check_run(HEAD, "Stratum", "neutral", "No findings", "text", "", [], run_id=started["id"])
+    [status] = gl.posted_statuses(HEAD)
+    assert gl.status_history == [(started["id"], "running"), (started["id"], "success")]
+    assert status["status"] == "success" and status["description"] == "No findings"
+
+
+def test_with_statuses_off_nothing_is_started(gl):
+    gl.add_mr(7, diff=DIFF)
+    api = GitLab(gl.token, gl.project_id, api=gl.url, statuses=False)
+    assert api.start_check_run(HEAD, "Stratum", "t", "s") == {} and gl.posted == []
+
+
+def test_early_checks_is_off_on_gitlab_and_says_so(gl, fake_model):
+    gl.add_mr(7, diff=DIFF)
+    gl.set_policy("review:\n  early_checks: true\n  learn_from_history: true\n")
+    assert ci.main(env_for(gl, fake_model)) == 0
+    body = gl.summary_notes(7)[0]["body"]
+    assert "review.early_checks isn't run on GitLab yet" in body and "review.learn_from_history isn't read on GitLab yet" in body
+    assert [state for _, state in gl.status_history] == ["success"]  # posted once, never left running
+
+
+def test_the_early_path_of_review_pull_holds_on_gitlab(gl, fake_model, make_model):
+    """Not reachable from `stratum-open gitlab`, which turns early checks off,
+    but `review_pull` must stay correct whatever the summary holds: an early
+    post's running status is completed, and its summary edited into the review."""
+    from stratum_open.policy import parse_policy
+    from stratum_open.runner import Context, post_early, review_pull
+
+    gl.add_mr(7, diff=DIFF)
+    api = GitLab(gl.token, gl.project_id, api=gl.url, pipeline_id=77)
+    ctx = Context(gh=api, policy=parse_policy("review:\n  early_checks: true\n"), model=make_model(), bot=gl.bot, log=lambda line: None)
+    assert post_early(ctx, 7).status == "early"
+    assert [state for _, state in gl.status_history] == ["running"]
+    fake_model.queue(Response.ok(json_reply([sql_finding()])))
+    assert review_pull(ctx, 7).status == "published"
+    [summary] = gl.summary_notes(7)
+    assert publish.Early.decode(summary["body"], HEAD) is None and publish.State.decode(summary["body"]).head == HEAD
+    assert [state for _, state in gl.status_history] == ["running", "failed"]
+    assert [t["notes"][0]["position"]["new_line"] for t in gl.threads(7)] == [5]

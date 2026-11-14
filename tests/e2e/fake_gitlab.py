@@ -48,7 +48,8 @@ class FakeGitLabServer:
         self.notes: dict[int, list[dict[str, Any]]] = {}  # iid -> every note, threads' included
         self.discussions: dict[int, list[dict[str, Any]]] = {}
         self.statuses: dict[str, list[dict[str, Any]]] = {}  # sha -> jobs and statuses, the CI's and Stratum's
-        self.posted: list[dict[str, Any]] = []  # the statuses Stratum posted
+        self.posted: list[dict[str, Any]] = []  # the statuses Stratum posted, as they stand
+        self.status_history: list[tuple[int, str]] = []  # (status id, state) for each post
         self.labels: dict[str, dict[str, Any]] = {}
         self.closes: dict[int, list[int]] = {}
         self.parents: dict[str, str] = {}  # head -> the head before it, for merge_base
@@ -237,6 +238,9 @@ def _handler(fake: FakeGitLabServer) -> type[BaseHTTPRequestHandler]:
         def do_POST(self) -> None:
             self._dispatch("POST")
 
+        def do_DELETE(self) -> None:
+            self._dispatch("DELETE")
+
         def do_PUT(self) -> None:
             self._dispatch("PUT")
 
@@ -303,10 +307,17 @@ def _handler(fake: FakeGitLabServer) -> type[BaseHTTPRequestHandler]:
             if rest[:1] == ["statuses"] and len(rest) == 2 and method == "POST":
                 if body.get("state") not in ("pending", "running", "success", "failed", "canceled", "skipped"):
                     raise _Reply(400, {"message": "state does not have a valid value"})
-                status = {"sha": rest[1], "status": body["state"], "name": body.get("name") or "default", "description": body.get("description"),
-                          "target_url": body.get("target_url"), "pipeline_id": body.get("pipeline_id"), "ref": body.get("ref"), "allow_failure": False}
-                fake.posted.append(status)
-                return 201, status, {}
+                name = body.get("name") or "default"
+                # One status per name in a pipeline: posting it again moves it to the new state, and GitLab refuses a move to the state it's in.
+                status = next((x for x in fake.posted if (x["sha"], x["name"], x["pipeline_id"]) == (rest[1], name, body.get("pipeline_id"))), None)
+                if status is not None and status["status"] == body["state"]:
+                    raise _Reply(400, {"message": f"Cannot transition status via :{body['state']} from :{status['status']}"})
+                if status is None:
+                    status = {"id": fake.next_id(), "sha": rest[1], "name": name, "pipeline_id": body.get("pipeline_id"), "allow_failure": False}
+                    fake.posted.append(status)
+                status.update({"status": body["state"], "description": body.get("description"), "target_url": body.get("target_url"), "ref": body.get("ref")})
+                fake.status_history.append((status["id"], body["state"]))
+                return 201, dict(status), {}
             if rest[:1] == ["labels"]:
                 if len(rest) == 2 and method == "GET":
                     if rest[1] not in fake.labels:
@@ -375,6 +386,15 @@ def _handler(fake: FakeGitLabServer) -> type[BaseHTTPRequestHandler]:
                     for note in discussion["notes"]:
                         note["resolved"] = bool(body.get("resolved"))
                     return 200, discussion, {}
+                if len(rest) == 4 and rest[2] == "notes" and method == "DELETE":
+                    note = next((n for n in discussion["notes"] if str(n["id"]) == rest[3]), None)
+                    if note is None:
+                        raise _Reply(404, {"message": "404 Not found"})
+                    discussion["notes"].remove(note)
+                    fake.notes[iid].remove(note)
+                    if not discussion["notes"]:
+                        fake.discussions[iid].remove(discussion)
+                    return 204, None, {}
                 if len(rest) == 4 and rest[2] == "notes" and method == "PUT":
                     note = next((n for n in discussion["notes"] if str(n["id"]) == rest[3]), None)
                     if note is None:

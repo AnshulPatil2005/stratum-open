@@ -106,10 +106,20 @@ def _run(env: Mapping[str, str], gl: GitLab, iid: int, *, post: bool) -> int:
 
 
 def gitlab_policy(policy: Policy) -> Policy:
-    """The policy as GitLab can follow it. `review.learn_from_history` reads
-    GitHub's reactions and comment history, which the GitLab client doesn't,
-    so it's off here, and the summary's policy warnings say so."""
-    if not policy.review.learn_from_history:
-        return policy
-    return replace(policy, review=replace(policy.review, learn_from_history=False),
-                   warnings=policy.warnings + ("review.learn_from_history isn't read on GitLab yet, so it's off for this review.",))
+    """The policy as GitLab can follow it, each setting it can't follow
+    turned off and named in the summary's policy warnings:
+
+    - `review.learn_from_history` reads GitHub's reactions and comment
+      history, which the GitLab client doesn't.
+    - `review.early_checks` needs a step that posts the checks before the
+      model starts and one that completes the post if the model's step fails;
+      the GitLab job has neither, so the review is posted once, when it's done."""
+    off = []
+    review = policy.review
+    if review.learn_from_history:
+        review = replace(review, learn_from_history=False)
+        off.append("review.learn_from_history isn't read on GitLab yet, so it's off for this review.")
+    if review.early_checks:
+        review = replace(review, early_checks=False)
+        off.append("review.early_checks isn't run on GitLab yet, so the review is posted once, when the model has finished.")
+    return replace(policy, review=review, warnings=policy.warnings + tuple(off)) if off else policy

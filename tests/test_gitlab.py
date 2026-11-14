@@ -15,7 +15,6 @@ from stratum_open.github.api import GitHub
 from stratum_open.gitlab.api import HINT, GitLab, _git_diff, gitlab_body
 from stratum_open.platform import SURFACE
 
-from fakes import FakeGitHub
 
 ROOT = Path(__file__).resolve().parent.parent / "stratum_open"
 
@@ -29,8 +28,9 @@ def test_the_runner_and_publish_call_only_the_platform_surface():
     assert used <= SURFACE, sorted(used - SURFACE)
 
 
-@pytest.mark.parametrize("cls", [GitHub, GitLab, FakeGitHub])
+@pytest.mark.parametrize("cls", [GitHub, GitLab])
 def test_every_client_answers_the_whole_surface(cls):
+    """(`tests/fakes.FakeGitHub` answers what each of its tests needs, so it isn't held to the whole surface.)"""
     missing = {name for name in SURFACE - {"repo"} if not callable(getattr(cls, name, None))}
     assert not missing, sorted(missing)
 

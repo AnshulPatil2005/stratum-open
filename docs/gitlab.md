@@ -123,8 +123,8 @@ that tries to steal secrets in the parent project when the pipeline runs."
 - **Track records** match a username to commits through the user's name and
   public email. GitLab's noreply addresses aren't matched yet.
 - **Not on GitLab:** the triage queue issue, `replay`, the App, 👍/👎 feedback,
-  `review.learn_from_history` (it's turned off, and the summary says so)
-  and annotations (GitLab has none; the findings are in the threads and the
+  `review.learn_from_history` and `review.early_checks` (each is turned off,
+  and the summary says so), and annotations (GitLab has none; the findings are in the threads and the
   summary). The summary still says "PR" in places.
 
 ## Commands on GitLab
