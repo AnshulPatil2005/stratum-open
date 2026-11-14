@@ -252,12 +252,16 @@ def _shown(endpoint: str) -> str:
 def model_from_policy(policy: Policy, env: Mapping[str, str] = os.environ) -> Model:
     """The policy names the model; the environment can point at a different
     server (the Action's own Ollama, or a GPU box) and carries the API key,
-    which never goes in the policy file."""
+    which never goes in the policy file. A model whose family needs its own
+    reasoning level (gpt-oss) gets it here too, for the commands that call it
+    without a review."""
+    from stratum_open.profiles import for_model
+
     endpoint = env.get("STRATUM_MODEL_ENDPOINT") or policy.review.endpoint
     name = env.get("STRATUM_MODEL_NAME") or policy.model_name
     api_key = env.get("STRATUM_MODEL_API_KEY") or None
     return Model(endpoint, name, api_key=api_key, context_tokens=policy.review.context_tokens,
-                 reasoning=policy.review.reasoning)
+                 reasoning=for_model(policy, name)[0].review.reasoning)
 
 
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal"}

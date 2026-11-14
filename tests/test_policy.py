@@ -216,6 +216,38 @@ def test_profiles_fill_in_only_what_the_file_left_out():
     assert pinned.review.diff_format == "interleaved" and pinned.checks.bandit_low is True
 
 
+@pytest.mark.parametrize("name", ["gpt-oss:20b", "gpt-oss", "GPT-OSS:120b", "library/gpt-oss:20b", "registry.ollama.ai/library/gpt-oss:latest"])
+def test_gpt_oss_gets_low_reasoning_and_strict_verify(name):
+    from stratum_open.profiles import MODEL_SETTINGS, for_model, keys_of
+
+    for _, settings in MODEL_SETTINGS:
+        assert set(settings) <= keys_of(Policy)  # only real keys
+    policy, applied = for_model(parse_policy(None), name)
+    assert (policy.review.reasoning, policy.review.verify) == ("low", "strict")
+    assert applied == {"review.reasoning": "low", "review.verify": "strict"}
+
+
+def test_the_policy_files_own_reasoning_and_verify_win_for_gpt_oss():
+    from stratum_open.profiles import for_model, model_settings_line
+
+    policy, applied = for_model(parse_policy("review:\n  verify: none\n"), "gpt-oss:20b")
+    assert (policy.review.reasoning, policy.review.verify) == ("low", "none") and applied == {"review.reasoning": "low"}
+    assert model_settings_line("gpt-oss:20b", applied) == (
+        "Set for `gpt-oss:20b`, since the policy file doesn't set it: `review.reasoning: low` (without it, the thinking uses up "
+        "the output budget and most replies come back empty).")
+    pinned = parse_policy("review:\n  reasoning: default\n  verify: lenient\n")
+    assert for_model(pinned, "gpt-oss:20b") == (pinned, {})
+
+
+@pytest.mark.parametrize("name", ["qwen2.5-coder:7b", "", "openai/gpt-oss-20b", "gpt-oss-safeguard:20b", "my-gpt-oss:20b", "qwen3:14b"])
+def test_other_models_keep_the_policy_as_it_is(name):
+    from stratum_open.profiles import for_model, model_settings_line
+
+    policy = parse_policy(None)
+    assert for_model(policy, name) == (policy, {})
+    assert model_settings_line(name, {}) == ""
+
+
 def test_score_based_conclusions():
     from stratum_open.findings import Finding
     from stratum_open.github.publish import conclusion

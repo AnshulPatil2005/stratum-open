@@ -830,6 +830,19 @@ def test_the_profile_follows_the_model(gh):
     assert "Profile: `large` (70B parameters)." in gh.issue_comments_[7][0]["body"]
 
 
+def test_the_summary_says_what_was_set_for_gpt_oss_and_why(gh):
+    review_pull(context(gh, FakeModel(model_answer(), name="gpt-oss:20b")), 7)
+    body = gh.issue_comments_[7][0]["body"]
+    assert ("Set for `gpt-oss:20b`, since the policy file doesn't set them: `review.reasoning: low` (without it, the thinking uses up "
+            "the output budget and most replies come back empty) and `review.verify: strict` (it halves the wrong comments and "
+            "costs no real catches).") in body
+
+
+def test_the_summary_says_nothing_of_model_settings_for_other_models(gh):
+    review_pull(context(gh, FakeModel(model_answer(), name="qwen2.5-coder:7b")), 7)
+    assert "Set for `" not in gh.issue_comments_[7][0]["body"]
+
+
 # ── files moved into place ───────────────────────────────────────────────
 
 PWN = """on: pull_request_target

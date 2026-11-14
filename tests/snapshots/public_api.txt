@@ -1,5 +1,5 @@
 AuthorRecord: dataclass(author, merged, strikes)
-EngineResult: dataclass(findings, gone, excluded, review, policy, profile, profile_why, score, conclusion, complete, engine_version, large, unread)
+EngineResult: dataclass(findings, gone, excluded, review, policy, profile, profile_why, score, conclusion, complete, engine_version, large, unread, model_settings)
 FileDiff: dataclass(path, old_path, status, binary, hunks)
 Finding: dataclass(title, detail, severity, category, path, line_start, line_end, suggestion, replacement, source, rule, confidence, needs_human, fingerprint)
 Model: class(self, endpoint: 'str', name: 'str', *, api_key: 'str | None' = None, context_tokens: 'int' = 16384, timeout: 'float' = 900, retries: 'int' = 2, session: 'requests.Session | None' = None, reasoning: 'str' = 'default')

@@ -3,7 +3,8 @@ conclusion. The Action, the App and the CLI call it through `runner`; Stratum
 calls it directly, passing its own settings and hooks.
 
 `analyze()` does, in order:
-1. the profile: the policy's defaults filled in for the model (`profiles`);
+1. the profile: the policy's defaults filled in for the model, and the
+   settings its family needs (`profiles`);
 2. the checks, then the model's review of the files in scope: in `large`,
    the per-file and lens passes first (`review_large`), then the chunked
    review every profile gets;
@@ -47,6 +48,7 @@ class EngineResult:
     engine_version: str = __version__
     large: LargeReview | None = None  # the per-file passes and walkthrough, when the profile ran them
     unread: set[str] = field(default_factory=set)  # paths whose model call failed or was cut off: read them again next time
+    model_settings: dict[str, Any] = field(default_factory=dict)  # dotted keys filled in for the model's family, e.g. gpt-oss's review.reasoning
 
 
 def analyze(
@@ -96,7 +98,7 @@ def analyze(
     """
     from stratum_open.checks import run_checks
 
-    policy, profile, profile_why = effective_policy(policy, model)
+    policy, profile, profile_why, model_settings = _effective_policy(policy, model)
     registry = lookup if policy.dependencies.registry_lookup else None
     checks = run_checks(files, policy, lookup=registry, contents=contents, pr_text=f"{title}\n{description or ''}")
 
@@ -174,13 +176,19 @@ def analyze(
     total = score(kept, bonus) if score is not None else max(0, min(100, risk_score(kept) + bonus))
     verdict = conclusion(kept, total, complete) if conclusion is not None else default_conclusion(kept, complete, policy, total)
     return EngineResult(kept, gone, excluded, result, policy, profile, profile_why, total, verdict, complete, large=large,
-                        unread=unread)
+                        unread=unread, model_settings=model_settings)
 
 
 def effective_policy(policy: Policy, model: Any | None) -> tuple[Policy, str, str]:
     """The policy with its profile's defaults filled in for this model, the
     profile, and a line saying why. The model's context window follows."""
-    from stratum_open.profiles import ModelInfo, apply, choose
+    return _effective_policy(policy, model)[:3]
+
+
+def _effective_policy(policy: Policy, model: Any | None) -> tuple[Policy, str, str, dict[str, Any]]:
+    """`effective_policy`, and the settings filled in for the model's family
+    (`profiles.MODEL_SETTINGS`)."""
+    from stratum_open.profiles import ModelInfo, apply, choose, for_model
 
     # A model that can't describe itself is treated as small and local, the
     # cheaper guess; embedders set review.profile to say otherwise.
@@ -191,7 +199,9 @@ def effective_policy(policy: Policy, model: Any | None) -> tuple[Policy, str, st
         info = ModelInfo()
     profile = choose(policy, info) if model is not None else "small"
     policy = apply(policy, profile, info)
+    applied: dict[str, Any] = {}
     if model is not None:
+        policy, applied = for_model(policy, str(getattr(model, "name", "") or ""))
         model.context_tokens = policy.review.context_tokens
         if hasattr(model, "reasoning"):
             model.reasoning = policy.review.reasoning
@@ -203,7 +213,7 @@ def effective_policy(policy: Policy, model: Any | None) -> tuple[Policy, str, st
         why = f"a {info.context:,}-token context window"
     else:
         why = "runs locally" if info.local else "a hosted model of unknown size"
-    return policy, profile, why
+    return policy, profile, why, applied
 
 
 def default_conclusion(findings: list[Finding], complete: bool, policy: Policy | None = None, score: int | None = None) -> str:

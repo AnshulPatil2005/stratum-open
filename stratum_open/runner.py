@@ -20,6 +20,7 @@ from stratum_open.github import feedback, publish
 from stratum_open.github.api import GitHub, GitHubError
 from stratum_open.model import Model
 from stratum_open.policy import Policy, load_policy, matches_any
+from stratum_open.profiles import model_settings_line
 from stratum_open.review import ReviewResult
 from stratum_open.review_large import LargeReview
 from stratum_open.storage import NullStorage, Storage
@@ -247,6 +248,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
                                                  contents or {}, retried & read, engine.unread, policy=policy)
     if ctx.model is not None:
         coverage.append(f"Profile: `{engine.profile}` ({engine.profile_why}).")
+        if engine.model_settings:
+            coverage.append(model_settings_line(ctx.model.name, engine.model_settings))
     if learned is not None:
         coverage.append(learned.problem or f"Learned from the repo's last {count(learned.read, 'inline comment')}: what maintainers "
                         "rejected with 👎 or `/stratum ignore` is left out (review.learn_from_history).")
