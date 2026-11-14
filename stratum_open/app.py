@@ -295,9 +295,9 @@ class Server:
         return os.path.join(self.workdir, _SAFE_NAME.sub("_", repo.replace("/", "__")))
 
     def checkout(self, repo: str, token: str, branch: str, window_days: int) -> str | None:
-        """Clone or update the default branch with the window's history. The
-        token goes in a header for this one command, never into the clone's
-        config or URL."""
+        """Clone or update the default branch with the window's history (just
+        its newest commit when none is in the window). The token goes in a
+        header for this one command, never into the clone's config or URL."""
         path = self._clone_dir(repo)
         header = "AUTHORIZATION: basic " + base64.b64encode(f"x-access-token:{token}".encode()).decode()
         since = (datetime.now(timezone.utc) - timedelta(days=window_days + 1)).strftime("%Y-%m-%d")
@@ -305,12 +305,13 @@ class Server:
         lock = self._repo_locks.setdefault(repo, threading.Lock())
         with lock:
             try:
-                if os.path.isdir(os.path.join(path, ".git")):
-                    _git(["-c", f"http.extraHeader={header}", "-C", path, "fetch", "--quiet", f"--shallow-since={since}", "origin", branch])
-                    _git(["-C", path, "checkout", "--quiet", "-B", branch, "FETCH_HEAD"])
-                    _git(["-C", path, "update-ref", f"refs/remotes/origin/{branch}", "FETCH_HEAD"])
-                else:
-                    _git(["-c", f"http.extraHeader={header}", "clone", "--quiet", "--single-branch", "--branch", branch, f"--shallow-since={since}", url, path])
+                try:
+                    _clone_or_fetch(path, url, branch, header, f"--shallow-since={since}")
+                except subprocess.CalledProcessError as exc:
+                    if "no commits selected for shallow requests" not in (exc.stderr or ""):
+                        raise
+                    # No commit in the window: the newest one alone gives the tree, and no history, which is right.
+                    _clone_or_fetch(path, url, branch, header, "--depth=1")
                 return path
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
                 self.log(redact(f"{repo}: couldn't update the clone ({type(exc).__name__} {describe_subprocess_error(exc)}); reviewing without history"))
@@ -339,6 +340,15 @@ class Server:
                 gh = GitHub(token, repo["full_name"], api=self.auth.api)
                 policy = load_context_policy(gh, repo.get("default_branch") or "main")
                 self.storage.purge(findings_days=policy.data.findings_retention_days, jobs_days=JOBS_DAYS, repo=repo["full_name"])
+
+
+def _clone_or_fetch(path: str, url: str, branch: str, header: str, shallow: str) -> None:
+    if os.path.isdir(os.path.join(path, ".git")):
+        _git(["-c", f"http.extraHeader={header}", "-C", path, "fetch", "--quiet", shallow, "origin", branch])
+        _git(["-C", path, "checkout", "--quiet", "-B", branch, "FETCH_HEAD"])
+        _git(["-C", path, "update-ref", f"refs/remotes/origin/{branch}", "FETCH_HEAD"])
+    else:
+        _git(["-c", f"http.extraHeader={header}", "clone", "--quiet", "--single-branch", "--branch", branch, shallow, url, path])
 
 
 def _git(args: list[str]) -> None:

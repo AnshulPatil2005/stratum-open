@@ -7,7 +7,9 @@ import hashlib
 import hmac
 import io
 import json
+import os
 import sqlite3
+import subprocess
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -245,3 +247,46 @@ def test_the_whole_app_flow_over_http_against_the_fakes(fake_github, fake_model,
     assert {f["title"] for f in server.storage.latest_findings("acme/widget", 7)} >= {"Unknown id"}
     assert server.storage.export("acme/widget")["jobs"][-1]["outcome"] == "published"
     assert fake_github.requests_to("POST", r"/app/installations/1/access_tokens")
+
+
+def test_a_default_branch_with_no_commit_in_the_window_is_still_checked_out(tmp_path, monkeypatch):
+    """`--shallow-since` selects nothing on a quiet branch and git fails; the
+    clone (or the fetch into it) then takes the newest commit alone."""
+    origin = tmp_path / "origin"
+    (tmp_path / "gitconfig").write_text("")
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / "gitconfig"))
+    monkeypatch.setenv("GIT_CONFIG_NOSYSTEM", "1")
+    # Server.checkout clones from github.com: point that URL at the local repo.
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", f"url.{origin.resolve().as_uri()}.insteadOf")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", "https://github.com/acme/widget.git")
+
+    def git(*args, when=None):
+        env = {**os.environ, "GIT_AUTHOR_NAME": "a", "GIT_AUTHOR_EMAIL": "a@example.com", "GIT_COMMITTER_NAME": "a", "GIT_COMMITTER_EMAIL": "a@example.com"}
+        if when:
+            env.update(GIT_AUTHOR_DATE=when, GIT_COMMITTER_DATE=when)
+        return subprocess.run(["git", *args], check=True, capture_output=True, text=True, env=env).stdout.strip()
+
+    def commit(name, when):
+        (origin / name).write_text("print('hi')\n")
+        git("-C", str(origin), "add", name)
+        git("-C", str(origin), "commit", "--quiet", "-m", f"Add {name}", when=when)
+
+    git("init", "--quiet", "--initial-branch=main", str(origin))
+    commit("first.py", "2025-01-01T12:00:00+00:00")
+    commit("app.py", "2025-01-02T12:00:00+00:00")
+    logs: list[str] = []
+    monkeypatch.setattr(Server, "_purge_loop", lambda self: None)
+    server = Server(StubAuth(), SECRET.decode(), SQLiteStorage(str(tmp_path / "s.db")), str(tmp_path / "repos"), env={}, workers=0, log=logs.append)
+
+    path = server.checkout("acme/widget", "token", "main", 30)
+    assert path and sorted(os.listdir(path)) == [".git", "app.py", "first.py"], logs
+    assert git("-C", path, "rev-list", "--count", "HEAD") == "1"  # the newest commit only: the clone stays small
+    commit("later.py", "2025-02-01T12:00:00+00:00")  # still outside the window: the fetch falls back too
+    assert server.checkout("acme/widget", "token", "main", 30) == path, logs
+    assert os.path.exists(os.path.join(path, "later.py"))
+    assert git("-C", path, "rev-list", "--count", "HEAD") == "1"
+    commit("new.py", datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S+00:00"))  # inside the window
+    assert server.checkout("acme/widget", "token", "main", 30) == path, logs
+    assert git("-C", path, "log", "-1", "--format=%s") == "Add new.py"
+    assert not logs
