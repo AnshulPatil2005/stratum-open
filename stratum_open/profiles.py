@@ -19,7 +19,9 @@ from typing import Any
 
 from stratum_open.policy import Policy
 
-SMALL_MAX_BILLIONS = 20.0
+# "About 20B": gpt-oss:20b is 20.9B as Ollama reports it, and its numbers in the
+# README were measured on `small`. The 22B and 24B dense models stay `large`.
+SMALL_MAX_BILLIONS = 21.0
 SMALL_MAX_CONTEXT = 32_000
 
 # Dotted policy keys each profile sets, unless the policy file set them.

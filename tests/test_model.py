@@ -40,6 +40,24 @@ def test_ollama_reports_size_and_context():
     assert (info.billions, info.context, info.local) == (7.6, 32768, True)
 
 
+
+@pytest.mark.parametrize("name, size, profile", [("gpt-oss:20b", "20.9B", "small"), ("codestral:22b", "22.2B", "large")])
+def test_gpt_oss_20b_gets_the_small_profile_from_the_size_ollama_reports(name, size, profile):
+    """Ollama reports gpt-oss:20b as 20.9B. The README's setup for it was
+    measured on the small profile, so `auto` picks small; a 22B model stays large."""
+    from stratum_open.engine import effective_policy
+    from stratum_open.policy import parse_policy
+
+    session = FakeSession({
+        ("GET", "http://localhost:11434/api/version"): {"version": "0.40.13"},
+        ("POST", "http://localhost:11434/api/show"): {"details": {"parameter_size": size}},
+    })
+    model = Model("http://localhost:11434/v1", name, session=session)
+    policy, chosen, _ = effective_policy(parse_policy("review:\n  reasoning: low\n  verify: strict\n"), model)
+    assert chosen == profile
+    if profile == "small":
+        assert (policy.review.file_reviews, policy.review.lens_files, policy.review.walkthrough) == (0, 0, False)
+
 def test_a_hosted_server_reports_context_and_the_name_gives_the_size():
     session = FakeSession({
         ("GET", "https://openrouter.ai/api/version"): requests.ConnectionError(),
