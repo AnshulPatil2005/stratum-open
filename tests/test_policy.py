@@ -74,6 +74,28 @@ def test_unknown_keys_are_warnings_not_errors():
     assert policy.warnings == ("Unknown key extra is ignored.", "Unknown key review.modle is ignored.")
 
 
+def test_a_repeated_key_is_a_warning_that_names_both_lines():
+    # YAML keeps the last copy of a repeated key and drops the others, so say so.
+    text = "review:\n  max_chunks: 5\n  max_chunks: 6\ntriage:\n  enabled: true\nreview:\n  rules: [Use parameters.]\n"
+    policy = parse_policy(text)
+    assert policy.source == "file" and policy.errors == ()
+    assert policy.warnings == (
+        "review.max_chunks appears twice (lines 2 and 3); only the last one is read.",
+        "review appears twice (lines 1 and 6); only the last one is read.",
+    )
+    assert parse_policy("extra: 1\nextra: 2\nextra: 3\n").warnings == (
+        "extra appears 3 times (lines 1, 2 and 3); only the last one is read.",
+        "Unknown key extra is ignored.",
+    )
+    assert policy.review.max_chunks == 3 and policy.review.rules == ("Use parameters.",) and policy.triage.enabled
+    # A key given by YAML's merge key (<<) and again by hand isn't repeated.
+    merged = parse_policy("base: &b {enabled: true}\ntriage:\n  <<: *b\n  enabled: false\n")
+    assert not any("appears" in warning for warning in merged.warnings)
+    # The warning stays when the file is unusable for another reason.
+    unusable = parse_policy("review:\n  model: cloud\nreview:\n  model: cloud\n")
+    assert unusable.errors and unusable.warnings == ("review appears twice (lines 1 and 3); only the last one is read.",)
+
+
 def test_services_is_hosted_stratums_section_and_is_accepted_unread():
     policy = parse_policy("services:\n  web:\n    calls: [api]\n  api: 7\nreview:\n  mode: security\nextra: 1\n")
     assert (policy.source, policy.errors, policy.warnings) == ("file", (), ("Unknown key extra is ignored.",))
