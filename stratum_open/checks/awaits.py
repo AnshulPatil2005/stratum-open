@@ -11,7 +11,8 @@ awaited it. So a call is flagged when:
 - the same callee (`self._fin.close`, `ensure_awaitable`) is awaited
   somewhere in the file, or on a line the PR removed,
 - and its value isn't awaited, passed to another call (`create_task(f())`,
-  `gather(f())`), yielded, or put in a name that is awaited later.
+  `gather(f())`), entered by `async with`, yielded, or put in a name that is
+  awaited later or handed to an awaited call (`await wait_for(coro, 5)`).
 
 With the file's full text the code is parsed; without it only single lines are
 read, so less is caught.
@@ -134,6 +135,9 @@ def _in_async(func: ast.AsyncFunctionDef, added: set[int], awaited: set[str]) ->
             parents[child] = node
             stack.append(child)
     awaited_names = {n.value.id for n in ast.walk(func) if isinstance(n, ast.Await) and isinstance(n.value, ast.Name)}
+    # A name handed to an awaited call is awaited by it: `await asyncio.wait_for(coro, 5)`, `await gather(a, b)`.
+    awaited_names |= {arg.id for n in ast.walk(func) if isinstance(n, ast.Await) and isinstance(n.value, ast.Call)
+                      for arg in n.value.args + [k.value for k in n.value.keywords] if isinstance(arg, ast.Name)}
     hits = []
     for call in calls:
         name = _name(call.func)
@@ -142,6 +146,8 @@ def _in_async(func: ast.AsyncFunctionDef, added: set[int], awaited: set[str]) ->
         parent = parents.get(call)
         if isinstance(parent, (ast.Await, ast.Call, ast.keyword, ast.Yield, ast.YieldFrom, ast.Starred)):
             continue  # awaited, or handed to something that takes a coroutine (create_task, gather)
+        if isinstance(parent, ast.withitem) and isinstance(parents.get(parent), ast.AsyncWith):
+            continue  # `async with pool.acquire() as conn:` awaits the context manager's __aenter__
         if isinstance(parent, (ast.Assign, ast.AnnAssign)):
             targets = parent.targets if isinstance(parent, ast.Assign) else [parent.target]
             if any(isinstance(t, ast.Name) and t.id in awaited_names for t in targets):
