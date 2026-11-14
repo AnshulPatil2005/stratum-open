@@ -48,6 +48,9 @@ Real merged PRs, each with one bug planted on a line it adds. Where a run has th
 | `gpt-oss:20b` | reasoning-low-verify-strict-context10 | [2026-11-13-logic-pass-actions-cpu](results/2026-11-13-logic-pass-actions-cpu/) | 19 (dev) | 10 of 19 | 32% to 73% | 0 of 19 | 5 on 19 | 0.26 | 0 of 69 | 249s | 4 | 1 |
 | `gpt-oss:20b` | samples2-logic-verify-strict | [2026-11-13-logic-pass-actions-cpu](results/2026-11-13-logic-pass-actions-cpu/) | 19 (dev) | 11 of 19 | 36% to 77% | 2 of 19 | 6 on 19 | 0.32 | 0 of 162 | 497s | 3 | 1 |
 | `gpt-oss:20b` | samples2-verify-strict | [2026-11-13-logic-pass-actions-cpu](results/2026-11-13-logic-pass-actions-cpu/) | 19 (dev) | 9 of 19 | 27% to 68% | 1 of 19 | 6 on 19 | 0.32 | 1 of 109 | 252s | 2 | 1 |
+| `hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S` | - | [2026-11-14-qwen3-coder-moe-actions-cpu](results/2026-11-14-qwen3-coder-moe-actions-cpu/) | 19 (dev) | 9 of 19 | 27% to 68% | 10 of 19 | 42 on 19 | 2.21 | 0 of 42 | 148s | 28 | 1 |
+| `hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S` | verify | [2026-11-14-qwen3-coder-moe-actions-cpu](results/2026-11-14-qwen3-coder-moe-actions-cpu/) | 19 (dev) | 0 of 19 | 0% to 17% | 0 of 19 | 1 on 19 | 0.05 | 0 of 134 | 186s | 0 | 1 |
+| `hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q2_K_XL` | verify | [2026-11-14-qwen3-coder-moe-actions-cpu](results/2026-11-14-qwen3-coder-moe-actions-cpu/) | 19 (dev) | 1 of 19 | 0.9% to 25% | 2 of 19 | 3 on 19 | 0.16 | 2 of 150 | 232s | 1 | 1 |
 | `qwen/qwen-2.5-coder-32b-instruct` | - | [2026-11-07-planted-hosted](results/2026-11-07-planted-hosted/) | 39 | 12 of 39 | 19% to 46% | - | - | - | 0 of 43 | 13s | 0 | 1 |
 | `qwen/qwen3-coder` | - | [2026-11-07-planted-hosted](results/2026-11-07-planted-hosted/) | 39 | 15 of 39 | 25% to 54% | - | - | - | 0 of 43 | 3s | 0 | 1 |
 

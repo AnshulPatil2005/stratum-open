@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+pallets/click#3818,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,verify,clean,high,bug,src/click/core.py,,,Race condition in interrupt handling,"The interrupt handler doesn't properly synchronize with the main execution flow, which could lead to race conditions where late interrupts might not be handled correctly. The fix should ensure that interrupt handling is atomic and doesn't interfere with the intended exit code.",,

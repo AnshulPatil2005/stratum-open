@@ -1,0 +1,5 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/werkzeug#3337,dev,negated-condition,src/werkzeug/http.py,1356,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,verify,planted,692.0,yes,6,0,0,0,
+psf/requests#7496,dev,flipped-comparison,src/requests/models.py,241,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,verify,planted,123.9,yes,2,0,0,0,
+Textualize/textual#6464,dev,wrong-boolean,src/textual/screen.py,1532,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,verify,planted,335.0,yes,5,0,0,0,
+pypa/pip#14349,dev,off-by-one,src/pip/_internal/cli/autocompletion.py,144,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,verify,planted,351.3,yes,4,0,0,0,

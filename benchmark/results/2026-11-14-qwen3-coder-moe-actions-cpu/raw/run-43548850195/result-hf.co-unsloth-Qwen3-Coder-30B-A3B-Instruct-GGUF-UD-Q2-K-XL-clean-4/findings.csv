@@ -1,0 +1,2 @@
+case,model,variant,version,severity,category,path,line,near,title,detail,verdict,note
+Textualize/textual#6464,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q2_K_XL,verify,clean,medium,bug,src/textual/dom.py,1817,,Incorrect early return for remove_class,"The condition checks if classes are disjoint from class_names, but should check if the classes don't contain any of the class_names to avoid unnecessary updates. This could cause missed removals when removing classes that aren't present.",,

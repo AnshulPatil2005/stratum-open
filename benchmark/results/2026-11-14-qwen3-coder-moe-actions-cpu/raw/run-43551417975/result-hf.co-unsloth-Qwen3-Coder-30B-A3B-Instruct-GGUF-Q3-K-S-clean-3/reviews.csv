@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/click#3818,dev,negated-condition,src/click/core.py,1591,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,,clean,776.5,yes,2,0,2,0,
+psf/black#5634,dev,flipped-comparison,src/black/comments.py,698,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,,clean,340.3,yes,1,0,3,1,
+Textualize/rich#3905,dev,wrong-boolean,rich/progress.py,1177,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,,clean,106.4,yes,1,0,1,1,
+scrapy/scrapy#8461,dev,missing-await,scrapy/extensions/feedexport.py,969,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,,clean,98.4,yes,1,0,2,0,
+pallets/werkzeug#3293,dev,not-in,src/werkzeug/datastructures/accept.py,302,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,,clean,97.9,yes,1,0,2,1,
