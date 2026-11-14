@@ -44,6 +44,45 @@ async def run(tasks):
 """) == []
 
 
+def test_async_with_and_a_coroutine_passed_to_an_awaited_call_are_fine():
+    # `async with` awaits the context manager itself, and `wait_for(coro)` awaits the coroutine.
+    assert flagged("""
+import asyncio
+
+
+class Repo:
+    async def one(self):
+        conn = await self.pool.acquire()
+        return conn
+
+    async def two(self):
+        async with self.pool.acquire() as conn:
+            return conn
+
+    async def three(self):
+        coro = self.fetch()
+        return await asyncio.wait_for(coro, timeout=5)
+
+    async def four(self):
+        return await self.fetch()
+
+    async def five(self):
+        coro = self.fetch()
+        return await asyncio.wait_for(fut=coro, timeout=5)
+""") == []
+    # Still a miss: a bare call, and a coroutine that's only returned.
+    assert flagged("""
+class Repo:
+    async def one(self):
+        return await self.pool.acquire()
+
+    async def two(self):
+        self.pool.acquire()
+        coro = self.pool.acquire()
+        return coro
+""") == [(6, "`self.pool.acquire()` isn't awaited"), (7, "`self.pool.acquire()` isn't awaited")]
+
+
 def test_sync_functions_and_nested_sync_defs_are_left_alone():
     assert flagged("""
 async def save(store, item):
