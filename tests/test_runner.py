@@ -470,6 +470,79 @@ def test_explain_has_a_daily_limit_per_person_and_per_pr(gh):
     assert handle(ctx, event, payload) == "explain"
 
 
+CLOSE_UNLINKED = parse_policy("triage:\n  enabled: true\n  require_linked_issue: true\n  close_without_issue: true\n")
+README_DIFF = "diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1 +1,2 @@\n # x\n+more\n"
+
+
+HELD = ("(not applied: this project asks for a linked issue, and this review couldn't read them, "
+        "so the label stays as it was)")
+
+
+class LinkedIssuesFail(FakeGitHub):
+    """The linked-issue lookup fails while `failing` is set."""
+
+    failing = True
+
+    def linked_issues(self, number):
+        from stratum_open.github.api import GitHubError
+
+        if self.failing:
+            raise GitHubError(502, "Bad Gateway")
+        return super().linked_issues(number)
+
+
+def test_a_failed_linked_issue_lookup_neither_labels_nor_closes_the_pr():
+    # #122: the PR links #3, but the lookup failed; it read as "no linked issue" and the PR was closed.
+    gh = LinkedIssuesFail(diff=README_DIFF, linked=[3])
+    outcome = review_pull(context(gh, None, CLOSE_UNLINKED), 7)
+    assert (outcome.triage.reasons, gh.closed, gh.labels[7]) == ([], [], [])
+    bodies = [c["body"] for c in gh.issue_comments_[7]]
+    assert not any(b.startswith("Closing this PR") for b in bodies)
+    assert "Couldn't read the linked issues (502), so triage doesn't count them either way." in bodies[0]
+    # The label the summary names isn't applied, and the queue gets no verdict from this review.
+    assert f"**Triage:** `triage: ready` {HELD}" in bodies[0]
+    assert "key" not in publish.State.decode(bodies[0]).triage
+
+
+def test_a_failed_linked_issue_lookup_keeps_the_label_the_last_review_gave():
+    gh = LinkedIssuesFail(diff=README_DIFF, linked=[])  # the PR really links nothing
+    gh.failing = False
+    review_pull(context(gh, None, parse_policy("triage:\n  enabled: true\n  require_linked_issue: true\n")), 7)
+    assert gh.labels[7] == ["triage: needs work"]
+
+    gh.failing = True  # a later review, e.g. the redraw after `/stratum ignore`, can't read them
+    review_pull(context(gh, None, parse_policy("triage:\n  enabled: true\n  require_linked_issue: true\n")), 7)
+    body = gh.issue_comments_[7][0]["body"]
+    assert gh.labels[7] == ["triage: needs work"] and HELD in body
+    assert publish.State.decode(body).triage["key"] == "needs_work"
+
+
+def test_a_failed_linked_issue_lookup_still_labels_where_no_linked_issue_is_required():
+    gh = LinkedIssuesFail(diff=README_DIFF, linked=[3])
+    review_pull(context(gh, None, parse_policy("triage:\n  enabled: true\n")), 7)
+    assert gh.labels[7] == ["triage: ready"] and "(not applied" not in gh.issue_comments_[7][0]["body"]
+
+
+def test_a_failed_ci_lookup_still_reads_the_linked_issues():
+    from stratum_open.github.api import GitHubError
+
+    class CIFails(FakeGitHub):
+        def ci_state(self, head, **kwargs):
+            raise GitHubError(403, "Resource not accessible by integration")
+
+    gh = CIFails(diff=README_DIFF, linked=[3])
+    outcome = review_pull(context(gh, None, CLOSE_UNLINKED), 7)
+    assert gh.closed == [] and "Linked to #3." in outcome.triage.evidence
+    assert "CI passes." not in outcome.triage.evidence
+    assert "Couldn't read the CI status (403)." in gh.issue_comments_[7][0]["body"]
+
+
+def test_a_pr_that_links_no_issue_is_still_closed():
+    gh = FakeGitHub(diff=README_DIFF, linked=[])
+    review_pull(context(gh, None, CLOSE_UNLINKED), 7)
+    assert gh.closed == [7] and gh.issue_comments_[7][-1]["body"].startswith("Closing this PR")
+
+
 def test_record_command_without_history(gh):
     ctx = context(gh, None)
     event, payload = comment_event("/stratum record")
