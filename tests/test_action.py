@@ -106,6 +106,14 @@ def test_the_workflow_starts_a_job_for_every_comment_the_parser_reads_as_a_comma
         assert parse(body) is None and not starts_the_job(needles, body), body
 
 
+def test_the_example_workflow_runs_gpt_oss_and_this_repo_reviews_itself_with_it():
+    # gpt-oss gets review.reasoning: low and review.verify: strict from the engine, so the workflow names only the model.
+    root = Path(__file__).parent.parent
+    for path in ("examples/stratum.yml", ".github/workflows/stratum.yml"):
+        models = re.findall(r"^\s*ollama-model:\s*(\S+)\s*$", (root / path).read_text(encoding="utf-8"), re.MULTILINE)
+        assert models == ["gpt-oss:20b"], path
+
+
 def test_ci_finishing_respects_the_skip_settings(tmp_path, monkeypatch, capsys):
     from stratum_open import action as action_module
 

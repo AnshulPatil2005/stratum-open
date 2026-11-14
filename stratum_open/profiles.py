@@ -9,6 +9,10 @@ profile's defaults here never changes them.
 `review.profile: auto` picks the profile from the model the review runs on:
 its size where it's known (from the server, or the "7b" in its name), else its
 context window, else whether it runs locally.
+
+Whatever the profile, a model family can need settings of its own
+(`MODEL_SETTINGS`): gpt-oss gets `review.reasoning: low` and
+`review.verify: strict`, again unless the policy file set them.
 """
 
 from __future__ import annotations
@@ -52,6 +56,18 @@ PRESETS: dict[str, dict[str, Any]] = {
     },
 }
 
+# Settings one model family needs whatever the profile, unless the policy file
+# set them: the pattern its name matches, then each key's value and why. On the
+# free runner gpt-oss:20b found 16 of 39 planted bugs with both
+# (benchmark/results/2026-11-08-gpt-oss-actions-cpu).
+MODEL_SETTINGS: tuple[tuple[re.Pattern[str], dict[str, tuple[Any, str]]], ...] = (
+    # Ollama's names for it: gpt-oss, gpt-oss:20b, library/gpt-oss:120b.
+    (re.compile(r"(?:^|/)gpt-oss(?::|$)", re.IGNORECASE), {
+        "review.reasoning": ("low", "without it, the thinking uses up the output budget and most replies come back empty"),
+        "review.verify": ("strict", "it halves the wrong comments and costs no real catches"),
+    }),
+)
+
 _SIZE = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)b(?![a-z])", re.IGNORECASE)
 
 
@@ -90,6 +106,30 @@ def apply(policy: Policy, profile: str, info: ModelInfo | None = None) -> Policy
         if key not in policy.explicit:
             policy = _set(policy, key.split("."), value)
     return policy
+
+
+def for_model(policy: Policy, name: str) -> tuple[Policy, dict[str, Any]]:
+    """The policy with the settings the model's family needs filled in where
+    the file was silent (`MODEL_SETTINGS`), and the ones filled in. Any other
+    model gets the policy back as it was."""
+    applied: dict[str, Any] = {}
+    for pattern, settings in MODEL_SETTINGS:
+        if isinstance(name, str) and pattern.search(name):
+            for key, (value, _) in settings.items():
+                if key not in policy.explicit:
+                    policy = _set(policy, key.split("."), value)
+                    applied[key] = value
+    return policy, applied
+
+
+def model_settings_line(name: str, applied: dict[str, Any]) -> str:
+    """What `for_model` filled in and why, for the review's summary; empty
+    when it filled in nothing."""
+    reasons = {key: why for pattern, settings in MODEL_SETTINGS if pattern.search(name or "") for key, (_, why) in settings.items()}
+    parts = [f"`{key}: {value}` ({reasons[key]})" for key, value in applied.items()]
+    if not parts:
+        return ""
+    return f"Set for `{name}`, since the policy file doesn't set {'them' if len(parts) > 1 else 'it'}: " + " and ".join(parts) + "."
 
 
 def _set(obj: Any, path: list[str], value: Any) -> Any:

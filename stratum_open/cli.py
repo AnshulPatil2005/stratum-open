@@ -24,6 +24,7 @@ from stratum_open.findings import Finding
 from stratum_open.github.api import API, GitHubError
 from stratum_open.model import model_from_policy
 from stratum_open.policy import POLICY_PATH, Policy, parse_policy
+from stratum_open.profiles import model_settings_line
 from stratum_open.track_record import author_identity, build_records, describe_subprocess_error
 
 _PR = re.compile(r"(?:https://github\.com/)?([\w.-]+/[\w.-]+)(?:/pull/|#)(\d+)/?$")
@@ -217,6 +218,8 @@ def _review_local(args, base: str) -> int:
     )
     if model is not None:
         print(f"Profile: {result.profile} ({result.profile_why}).", file=sys.stderr)
+        if result.model_settings:
+            print(model_settings_line(model.name, result.model_settings), file=sys.stderr)
         if result.review is not None and result.review.calls and not result.review.ran:
             print("The model didn't answer: " + "; ".join(sorted({c['error'] for c in result.review.calls if c.get('error')})), file=sys.stderr)
         elif result.review is not None and result.review.summary:

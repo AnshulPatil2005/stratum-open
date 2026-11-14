@@ -78,3 +78,21 @@ def test_a_model_built_from_the_policy_has_its_reasoning_level():
     from stratum_open.model import model_from_policy
     model = model_from_policy(parse_policy("review:\n  reasoning: off\n"), env={})
     assert model.reasoning == "off"
+
+
+@pytest.mark.parametrize("policy, name, reasoning", [
+    ("", "gpt-oss:20b", "low"),  # gpt-oss gets `low` without being told, for the commands too
+    ("review:\n  reasoning: off\n", "gpt-oss:20b", "off"),  # the policy file's own value wins
+    ("", "qwen2.5-coder:7b", "default"),
+    ("review:\n  model_name: gpt-oss:20b\n", None, "low"),  # named in the policy rather than by the Action
+])
+def test_a_model_built_from_the_policy_gets_its_familys_reasoning(policy, name, reasoning):
+    from stratum_open.model import model_from_policy
+    model = model_from_policy(parse_policy(policy), env={"STRATUM_MODEL_NAME": name} if name else {})
+    assert model.reasoning == reasoning
+
+
+def test_the_review_sets_gpt_oss_reasoning_on_the_model_without_a_policy_setting():
+    model = Model("http://localhost:11434/v1", "gpt-oss:20b", session=Recorder(OLLAMA_REPLY))
+    policy, _, _ = effective_policy(parse_policy("review:\n  profile: small\n"), model)
+    assert model.reasoning == "low" and (policy.review.reasoning, policy.review.verify) == ("low", "strict")

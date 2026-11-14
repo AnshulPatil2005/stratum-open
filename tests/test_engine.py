@@ -59,6 +59,30 @@ def test_the_model_review_merges_with_the_checks_and_reports_the_profile():
     assert result.engine_version == __import__("stratum_open").__version__
 
 
+def test_gpt_oss_gets_its_settings_whatever_the_profile_and_other_models_dont():
+    class Named(FakeModel):
+        reasoning = "default"
+
+        def describe(self):
+            return ModelInfo(billions=20.9, local=True)
+
+    model = Named(reply(), name="gpt-oss:20b")
+    result = run(model)
+    assert result.profile == "small" and result.profile_why == "20.9B parameters"
+    assert (result.policy.review.reasoning, result.policy.review.verify, model.reasoning) == ("low", "strict", "low")
+    assert result.model_settings == {"review.reasoning": "low", "review.verify": "strict"}
+    # An explicit value wins, in any profile.
+    result = run(Named(reply(), name="gpt-oss:20b"), policy=parse_policy("review:\n  profile: large\n  verify: none\n"))
+    assert (result.profile, result.policy.review.verify, result.model_settings) == ("large", "none", {"review.reasoning": "low"})
+    # Any other model: the policy as the profile leaves it.
+    other = Named(reply(), name="qwen2.5-coder:7b")
+    result = run(other)
+    assert (result.policy.review.reasoning, result.policy.review.verify, other.reasoning, result.model_settings) == (
+        "default", "none", "default", {})
+    # Without a model nothing is filled in.
+    assert run().model_settings == {} and run().policy.review.verify == "none"
+
+
 def test_hooks_replace_the_defaults():
     def weigh(findings):
         return [replace(f, severity="critical") if f.rule == "code/sql" else f for f in findings], 7

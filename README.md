@@ -6,7 +6,7 @@ yourself.
 Maintainers now get pull requests faster than they can read them, many of
 them generated. Stratum Open reads each PR first and sorts the queue, so you
 spend your review time on the ones worth it. It runs on small open models
-(7–14B) on hardware you control, and your rules live in a file in your own
+(7–20B) on hardware you control, and your rules live in a file in your own
 repo. Nothing is sent to Stratum: no account, no telemetry, no license check.
 
 ## What it does on each PR
@@ -44,7 +44,7 @@ repo. Nothing is sent to Stratum: no account, no telemetry, no license check.
 
 Copy [examples/stratum.yml](examples/stratum.yml) to `.github/workflows/stratum.yml`. That's all.
 
-That workflow runs `qwen2.5-coder:7b` with Ollama on GitHub's own runner, so you need no server. Ollama and the model go into the Actions cache on the first scheduled (or manual) run; PR runs read it, since GitHub doesn't let them write caches. GitHub's free runners have no GPU, though, so a review takes a few minutes. If your project has a machine with a GPU, run Ollama (or any OpenAI-compatible server) there instead. Then point `review.endpoint` in your policy file at it, and drop `ollama-model` from the workflow.
+That workflow runs `gpt-oss:20b` with Ollama on GitHub's own runner, so you need no server. On the [planted-bug benchmark](benchmark/README.md) it found 16 of 39 bugs, against 1 of 39 for `qwen2.5-coder:7b` ([Models](#models) has the numbers). GitHub's free runners have no GPU, though, so a review takes a few minutes: about 3.5 minutes a PR, plus a couple more to download the model. At 13.8 GB it's bigger than a repository's 10 GB Actions cache, so it's downloaded each run; Ollama itself goes into the cache on the first scheduled (or manual) run, and PR runs read it, since GitHub doesn't let them write caches. For the fastest run, set `ollama-model: qwen2.5-coder:7b`, which stays in the cache, though it finds far less. If your project has a machine with a GPU, run Ollama (or any OpenAI-compatible server) there instead. Then point `review.endpoint` in your policy file at it, and drop `ollama-model` from the workflow.
 
 To hear from Stratum sooner, set `review.early_checks: true` in your policy file. The Action then runs the checks before it starts the model and posts what they found straight away: on the lines, in the summary comment (with a line saying the model's review is still running), and as a check run in progress. That's usually within a minute of the job starting, since the checks need no model. When the model is done, the same comment becomes the full review and the check run gets its result. The end result is the same as without the setting. A check's early comment that the full review wouldn't have posted is deleted then: when the model reported the same problem on the same lines, or when `review.max_inline_comments` gives its place to a more serious finding. One that someone has replied to stays. If the model's review never finishes (Ollama doesn't start, or the job fails, times out or is cancelled), the summary says so, and the check run is completed with what the checks found.
 
@@ -114,7 +114,7 @@ Experimental: Stratum reviews merge requests from a GitLab CI job, on gitlab.com
 To set it up:
 
 1. Create a project access token with the Developer role and the `api` scope, and add it as a masked, hidden CI/CD variable named `STRATUM_GITLAB_TOKEN`. The job token can't post MR notes.
-2. Add the job in [examples/gitlab-ci.yml](examples/gitlab-ci.yml) to your `.gitlab-ci.yml`. It runs `qwen2.5-coder:7b` with Ollama in the job, like the GitHub Action, and runs `stratum-open gitlab`.
+2. Add the job in [examples/gitlab-ci.yml](examples/gitlab-ci.yml) to your `.gitlab-ci.yml`. It runs `qwen2.5-coder:7b` with Ollama in the job and runs `stratum-open gitlab`.
 
 It posts a summary note that's updated on each pipeline, threads on the lines with suggestions you can apply, resolves a thread when its code changes, and sets a commit status (and a triage label, when your policy turns labels on). The API URL comes from `CI_API_V4_URL`, so a self-hosted GitLab needs nothing more.
 
@@ -142,8 +142,9 @@ Gitea and Forgejo aren't supported yet; [docs/gitea-forgejo.md](docs/gitea-forge
 
 ## Models
 
-The target is a 7–14B open coding model. Defaults:
-- `qwen2.5-coder:7b` through Ollama;
+The target is a 7–20B open model. Defaults:
+- `gpt-oss:20b` in the example workflow, on GitHub's runner;
+- `qwen2.5-coder:7b` through Ollama when neither the workflow nor `review.model_name` names a model, since `gpt-oss:20b` needs 16 GB of RAM;
 - any OpenAI-compatible server works;
 - a hosted model works too, if your project prefers one (`review.model: hosted`, with the key in `STRATUM_MODEL_API_KEY`).
 
@@ -151,16 +152,18 @@ On GitHub's free runner (4 CPUs, 16 GB RAM, no GPU) you can choose between two m
 
 | `ollama-model` | Policy setting | Bugs found | Wrong comments per clean PR | Time per PR | Download |
 | --- | --- | --- | --- | --- | --- |
-| `qwen2.5-coder:7b` (the example's) | | 1 of 39 | about 0.4 | about 2.5 min | 4.7 GB, kept in the Actions cache |
-| `gpt-oss:20b` | `review.reasoning: low` and `review.verify: strict` | 16 of 39 (12 to 18 over four runs) | about 0.2 | about 3.5 min | 13.8 GB, downloaded each run |
+| `qwen2.5-coder:7b` | | 1 of 39 | about 0.4 | about 2.5 min | 4.7 GB, kept in the Actions cache |
+| `gpt-oss:20b` (the example's) | `review.reasoning: low` and `review.verify: strict`, set for it automatically | 16 of 39 (12 to 18 over four runs) | about 0.2 | about 3.5 min | 13.8 GB, downloaded each run |
 
 `gpt-oss:20b` finds far more, at about the same speed and with fewer wrong comments. With the logic pass and ten lines of code around each change it finds more again, for about three times the wait ([a more thorough review](#a-more-thorough-review)). Two costs of `gpt-oss:20b` either way:
 - **Disk:** it doesn't fit the runner's disk as it comes, so the Action removes preinstalled SDKs it doesn't need to make room.
 - **Cache:** it's bigger than a repository's 10 GB Actions cache, so it's downloaded each run, which adds a couple of minutes. Ollama itself is still cached.
 
-It's a thinking model, so it needs `review.reasoning: low`. Without it, the thinking uses up the output budget and most replies come back empty.
+Stratum sets two things for `gpt-oss` itself, so to switch models you only change `ollama-model`:
+- `review.reasoning: low`: it's a thinking model, and without it the thinking uses up the output budget and most replies come back empty;
+- `review.verify: strict`: it costs `gpt-oss` no real catches and halves its wrong comments. On the 7B, by contrast, it removes noise only because there were no real catches to lose.
 
-`review.verify: strict` costs it no real catches and halves its wrong comments. On the 7B, by contrast, it removes noise only because there were no real catches to lose.
+Your policy file's own value for either wins, and each review's summary says which were set for the model.
 
 The same review can catch different bugs from one run to the next, so expect the counts to move by a few.
 
@@ -170,8 +173,6 @@ If you'd rather wait longer for more catches, turn on the logic pass and show th
 
 ```yaml
 review:
-  reasoning: low
-  verify: strict
   logic_pass: true      # one more call per chunk, for logic errors only
   context_lines: 10     # unchanged lines shown around each change
 ```
