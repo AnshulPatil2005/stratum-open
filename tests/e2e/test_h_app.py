@@ -152,6 +152,48 @@ def test_retention_purges_findings_after_180_days_and_jobs_after_14(tmp_path):
     assert storage.latest_findings("acme/widget", 8) and not storage.latest_findings("acme/widget", 7)
 
 
+def test_the_daily_purge_reaches_every_installation_and_repo_past_one_that_fails(fake_github, tmp_path, monkeypatch):
+    """purge_all pages through the installations and each one's repos, and an
+    installation or repo that fails is logged and skipped, never the rest."""
+    monkeypatch.setattr(Server, "_purge_loop", lambda self: None)  # the test calls purge_all itself
+    fake_github.per_page_cap = 2  # GitHub pages 100 at a time; 2 keeps the test small
+    fake_github.installations = [{"id": 1}, {"id": 2}, {"id": 3}]  # 3 is on the second page
+    repos = ["acme/blocked"] + [f"acme/r{i}" for i in range(4)]  # three pages
+    fake_github.installation_repos = [{"full_name": repo, "default_branch": "main"} for repo in repos]
+    fake_github.fail("POST", r"/app/installations/1/access_tokens", 403, times=0)  # a suspended installation
+    fake_github.fail("POST", r"/app/installations/2/access_tokens", 404, times=0)
+    fake_github.fail("GET", r"^/repos/acme/blocked/", 451, body={"message": "Repository access blocked"}, times=0)
+    storage = SQLiteStorage(str(tmp_path / "s.db"))
+    for repo in repos:
+        storage.record_review(repo, 1, HEAD, 10, "s", [Finding("t", "d", path="x.py")])
+        storage.record_job(repo, 1, "review", "published")
+    old = (datetime.now(timezone.utc) - timedelta(days=400)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with storage._tx() as db:
+        db.execute("UPDATE reviews SET created_at = ?", (old,))
+        db.execute("UPDATE jobs SET created_at = ?", (old,))
+    logs: list[str] = []
+    server = Server(AppAuth("1", _private_key(), api=fake_github.url), SECRET.decode(), storage, str(tmp_path / "repos"), env={}, workers=0,
+                    log=logs.append)
+
+    server.purge_all()
+
+    assert {repo: rows for repo in repos for table, rows in storage.export(repo).items() if rows} == {}
+    assert any(line.startswith("purge: installation 1: ") and "403" in line for line in logs)
+    assert any(line.startswith("purge: installation 2: ") and "404" in line for line in logs)
+    # A repo whose policy can't be read is purged with the default retention.
+    assert any(line.startswith("acme/blocked: ") and "451" in line and "180 days" in line for line in logs)
+
+
+def _private_key() -> str:
+    try:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import rsa
+    except ImportError:  # pragma: no cover
+        pytest.skip("cryptography (the `app` extra) isn't installed")
+    return rsa.generate_private_key(public_exponent=65537, key_size=2048).private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()).decode()
+
+
 def test_uninstall_deletes_the_repos_rows_at_once(tmp_path, monkeypatch):
     server = make_server(tmp_path, monkeypatch)
     server.storage.record_review("acme/widget", 7, HEAD, 50, "s", [Finding("t", "d", path="x.py")])

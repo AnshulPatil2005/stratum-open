@@ -39,7 +39,7 @@ from stratum_open.github.api import API, GitHub, GitHubError
 from stratum_open.github.commands import handle, parse
 from stratum_open.github.feedback import collect_votes
 from stratum_open.model import model_from_policy
-from stratum_open.policy import REVIEW_EVENTS
+from stratum_open.policy import REVIEW_EVENTS, Policy
 from stratum_open.runner import Context, checkout_ref, load_context_policy, review_pull, skip_reason
 from stratum_open.storage import SQLiteStorage, Storage
 from stratum_open.track_record import describe_subprocess_error
@@ -95,7 +95,8 @@ class AppAuth:
         return self._login
 
     def installations(self) -> list[dict]:
-        return self._app_get("/app/installations?per_page=100")
+        """Every installation, page by page, with the client's retries."""
+        return list(GitHub(self.jwt(), "", api=self.api).paginate("/app/installations"))
 
 
 class Server:
@@ -330,16 +331,29 @@ class Server:
 
     def purge_all(self) -> None:
         """Every repo's rows past its own retention, even repos with no PRs
-        lately, so the data page's promises hold without any activity."""
+        lately, so the data page's promises hold without any activity. An
+        installation or repo that fails is logged and skipped, not the rest."""
         for installation in self.auth.installations():
-            token = self.auth.token(installation["id"])
-            response = requests.get(f"{self.auth.api}/installation/repositories?per_page=100", timeout=30,
-                                    headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"})
-            response.raise_for_status()
-            for repo in response.json().get("repositories", []):
-                gh = GitHub(token, repo["full_name"], api=self.auth.api)
-                policy = load_context_policy(gh, repo.get("default_branch") or "main")
-                self.storage.purge(findings_days=policy.data.findings_retention_days, jobs_days=JOBS_DAYS, repo=repo["full_name"])
+            try:
+                token = self.auth.token(installation["id"])
+                repos = list(GitHub(token, "", api=self.auth.api).paginate("/installation/repositories"))
+            except Exception as exc:
+                self.log(redact(f"purge: installation {installation.get('id')}: couldn't list its repos: {type(exc).__name__}: {exc}"))
+                continue
+            for repo in repos:
+                name = repo["full_name"]
+                try:
+                    self._purge_repo(token, name, repo.get("default_branch") or "main")
+                except Exception as exc:
+                    self.log(redact(f"{name}: couldn't purge: {type(exc).__name__}: {exc}"))
+
+    def _purge_repo(self, token: str, repo: str, default_branch: str) -> None:
+        try:
+            days = load_context_policy(GitHub(token, repo, api=self.auth.api), default_branch).data.findings_retention_days
+        except Exception as exc:  # a blocked repo keeps nothing for good: the default retention applies
+            days = Policy().data.findings_retention_days
+            self.log(redact(f"{repo}: couldn't read the policy ({type(exc).__name__}: {exc}); purging with the default {days} days"))
+        self.storage.purge(findings_days=days, jobs_days=JOBS_DAYS, repo=repo)
 
 
 def _clone_or_fetch(path: str, url: str, branch: str, header: str, shallow: str) -> None:
