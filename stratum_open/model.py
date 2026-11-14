@@ -23,6 +23,8 @@ from stratum_open.policy import Policy
 from stratum_open.util import redact, retry_after
 
 RETRY_STATUSES = {408, 429, 500, 502, 503, 504}
+# A server refusing the request itself (too big for its context, say): sending the same input again gets the same.
+REFUSED_STATUSES = {400, 413}
 _FENCE_ANYWHERE = re.compile(r"```[a-zA-Z]*[ \t]*\n(.*?)\n[ \t]*```", re.DOTALL)
 _TRAILING_COMMA = re.compile(r",\s*([}\]])")
 
@@ -35,6 +37,10 @@ class Reply:
     prompt_tokens: int | None = None
     output_tokens: int | None = None
     error: str = ""
+    # The call failed in a way likely to repeat for the same input: the server took the request
+    # but didn't answer within the time limit, or refused it (REFUSED_STATUSES). Not a server
+    # that couldn't be reached, or one that kept failing (an outage, which passes).
+    repeats: bool = False
 
     @property
     def ok(self) -> bool:
@@ -43,7 +49,7 @@ class Reply:
     def as_dict(self) -> dict[str, Any]:
         return {
             "model": self.model, "seconds": round(self.seconds, 1), "ok": self.ok, "error": self.error,
-            "prompt_tokens": self.prompt_tokens, "output_tokens": self.output_tokens,
+            "prompt_tokens": self.prompt_tokens, "output_tokens": self.output_tokens, "repeats": self.repeats,
         }
 
 
@@ -80,10 +86,11 @@ class Model:
             else:
                 reply = self._openai_chat(system, user, max_tokens, json_mode)
         except requests.RequestException as exc:
-            reply = Reply("", self.name, 0, error=f"couldn't reach the model at {_shown(self.endpoint)}: {type(exc).__name__}")
+            reply = Reply("", self.name, 0, error=f"couldn't reach the model at {_shown(self.endpoint)}: {type(exc).__name__}",
+                          repeats=isinstance(exc, requests.ReadTimeout))  # it took the request: not an outage
         except ModelError as exc:
             # A server's error text can quote the request back, API key included; it ends up in a PR comment.
-            reply = Reply("", self.name, 0, error=redact(str(exc)))
+            reply = Reply("", self.name, 0, error=redact(str(exc)), repeats=exc.status in REFUSED_STATUSES)
         reply.seconds = time.monotonic() - started
         return reply
 

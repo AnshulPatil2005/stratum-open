@@ -218,8 +218,9 @@ class ReviewResult:
     salvaged_calls: int = 0  # replies that weren't valid JSON, read in part
     dropped: int = 0  # findings the model returned that couldn't be used
     unread: set[str] = field(default_factory=set)  # paths in a chunk whose call failed or was cut off
-    # Of those, the paths in a chunk the model answered, but with a reply cut off or not the JSON asked
-    # for: unlike a model that couldn't be reached, likely to happen again for the same input.
+    # Of those, the paths in a chunk whose call is likely to fail again for the same input: the model
+    # answered, but cut off or not in the JSON asked for, or the call timed out or was refused
+    # (`Reply.repeats`). Not a model that couldn't be reached.
     unusable: set[str] = field(default_factory=set)
 
     @property
@@ -320,7 +321,8 @@ def review(
             else:
                 result.failed_calls += 1
             result.unread.update(packed.chunk_paths[index])  # what came after the break was never read
-            if result.calls[-1].get("ok"):  # `_ask` added this call; "ok" is the model's answering at all
+            call = result.calls[-1]  # the one `_ask` added; "ok" is whether the model answered at all
+            if call.get("ok") or call.get("repeats"):
                 result.unusable.update(packed.chunk_paths[index])
         if data is None:
             continue

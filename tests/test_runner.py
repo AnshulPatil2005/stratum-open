@@ -4,6 +4,7 @@ import json
 import time
 
 import pytest
+import requests
 from fakes import FakeGitHub, FakeModel
 
 from stratum_open.github import publish
@@ -552,12 +553,58 @@ def test_a_file_whose_answer_is_never_json_is_sent_twice_on_one_commit(gh):
         calls.append(len(model.prompts))
     assert calls == [1, 1, 0, 0]
     body = gh.issue_comments_[7][0]["body"]
-    assert ("Stopped sending `app/users.py` to the model on this commit: its answer came back cut off or not the JSON asked "
-            "for 2 times. Push a commit, or comment `/stratum review`, to try again.") in body
+    assert STOPPED.format("app/users.py") in body
     assert "the next review reads it" not in body
     assert gh.checks[-1]["conclusion"] == "neutral"  # still not a complete review
     state = publish.State.decode(body)
     assert (state.unread, state.tries) == (["app/users.py"], [2])
+
+
+STOPPED = ("Stopped sending `{}` to the model on this commit: 2 reviews of it got no usable answer (cut off, not the JSON "
+           "asked for, timed out, or refused by the model server). Push a commit, or comment `/stratum review`, to try again.")
+
+
+class ModelServer:
+    """A session for the real `Model`: not Ollama, and every chat call fails with `fail()`."""
+
+    def __init__(self, fail):
+        self.fail, self.posts = fail, 0
+
+    def get(self, url, **kwargs):
+        raise requests.ConnectionError()  # no /api/version, so not Ollama; no /models either
+
+    def post(self, url, **kwargs):
+        self.posts += 1
+        return self.fail()
+
+
+class Refused:
+    """What an OpenAI-compatible server sends for a prompt longer than its context."""
+
+    status_code, ok, headers, text = 400, False, {}, "This model's maximum context length is 8192 tokens."
+    content = text.encode()
+
+
+def raises(exc):
+    def fail():
+        raise exc
+    return fail
+
+
+@pytest.mark.parametrize("fail, calls", [
+    (raises(requests.ReadTimeout()), [1, 1, 0]),     # it took the request and didn't answer in time
+    (Refused, [2, 2, 0]),                            # 400, then 400 again without response_format
+    (raises(requests.ConnectTimeout()), [1, 1, 1]),  # it couldn't be reached: an outage, which passes
+])
+def test_timeouts_and_refused_requests_count_but_an_unreachable_model_doesnt(gh, fail, calls):
+    from stratum_open.model import Model
+
+    seen = []
+    for _ in range(3):
+        server = ModelServer(fail)
+        review_pull(context(gh, Model("https://models.example/v1", "m", session=server), parse_policy("review:\n  profile: small\n")), 7)
+        seen.append(server.posts)
+    assert seen == calls
 
 
 def test_a_push_sends_a_stopped_file_again(gh):

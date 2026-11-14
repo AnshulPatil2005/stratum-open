@@ -316,7 +316,7 @@ def test_files_whose_every_answer_is_unusable_stop_being_sent_on_one_commit():
     assert lines[1] == ["- 3 of 3 per-file model calls failed; the chunked review didn't read those files in full either."]
 
 
-def test_unusable_is_only_what_the_model_answered():
+def test_unusable_is_what_would_fail_again_for_the_same_file():
     from stratum_open.review_large import LargeReview
 
     large = LargeReview(calls=[
@@ -324,8 +324,9 @@ def test_unusable_is_only_what_the_model_answered():
         {"pass": "file", "path": "b.py", "ok": True, "error": "", "salvaged": True},
         {"pass": "file", "path": "c.py", "ok": False, "error": "couldn't reach the model: ConnectTimeout"},
         {"pass": "file", "path": "d.py", "ok": True, "error": ""},
+        {"pass": "lens", "path": "e.py", "ok": False, "error": "couldn't reach the model: ReadTimeout", "repeats": True},
     ])
-    assert (large.unread, large.unusable) == ({"a.py", "b.py", "c.py"}, {"a.py", "b.py"})
+    assert (large.unread, large.unusable) == ({"a.py", "b.py", "c.py", "e.py"}, {"a.py", "b.py", "e.py"})
 
 
 def test_unread_names_the_files_whose_per_file_call_failed_or_was_cut_off():

@@ -38,10 +38,11 @@ MAX_REVIEW_TEXT_FILES = 20  # files whose text is fetched for review.context_lin
 # The JSON size of the unread paths kept in the summary's state (about 60 paths), so they don't crowd the
 # findings out of the comment; past it, the next run reads everything since the old head.
 MAX_UNREAD_BYTES = 4000
-# Reviews of one commit that may send a file and get back an answer cut off or not the JSON asked
-# for. Every event on a commit (CI finishing, a reopen, a re-run) reviews it again, and an answer
-# like that tends to repeat for the same input, so after these the file waits for a push or for
-# `/stratum review`. A model that couldn't be reached doesn't count: an outage passes.
+# Reviews of one commit that may send a file and get no usable answer for it: one cut off or not
+# the JSON asked for, or a call that timed out or that the server refused (400, 413). Every event
+# on a commit (CI finishing, a reopen, a re-run) reviews it again, and each of these tends to
+# repeat for the same input, so after these the file waits for a push or for `/stratum review`.
+# A server that couldn't be reached, or kept failing (429, 5xx), doesn't count: an outage passes.
 MAX_UNUSABLE_TRIES = 2
 
 
@@ -225,8 +226,8 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
         problems.append(f"The model hasn't read {_files(waiting)} yet; the next review reads {'it' if waiting == 1 else 'them'}.")
     if stopped:
         named = ", ".join(f"`{p}`" for p in stopped[:10]) + (f" and {len(stopped) - 10} more" if len(stopped) > 10 else "")
-        problems.append(f"Stopped sending {named} to the model on this commit: {'its answer' if len(stopped) == 1 else 'their answers'} "
-                        f"came back cut off or not the JSON asked for {MAX_UNUSABLE_TRIES} times. "
+        problems.append(f"Stopped sending {named} to the model on this commit: {MAX_UNUSABLE_TRIES} reviews of it got no usable "
+                        "answer (cut off, not the JSON asked for, timed out, or refused by the model server). "
                         "Push a commit, or comment `/stratum review`, to try again.")
     # A review that left files unread isn't complete, whichever run failed to read them.
     complete = engine.complete and not waiting and not stopped
