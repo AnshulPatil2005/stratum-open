@@ -141,6 +141,14 @@ def test_docstrings_and_comments_are_not_imports():
     assert parse_imports("notes.md", "import app\n") == []
 
 
+def test_an_import_continued_with_a_backslash_keeps_every_name():
+    assert parse_imports("x.py", "from server import api, \\\n    db\n") == [Import(1, "server", ("api", "db"))]
+    assert parse_imports("x.py", "from server import (api,\n    db)\n") == [Import(1, "server", ("api", "db"))]
+    assert parse_imports("x.py", "import server.api, \\\n    server.db\nimport os\n") == [
+        Import(1, "server.api"), Import(1, "server.db"), Import(3, "os")]
+    assert parse_imports("x.py", "from server import api, \\\r\n    db\r\n") == [Import(1, "server", ("api", "db"))]
+
+
 def test_reach_note_names_files_with_three_or_more_importers():
     notes = reach_note({
         "api/util.py": Importers(2, ["a.py", "b.py"]),

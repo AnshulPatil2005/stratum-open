@@ -56,8 +56,10 @@ _SHOWN = 3  # example importers named in a note
 _TS_FOR_JS = {".js": (".ts", ".tsx"), ".jsx": (".tsx",), ".mjs": (".mts",), ".cjs": (".cts",)}
 
 _PY_KEYWORD = re.compile(r"import\b")
-_PY_IMPORT = re.compile(r"^[ \t]*import[ \t]+([^\n;#]+)", re.M)
-_PY_FROM = re.compile(r"^[ \t]*from[ \t]+(\.*)[ \t]*([\w.]*)[ \t]+import[ \t]*(\([^)]*\)|[^\n;#]*)", re.M)
+# The names run to the end of the line, or past it after a backslash.
+_PY_IMPORT = re.compile(r"^[ \t]*import[ \t]+((?:[^\n;#\\]|\\\r?\n)+)", re.M)
+_PY_FROM = re.compile(r"^[ \t]*from[ \t]+(\.*)[ \t]*([\w.]*)[ \t]+import[ \t]*(\([^)]*\)|(?:[^\n;#\\]|\\\r?\n)*)", re.M)
+_PY_CONTINUED = re.compile(r"\\\r?\n")
 _PY_NAME = re.compile(r"[\w.]+")
 
 _JS_COMMENT_OR_STRING = re.compile(
@@ -256,14 +258,14 @@ def _python_imports(text: str) -> list[Import]:
         if doubles % 2 or singles % 2:
             continue
         if match := _PY_IMPORT.match(text, start):
-            for part in match.group(1).split(","):
+            for part in _PY_CONTINUED.sub(" ", match.group(1)).split(","):
                 name = part.split()[0] if part.split() else ""
                 if _PY_NAME.fullmatch(name):
                     found.append(Import(line, name.strip(".")))
         elif match := _PY_FROM.match(text, start):
             dots, module, names = match.groups()
             if dots or module:
-                names = re.sub(r"#[^\n]*", "", names).strip().strip("()")
+                names = _PY_CONTINUED.sub(" ", re.sub(r"#[^\n]*", "", names)).strip().strip("()")
                 listed = tuple(n.split()[0] for n in names.split(",") if n.split() and n.split()[0].isidentifier())
                 found.append(Import(line, module.strip("."), listed, len(dots)))
     return found

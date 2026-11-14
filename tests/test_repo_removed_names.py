@@ -91,6 +91,15 @@ def test_a_module_attribute_that_is_gone_is_a_medium_finding(tmp_path):
         assert f"`app/request.py:5` still uses `{written}.parse_cookie`, which raises AttributeError when that line runs." in finding.detail
 
 
+def test_an_import_continued_with_a_backslash(tmp_path):
+    files = CHECKOUT | {"app/request.py": "from app.http import read, \\\n    parse_cookie\n"}
+    [finding] = found(tmp_path, files, RENAME)
+    assert "`app/request.py:2` still imports it" in finding.detail
+    files = CHECKOUT | {"app/request.py": "import re, \\\n    app.http\n\n\ndef cookies(h):\n    return app.http.parse_cookie(h)\n"}
+    [finding] = found(tmp_path, files, RENAME)
+    assert "`app/request.py:6` still uses `app.http.parse_cookie`" in finding.detail
+
+
 def test_classes_constants_and_imports_are_names_too(tmp_path):
     files = {
         "shop/__init__.py": "from shop.money import Price\nfrom shop.text import slugify\n",

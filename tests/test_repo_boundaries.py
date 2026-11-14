@@ -77,6 +77,14 @@ def test_relative_and_multiline_imports(tmp_path):
     assert [(f.path, f.line_start) for f in findings] == [("server/api/jobs.py", 2), ("web/api/client.ts", 3)]
 
 
+def test_an_import_continued_with_a_backslash(tmp_path):
+    repo = write(tmp_path, CHECKOUT)
+    names = change("server/api/jobs.py", "+import os", "+from server import core, \\", "+    db", new=True)
+    modules = change("server/api/tasks.py", "+import os, \\", "+    server.db.models", new=True)
+    assert [(f.path, f.line_start) for f in boundary_findings([names, modules], POLICY, repo)] == [
+        ("server/api/jobs.py", 2), ("server/api/tasks.py", 1)]
+
+
 def test_imports_the_pr_did_not_add_are_left_alone(tmp_path):
     repo = write(tmp_path, CHECKOUT)
     diff = change("server/api/views.py", " from server.db.models import User", "+x = 1")

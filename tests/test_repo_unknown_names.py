@@ -73,6 +73,13 @@ def test_a_module_attribute_that_is_not_there_is_a_medium_finding(tmp_path):
         assert "raises AttributeError when this line runs. Did you mean `normalise_path`?" in finding.detail
 
 
+def test_an_import_continued_with_a_backslash(tmp_path):
+    [finding] = found(tmp_path, CHECKOUT, views("from app.utils import read, \\", "    normalize_path"))
+    assert (finding.line_start, finding.title) == (3, "`app/utils.py` has no `normalize_path`")
+    [finding] = found(tmp_path, CHECKOUT, views("import os, \\", "    app.utils", "", "def show(p):", "    return app.utils.normalize_path(p)"))
+    assert (finding.line_start, finding.title) == (6, "`app/utils.py` has no `normalize_path`")
+
+
 def test_the_import_may_already_be_there_when_the_pr_adds_the_call(tmp_path):
     files = CHECKOUT | {"app/views.py": "from app import utils\n\n\ndef show(p):\n    return utils.read(p)\n"}
     diff = change("app/views.py", " from app import utils", " ", " ", " def show(p):", "-    return utils.read(p)", "+    return utils.read_text(p)")
