@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5899,dev,negated-condition,src/flask/app.py,1590,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q2_K_XL,verify,planted,121.8,yes,3,0,0,0,
+pallets/jinja#2026,dev,flipped-comparison,src/jinja2/runtime.py,998,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q2_K_XL,verify,planted,109.2,yes,3,0,0,0,
+pydantic/pydantic#14244,dev,flipped-comparison,pydantic/json_schema.py,2967,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q2_K_XL,verify,planted,246.0,yes,5,0,0,0,
+scrapy/scrapy#8431,dev,wrong-boolean,scrapy/downloadermiddlewares/cookies.py,45,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q2_K_XL,verify,planted,111.0,yes,1,1,0,0,"the model server answered 500: {""error"":""prediction aborted, token repeat limit reached""}"
+Textualize/rich#4006,dev,off-by-one,rich/cells.py,197,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:UD-Q2_K_XL,verify,planted,228.0,yes,4,0,0,0,

@@ -1,0 +1,6 @@
+case,set,kind,path,line,model,variant,version,seconds,shown,calls,failed_calls,findings,near,error
+pallets/flask#5899,dev,negated-condition,src/flask/app.py,1590,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,verify,clean,223.9,yes,3,0,0,0,
+pallets/jinja#2026,dev,flipped-comparison,src/jinja2/runtime.py,998,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,verify,clean,224.6,yes,3,0,0,0,
+pydantic/pydantic#14244,dev,flipped-comparison,pydantic/json_schema.py,2967,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,verify,clean,534.9,yes,3,0,0,0,
+scrapy/scrapy#8431,dev,wrong-boolean,scrapy/downloadermiddlewares/cookies.py,45,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,verify,clean,110.4,yes,1,0,0,0,
+Textualize/rich#4006,dev,off-by-one,rich/cells.py,197,hf.co/unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF:Q3_K_S,verify,clean,426.1,yes,4,0,0,0,

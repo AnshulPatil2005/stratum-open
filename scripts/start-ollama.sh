@@ -7,7 +7,7 @@
 #
 # STRATUM_OLLAMA_ROOT is where Ollama is installed (default ~/.stratum-ollama,
 # the path action.yml caches). Two things depend on the model's size, read from
-# Ollama's registry before the pull:
+# its manifest before the pull (Ollama's registry, or Hugging Face's for hf.co/):
 # - The runner's disk holds 14 GB, so a model that won't fit with room to spare
 #   gets the space of preinstalled SDKs the review doesn't use. The runner is
 #   thrown away after the job.
@@ -34,19 +34,17 @@ if [ ! -x "$root/bin/ollama" ]; then
   find "$root/lib/ollama" -mindepth 1 -maxdepth 1 -type d \( -name 'cuda*' -o -name 'rocm*' -o -name 'mlx*' \) -exec rm -rf {} + 2>/dev/null || true
 fi
 
-# The model's download size in bytes, from Ollama's registry; 0 when it can't
-# be told (a hf.co/ model, or no answer), and then nothing is cleared or moved.
-size=0
-case "$model" in
-  hf.co/*) ;;
-  *)
-    name="${model%%:*}"; tag="${model#*:}"; [ "$tag" = "$model" ] && tag="latest"
-    case "$name" in */*) path="$name" ;; *) path="library/$name" ;; esac
-    size=$(curl -fsS -m 30 -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
-      "https://registry.ollama.ai/v2/${path}/manifests/${tag}" 2>/dev/null \
-      | python3 -c "import json, sys; print(sum(l.get('size', 0) for l in json.load(sys.stdin).get('layers', [])))" 2>/dev/null || echo 0)
-    ;;
+# The model's download size in bytes, from its manifest; 0 when there's no
+# answer, and then nothing is cleared or moved. For a hf.co/<owner>/<repo>:<quant>
+# model, Hugging Face serves the same manifest Ollama's registry does.
+name="${model%%:*}"; tag="${model#*:}"; [ "$tag" = "$model" ] && tag="latest"
+case "$name" in
+  hf.co/*|huggingface.co/*) manifest="https://${name%%/*}/v2/${name#*/}/manifests/${tag}" ;;
+  */*) manifest="https://registry.ollama.ai/v2/${name}/manifests/${tag}" ;;
+  *) manifest="https://registry.ollama.ai/v2/library/${name}/manifests/${tag}" ;;
 esac
+size=$(curl -fsSL -m 30 -H "Accept: application/vnd.docker.distribution.manifest.v2+json" "$manifest" 2>/dev/null \
+  | python3 -c "import json, sys; print(sum(l.get('size', 0) for l in json.load(sys.stdin).get('layers', [])))" 2>/dev/null || echo 0)
 
 free=$(df --output=avail -B1 "$HOME" | tail -1 | tr -d ' ')
 if [ "$size" -gt 0 ] && [ $((size + headroom)) -gt "$free" ]; then
