@@ -208,12 +208,19 @@ def review_pull(ctx: Context, number: int, *, full: bool = False, post: bool = T
     # A review that left files unread isn't complete, whichever run failed to read them.
     complete = engine.complete and not waiting
 
+    # Each on its own: a failed CI lookup mustn't cost the linked issues. A
+    # failed one is unknown, never "none": CI stays None (as if pending), and
+    # the linked issues None, so the PR isn't called unlinked, or closed for it.
     facts = PRFacts.from_pull(pull, paths)
     try:
         facts.ci_ok = gh.ci_state(head, ignore={policy.review.check_name, *ctx.own_checks})
+    except GitHubError as exc:
+        problems.append(f"Couldn't read the CI status ({exc.status}).")
+    try:
         facts.linked_issues = gh.linked_issues(number)
     except GitHubError as exc:
-        problems.append(f"Couldn't read CI status or linked issues ({exc.status}).")
+        facts.linked_issues = None
+        problems.append(f"Couldn't read the linked issues ({exc.status}), so triage doesn't count them either way.")
 
     # Each `/stratum` command runs on its own, so an `ignore` can land while
     # this review was reading the PR: read the summary again before writing
