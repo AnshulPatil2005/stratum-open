@@ -291,7 +291,10 @@ def review(
         style=style, large=policy.review.large_patch,
     )
     result.packed = packed
-    by_path = {f.path: f for f in files}
+    # Findings only on files the model was shown: it knows the others' names
+    # from the list of files changed, and would be guessing at their lines.
+    sent = set(packed.reviewed + packed.clipped)
+    by_path = {f.path: f for f in files if f.path in sent}
     left_out = _left_out_block(packed)
 
     batches: list[list[Finding]] = []  # each answer's findings, apart, so that two passes agreeing can be told from one repeating itself
