@@ -122,10 +122,10 @@ class Storage(Protocol):
     def latest_findings(self, repo: str, pr: int) -> list[dict]:
         """The newest review's findings for a PR, with the FINDING_FIELDS keys."""
 
-    def purge(self, *, findings_days: int = 180, jobs_days: int = 14, now: datetime | None = None, repo: str | None = None) -> dict[str, int]:
+    def purge(self, *, findings_days: int | None = 180, jobs_days: int = 14, now: datetime | None = None, repo: str | None = None) -> dict[str, int]:
         """Deletes reviews (with their findings) and job-log rows past their
         windows, in one repo or all of them; never votes or mutes. Returns rows
-        deleted per table."""
+        deleted per table. `findings_days=None` leaves the reviews."""
 
     def delete_pr(self, repo: str, pr: int) -> int:
         """A PR's reviews, findings and job-log rows; its feedback stays."""
@@ -167,7 +167,7 @@ class NullStorage:
     def latest_findings(self, repo: str, pr: int) -> list[dict]:
         return []
 
-    def purge(self, *, findings_days: int = 180, jobs_days: int = 14, now: datetime | None = None, repo: str | None = None) -> dict[str, int]:
+    def purge(self, *, findings_days: int | None = 180, jobs_days: int = 14, now: datetime | None = None, repo: str | None = None) -> dict[str, int]:
         return {"reviews": 0, "findings": 0, "jobs": 0}
 
     def delete_pr(self, repo: str, pr: int) -> int:
@@ -292,9 +292,10 @@ class SQLiteStorage:
             ).fetchall()
         return [dict(row) for row in rows]
 
-    def purge(self, *, findings_days: int = 180, jobs_days: int = 14, now: datetime | None = None, repo: str | None = None) -> dict[str, int]:
+    def purge(self, *, findings_days: int | None = 180, jobs_days: int = 14, now: datetime | None = None, repo: str | None = None) -> dict[str, int]:
         now = now or datetime.now(timezone.utc)
-        reviews_before = _stamp(now - timedelta(days=findings_days))
+        # None keeps every review: no time is before "".
+        reviews_before = _stamp(now - timedelta(days=findings_days)) if findings_days is not None else ""
         jobs_before = _stamp(now - timedelta(days=jobs_days))
         scope = _repo(repo) if repo else None  # None: every repo
         with self._tx() as db:

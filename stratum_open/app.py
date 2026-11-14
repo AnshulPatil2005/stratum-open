@@ -108,6 +108,7 @@ class Server:
         self._queue: queue.Queue[tuple] = queue.Queue()
         self._pending: dict[tuple, tuple[str, dict]] = {}
         self._busy: set[tuple] = set()
+        self._forgotten: set[str] = set()  # uninstalled repos, until a webhook comes for one again
         self._repo_locks: dict[str, threading.Lock] = {}
         self._deliveries: OrderedDict[str, float] = OrderedDict()
         self._lock = threading.Lock()
@@ -219,14 +220,25 @@ class Server:
         return False
 
     def forget(self, repo: str) -> None:
-        """Uninstalled: every stored row and the clone go at once."""
+        """Uninstalled: every stored row and the clone go at once. A job still
+        queued for the repo is dropped, and what a running one writes is
+        deleted when it ends."""
+        with self._lock:
+            self._forgotten.add(repo.lower())
+            for key in [k for k in self._pending if k[0].lower() == repo.lower()]:
+                del self._pending[key]
+        deleted = self._delete(repo)
+        self.log(f"{repo}: uninstalled; deleted {deleted} stored row(s) and its clone")
+
+    def _delete(self, repo: str) -> int:
         deleted = self.storage.delete_repo(repo)
         shutil.rmtree(self._clone_dir(repo), ignore_errors=True)
-        self.log(f"{repo}: uninstalled; deleted {deleted} stored row(s) and its clone")
+        return deleted
 
     def enqueue(self, key: tuple, event: str, payload: dict) -> None:
         """A newer push replaces a review still waiting for the same PR."""
         with self._lock:
+            self._forgotten.discard(key[0].lower())  # a webhook for it: installed again
             queued = key in self._pending
             self._pending[key] = (event, payload)
             if not queued:
@@ -236,6 +248,8 @@ class Server:
         while True:
             key = self._queue.get()
             with self._lock:
+                if key not in self._pending:  # dropped when the App was uninstalled
+                    continue
                 if (key[0], key[1]) in {(k[0], k[1]) for k in self._busy}:
                     self._queue.put(key)  # one job per PR at a time
                     retry = True
@@ -255,6 +269,13 @@ class Server:
                 except Exception as failed:  # the job log is best effort: a broken database must not kill the worker
                     self.log(redact(f"{key[0]}#{key[1]}: couldn't record the failed job either: {type(failed).__name__}: {failed}"))
             finally:
+                with self._lock:
+                    forgotten = key[0].lower() in self._forgotten
+                if forgotten:  # uninstalled while the job ran: what it wrote goes too
+                    try:
+                        self._delete(key[0])
+                    except Exception as failed:
+                        self.log(redact(f"{key[0]}#{key[1]}: couldn't delete the uninstalled repo's rows: {type(failed).__name__}: {failed}"))
                 with self._lock:
                     self._busy.discard(key)
 
@@ -333,6 +354,11 @@ class Server:
         """Every repo's rows past its own retention, even repos with no PRs
         lately, so the data page's promises hold without any activity. An
         installation or repo that fails is logged and skipped, not the rest."""
+        # Every repo's job log, installed or not: the 14 days are the same for all.
+        try:
+            self.storage.purge(findings_days=None, jobs_days=JOBS_DAYS)
+        except Exception as exc:
+            self.log(redact(f"purge: couldn't purge the job log: {type(exc).__name__}: {exc}"))
         for installation in self.auth.installations():
             try:
                 token = self.auth.token(installation["id"])

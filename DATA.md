@@ -47,7 +47,8 @@ This applies to the GitHub App. The Action and the CLI store none of it.
 repo's policy, the 180 days apply). The App purges every repo it's installed on
 once a day, so this holds for repos with no PRs lately. `review.log_prompts: true`
 keeps prompts and replies in the job log for its 14 days. Uninstalling the App
-deletes its rows at once.
+deletes its rows at once, and drops any job still waiting for the repo; what a
+job running at that moment writes is deleted when it ends.
 
 ## Stored fields
 
