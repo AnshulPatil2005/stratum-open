@@ -18,7 +18,7 @@ from typing import Any, Callable
 from stratum_open import diff as diffs
 from stratum_open.diff import FileDiff, Packed
 from stratum_open.findings import CATEGORIES, SEVERITIES, Finding
-from stratum_open.model import Model, parse_json, salvage
+from stratum_open.model import Model, Reply, parse_json, salvage
 from stratum_open.policy import Policy
 
 OUTPUT_RESERVE_TOKENS = 2048
@@ -421,7 +421,10 @@ def verify_findings(findings: list[Finding], files: list[FileDiff], policy: Poli
             continue
         code = _excerpt(file, finding.line_start, policy.review.diff_format)
         user = f"The changed code:\n{code}\n\nThe finding, on line {finding.line_start}:\n{finding.title}: {finding.detail}"
-        reply = model.complete(system, user, max_tokens=max_tokens)
+        try:
+            reply = model.complete(system, user, max_tokens=max_tokens)
+        except Exception as exc:  # an embedder's model may raise; the engine's own reports failures in its Reply
+            reply = Reply("", str(getattr(model, "name", "")), 0.0, error=f"the model call failed ({type(exc).__name__})")
         call = reply.as_dict()
         call["pass"] = "verify"
         calls.append(call)

@@ -115,6 +115,25 @@ def test_a_model_that_raises_is_an_outage_or_a_bug_by_its_exception():
     assert error_of(declared).startswith("the model step failed (OtherClientError)")
 
 
+def test_a_model_that_raises_in_the_verify_pass_keeps_the_finding():
+    class AnswersOnce(FakeModel):
+        """Answers its first call, then its HTTP client times out on every call after."""
+        failure_types = (TimeoutError,)
+
+        def complete(self, system, user, **kwargs):
+            if self.prompts:
+                self.prompts.append((system, user))
+                raise TimeoutError("read timed out")
+            return super().complete(system, user, **kwargs)
+
+    per_file = "review:\n  profile: large\n  parallel_calls: 1\n  file_reviews: 1\n  lens_files: 0\n  walkthrough: false\n"
+    for policy, calls in ((per_file, lambda r: r.large.calls), ("review:\n  profile: small\n", lambda r: r.review.calls)):
+        result = run(AnswersOnce(reply(UNKNOWN_ID)), policy=parse_policy(policy + "  verify: strict\n"))
+        assert "None for unknown ids" in {f.title for f in result.findings}
+        [failed] = [c for c in calls(result) if c.get("pass") == "verify"]
+        assert not failed["ok"] and failed["error"] == "the model call failed (TimeoutError)"
+
+
 def test_previous_findings_carry_over_on_an_incremental_review():
     first = run(FakeModel(reply(UNKNOWN_ID)))
     prior = [state_finding(f, snippet_of(f, FILES)) for f in first.findings if f.source == "model"]
