@@ -69,6 +69,10 @@ checks:
   weakened_tests: false        # true reports, on the line, a test a PR switches off, assertions it removes from a test, and a tolerance it widens
   unknown_names: false         # true flags, in Python, an import or a call of a name its module doesn't define (your own modules, and part of the standard library)
   removed_names: false         # true flags, in Python, a function, class or constant the PR removes from a module while another file still imports or uses it
+  shellcheck: false            # true reports ShellCheck's errors, and the few warnings that name a real bug, on lines a PR adds to a shell script;
+                               #   needs `shellcheck` on PATH (GitHub's Ubuntu runners have it)
+  actionlint: false            # true reports actionlint's errors on lines a PR adds to a workflow (a key GitHub doesn't know, a `needs:` with no such job);
+                               #   needs `actionlint` on PATH, which GitHub's runners don't have (see the README)
 
 commands:                      # who may run each /stratum command: anyone | author | write
   review: write                # "author" is the PR's author or anyone with write access

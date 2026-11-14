@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Callable
 
-from stratum_open.checks import agents, awaits, bandit, common, dependencies, heuristics, paths, patterns, promises, ruff, tests_weakened, workflows
+from stratum_open.checks import actionlint, agents, awaits, bandit, common, dependencies, heuristics, paths, patterns, promises, ruff, shellcheck, tests_weakened, workflows
 from stratum_open.checks.dependencies import PackageInfo, PackageLookup
 from stratum_open.diff import FileDiff
 from stratum_open.findings import Finding
@@ -65,6 +65,10 @@ def run_checks(
     ]
     if policy.checks.ruff:
         checks.append(("Ruff", lambda: ruff.check(files, contents)))
+    if policy.checks.shellcheck:
+        checks.append(("ShellCheck", lambda: shellcheck.check(files, contents)))
+    if policy.checks.actionlint:
+        checks.append(("actionlint", lambda: actionlint.check(files, contents)))
     if policy.checks.floating_promises:
         checks.append(("floating promise", lambda: promises.check(files, contents)))
     if policy.checks.heuristics:

@@ -23,7 +23,9 @@ repo. Nothing is sent to Stratum: no account, no telemetry, no license check.
   - in Python, a coroutine called without `await` inside an `async def`, when the same call is awaited elsewhere in the file, and `await` on a method of a plain file from `open()`;
   - in JavaScript and TypeScript, when your policy turns it on (`checks.floating_promises`) and the `js` extra is installed, a call left unawaited as a statement of its own in an `async` function, when the file awaits the same call elsewhere or declares it `async`. It caught a third of the awaits dropped from merged PRs and said nothing on the 60 PRs as merged ([how it was measured](benchmark/results/2026-11-13-floating-promises/summary.md));
   - Python security issues via Bandit, when it's installed;
-  - Python errors Ruff can see without running the code (a name nothing defines, a format string that doesn't fit its arguments, `return` outside a function), when it's installed and your policy sets `checks.ruff: true`.
+  - Python errors Ruff can see without running the code (a name nothing defines, a format string that doesn't fit its arguments, `return` outside a function), when it's installed and your policy sets `checks.ruff: true`;
+  - in shell scripts, when your policy sets `checks.shellcheck: true` and `shellcheck` is on PATH (GitHub's Ubuntu runners have it), ShellCheck's errors (`x = 1`, `[ $n > 3 ]`, `local` outside a function) and four of its warnings that name a real bug, such as `cmd 2>&1 >log`, on the lines a PR adds. On [65 merged PRs](benchmark/results/2026-11-14-shell-checks/summary.md) that change a script it reported nothing, and on the 23,997 lines of those scripts read as if new, one false alarm, so what it catches is proven on planted cases only. Scripts over 100,000 characters (acme.sh, nvm.sh) aren't read, since ShellCheck can take a minute on one;
+  - in GitHub workflows, when your policy sets `checks.actionlint: true` and `actionlint` is on PATH, which GitHub's runners don't have ([how to add it](#actionlint-on-the-runner)), what actionlint finds on the lines a PR adds: a `needs:` naming no job, a key GitHub doesn't know, a matrix key that isn't there. On [129 merged PRs](benchmark/results/2026-11-14-shell-checks/summary.md) that change a workflow it reported nothing. On the 24,353 lines of those workflows read as if new it made 21 findings: 9 right but harmless, and 11 false alarms, each something GitHub added after the actionlint release it ran with.
 - **A review by the model:**
   - a summary of what the PR does, and whether that matches its description;
   - inline comments on the exact lines, with a suggested fix you can commit from GitHub;
@@ -47,6 +49,20 @@ That workflow runs `qwen2.5-coder:7b` with Ollama on GitHub's own runner, so you
 To hear from Stratum sooner, set `review.early_checks: true` in your policy file. The Action then runs the checks before it starts the model and posts what they found straight away: on the lines, in the summary comment (with a line saying the model's review is still running), and as a check run in progress. That's usually within a minute of the job starting, since the checks need no model. When the model is done, the same comment becomes the full review and the check run gets its result. The end result is the same as without the setting. A check's early comment that the full review wouldn't have posted is deleted then: when the model reported the same problem on the same lines, or when `review.max_inline_comments` gives its place to a more serious finding. One that someone has replied to stays. If the model's review never finishes (Ollama doesn't start, or the job fails, times out or is cancelled), the summary says so, and the check run is completed with what the checks found.
 
 The workflow uses `pull_request_target` so it can comment on PRs from forks. It's safe here because the workflow checks out your default branch, never the PR, and Stratum reads the PR only through GitHub's API: no code from the PR ever runs. Keep it that way: don't add a step that checks out the PR.
+
+### actionlint on the runner
+
+`checks.actionlint` needs `actionlint`, which GitHub's runners don't have. Without it the check is skipped and says nothing. To add it, put this step before Stratum's in your workflow. It installs the release the check was measured with, and stops if the download isn't that file:
+
+```yaml
+      - name: Install actionlint
+        run: |
+          mkdir -p "$RUNNER_TEMP/actionlint"
+          curl -fsSL -o "$RUNNER_TEMP/actionlint.tar.gz" https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz
+          echo "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  $RUNNER_TEMP/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP/actionlint" actionlint
+          echo "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
+```
 
 ## Your rules: `.stratum/policy.yml`
 

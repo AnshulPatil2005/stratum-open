@@ -118,6 +118,19 @@ python benchmark/planted.py checks --risks benchmark/planted/risks.yml --prs ben
 python benchmark/removed_names.py commits --repos ../repos --out benchmark/results/<name>
 ```
 
+**Checks that run another program.** `checks.shellcheck` and `checks.actionlint` (both off by default) keep a short list of
+what ShellCheck and actionlint report. [shell_checks.py](shell_checks.py) picks merged PRs that change a shell script or a
+workflow (`clean-shell.json`), and writes down every issue the two programs report on a line those PRs add, kept or not.
+`whole` then reads the same files as if every line were new. Each row is marked, and what the checks keep was chosen from
+the marks. Run it under Linux with both programs on PATH.
+
+```sh
+python benchmark/shell_checks.py pick
+python benchmark/shell_checks.py run --out benchmark/results/<name>
+python benchmark/shell_checks.py whole --out benchmark/results/<name>
+python benchmark/shell_checks.py score benchmark/results/<name>   # after marking issues.csv and whole.csv
+```
+
 **Trying a change.** Each case is in the `dev` or the `test` set (in bugs.json, stratified by kind):
 - **Tune on dev only.** Use `--set dev`, and run `test` once at the end, so the result isn't tuned to its cases.
 - **Add the clean control.** `--clean` reviews the PRs as merged, without the bug. A method that comments on every changed condition flags the planted line in both, so the summary counts **near only with the bug**: the cases whose clean version got no finding on that line.
@@ -189,6 +202,7 @@ after adding or marking a run, run `python benchmark/results_page.py`.
 | [2026-11-13-floating-promises](results/2026-11-13-floating-promises/summary.md) | Any (no model) | `checks.floating_promises` on JavaScript and TypeScript: 42 of 126 dropped awaits caught, nothing on 60 merged PRs. On 1.56 million lines of six other projects read as new, 28 findings, 6 of them real mistakes and 16 false alarms |
 | [2026-11-13-pr-agent-actions-cpu](results/2026-11-13-pr-agent-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | PR-Agent 0.50.0 on the 19 dev cases with the same `gpt-oss:20b`: 10 found against 6 for stratum-open in the same run, and 20 findings on the 19 clean PRs against 8 ([notes](results/2026-11-13-pr-agent-actions-cpu/notes.md)) |
 | [2026-11-13-logic-pass-actions-cpu](results/2026-11-13-logic-pass-actions-cpu/summary.md) | GitHub runner, 4 CPUs, no GPU | `gpt-oss:20b` with `review.logic_pass` and `review.context_lines: 10`: 27 of 39 found against 18 without them, 15 comments on 39 clean PRs against 8, about three times as long per PR ([notes](results/2026-11-13-logic-pass-actions-cpu/notes.md)) |
+| [2026-11-14-shell-checks](results/2026-11-14-shell-checks/summary.md) | Any (no model) | `checks.shellcheck` and `checks.actionlint` (off by default): nothing on the lines 65 and 129 merged PRs add to scripts and workflows. On those files read as new, 1 false alarm from ShellCheck in 23,997 lines; 21 findings from actionlint in 24,353, 9 right but harmless and 11 false alarms, each something GitHub added after actionlint 1.7.12 |
 
 One folder holds no run of its own: [2026-11-13-quiet](results/2026-11-13-quiet/summary.md) tries the patterns `review.quiet` uses
 on the findings the runs above left and people marked. They leave out 41 of the 215 marked wrong and none of the 220 marked right

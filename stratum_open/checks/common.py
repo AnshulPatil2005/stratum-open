@@ -1,9 +1,10 @@
 """Small helpers the checks share: which files are tests, which lines are
-comments, the new side of a file as far as the run can see it, and which
-lines a check judges."""
+comments, the new side of a file as far as the run can see it, which lines a
+check judges, and where a program a check starts is."""
 
 from __future__ import annotations
 
+import os
 import re
 from collections.abc import Callable, Set
 
@@ -42,6 +43,25 @@ def extension(path: str) -> str:
 
 def basename(path: str) -> str:
     return path.rsplit("/", 1)[-1]
+
+
+def find_program(name: str) -> str | None:
+    """The full path of the program `name` on PATH, for a check that starts
+    one. Only absolute entries count, and none in the folder the review runs
+    from, which can be a checkout of the code under review: on Windows a bare
+    name is looked for there first, so a `shellcheck.exe` in it would run in
+    the real one's place."""
+    here = os.path.normcase(os.path.abspath(os.getcwd()))
+    endings = (".exe", ".com") if os.name == "nt" else ("",)
+    for folder in os.environ.get("PATH", "").split(os.pathsep):
+        where = os.path.normcase(os.path.abspath(folder)) if folder and os.path.isabs(folder) else None
+        if where is None or where == here or where.startswith(here.rstrip(os.sep) + os.sep):
+            continue
+        for ending in endings:
+            candidate = os.path.join(folder, name + ending)
+            if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+                return candidate
+    return None
 
 
 def view(file: FileDiff, contents: dict[str, str] | None) -> list[tuple[int, str]]:

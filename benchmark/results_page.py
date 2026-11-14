@@ -31,13 +31,14 @@ import bench  # noqa: E402
 import corpus  # noqa: E402
 import floating_promises  # noqa: E402
 import planted  # noqa: E402
+import shell_checks  # noqa: E402
 import weakened_tests  # noqa: E402
 from stratum_open.checks.promises import RULE as FLOATING_PROMISE  # noqa: E402
 
 RESULTS = HERE / "results"
 PAGE = HERE / "RESULTS.md"
 Z = 1.959964  # 95% of a normal distribution lies within this many standard deviations
-KINDS = ("models", "checks", "rules", "corpus", "awaits", "as_new", "merged")
+KINDS = ("models", "checks", "rules", "corpus", "awaits", "as_new", "merged", "shell")
 # The rules a policy has to turn on, by the setting that does it. A rule is
 # one of these when its name is one listed here, or starts with one and a slash.
 OFF_BY_DEFAULT = {
@@ -111,6 +112,8 @@ def _read_folder(folder: Path) -> dict:
         run["awaits"] = [_awaits_run(folder)]
     if (folder / "calls.csv").exists():
         run["merged"] = _merged_runs(folder)
+    if (folder / "whole.json").exists():
+        run["shell"] = shell_checks.scores(folder)
     if not any(run.get(kind) for kind in KINDS):
         raise Inconsistent("it has no results that a scorer counts")
     return run
@@ -293,6 +296,8 @@ def render(page: dict) -> str:
         lines += _checks_section(page)
     if page["awaits"]:
         lines += _awaits_section(page)
+    if page["shell"]:
+        lines += _shell_section(page["shell"])
     if page["merged"]:
         lines += _merged_section(page["merged"])
     lines += ["", "## Not included", ""]
@@ -477,6 +482,28 @@ def _awaits_section(page: dict) -> list[str]:
             ] for row in page["as_new"]],
         )
     return lines
+
+
+def _shell_section(rows: list[dict]) -> list[str]:
+    lines = [
+        "",
+        "## ShellCheck and actionlint",
+        "",
+        "Both are off unless their setting is on. Each ran on merged PRs that change a shell script or a workflow, where any finding is a possible false alarm, "
+        "and on the whole of those files read as if every line were new. Each finding is marked right when what it says is true of the code, "
+        "and wrong (a false alarm) when the code works as meant.",
+        "",
+    ]
+    return lines + _table(
+        ["Setting", "Run", "Merged PRs", "Added lines", "Findings on them", "Files read whole", "Lines", "Findings on them", "Right", "Wrong", "Unsure",
+         "Right, of those marked", "95% interval"],
+        [[
+            f"`{row['setting']}`", _link(row["run"]), str(row["prs"]), f"{row['lines']:,}", str(row["findings"]), str(row["files"]), f"{row['file_lines']:,}",
+            str(row["whole"]), str(row["whole_right"]), str(row["whole_wrong"]), str(row["whole_unsure"]),
+            _count(row["whole_right"], row["whole_right"] + row["whole_wrong"]) if row["whole_right"] + row["whole_wrong"] else "-",
+            _interval(row["whole_right"], row["whole_right"] + row["whole_wrong"]),
+        ] for row in rows],
+    )
 
 
 def _merged_section(rows: list[dict]) -> list[str]:
