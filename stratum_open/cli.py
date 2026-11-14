@@ -248,13 +248,24 @@ def _write_json(path: str | None, findings: list[Finding]) -> None:
 
 
 def _record(args) -> int:
+    # The project's settings, as `/stratum record` reads them: the policy on the default branch.
+    policy = parse_policy(_git_or_none(args.repo, "show", f"{args.ref}:{POLICY_PATH}"))
+    _policy_notes(policy)
+    settings = policy.track_record
+    if not settings.enabled:
+        print("Track records are turned off in this project's policy.")
+        return 0
+    if author_identity(args.login) in {author_identity(e) for e in settings.exclude}:
+        print(f"No record is built for {args.login}: the project's policy excludes that login.")
+        return 0
     try:
-        records = build_records(args.repo, args.ref)
+        records = build_records(args.repo, args.ref, window_days=settings.window_days,
+                                followup_days=settings.followup_days, exclude=settings.exclude)
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
         sys.exit(f"Couldn't read the history of {args.repo} at {args.ref}: {describe_subprocess_error(exc, 300)}")
     record = records.get(author_identity(args.login))
     if record is None:
-        print(f"No merged PRs by {args.login} in the last 180 days of {args.ref}. Records match a login only through "
+        print(f"No merged PRs by {args.login} in the last {settings.window_days} days of {args.ref}. Records match a login only through "
               "GitHub's noreply emails; try the commit email too.")
         return 0
     print(f"{record.author}: {record.summary()}")
